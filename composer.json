@@ -28,6 +28,7 @@
         "nunomaduro/mock-final-classes": "^1.2",
         "orchestra/testbench": "^9.13|^10.2",
         "pestphp/pest": "^4.1",
+        "pestphp/pest-plugin-type-coverage": "^4.0",
         "rector/rector": "^2.2"
     },
     "autoload": {
@@ -43,16 +44,16 @@
     "scripts": {
         "lint": "pint -v",
         "refactor": "rector process --ansi",
-        "test:coverage": "XDEBUG_MODE=coverage pest --coverage",
         "test:lint": "pint --test -v",
         "test:refactor": "rector process --dry-run --ansi",
         "test:types": "phpstan analyse --configuration=phpstan.neon.dist --ansi --memory-limit=1G",
-        "test:unit": "pest",
+        "test:type-coverage": "pest --colors=always --type-coverage --parallel",
+        "test:unit": "XDEBUG_MODE=coverage pest --colors=always --coverage --parallel",
         "test": [
-            "@test:coverage",
             "@test:lint",
             "@test:refactor",
             "@test:types",
+            "@test:type-coverage",
             "@test:unit"
         ]
     },
