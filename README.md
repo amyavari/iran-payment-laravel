@@ -1,4 +1,4 @@
-# Iran SMS Laravel
+# Iran Payment Laravel
 
 <img src="https://banners.beyondco.de/Iran%20Payment%20Laravel.png?theme=dark&packageManager=composer+require&packageName=amyavari%2Firan-payment-laravel&pattern=architect&style=style_1&description=Pay+through+Iranian+payment+gateways+with+ease&md=1&showWatermark=1&fontSize=100px&images=https%3A%2F%2Flaravel.com%2Fimg%2Flogomark.min.svg">
 
@@ -15,12 +15,12 @@ To view the Persian documentation, please refer to [README_FA.md](./docs/README_
 
 برای مشاهده راهنمای فارسی، لطفاً به فایل [README_FA.md](./docs/README_FA.md) مراجعه کنید.
 
+**THIS PACKAGE IS UNDER DEVELOPMENT, PLEASE DO NOT USE IT YET**
+
 ## Requirements
 
-- PHP version `8.2` or higher
-- Laravel `^11.44`, or `^12.4`
-
-**THIS PACKAGE IS UNDER DEVELOPMENT, PLEASE DO NOT USE IT YET**
+- PHP version `8.3` or higher
+- Laravel `^11.44`, or `^12.23`
 
 ## List of Available Payment Gateways
 
