@@ -18,15 +18,14 @@
         }
     ],
     "require": {
-        "php": "^8.2",
+        "php": "^8.3",
         "spatie/laravel-package-tools": "^1.92",
-        "illuminate/contracts": "^11.44|^12.4"
+        "illuminate/contracts": "^11.44|^12.23"
     },
     "require-dev": {
         "larastan/larastan": "^3.8",
         "laravel/pint": "^1.26",
-        "nunomaduro/mock-final-classes": "^1.2",
-        "orchestra/testbench": "^9.13|^10.2",
+        "orchestra/testbench": "^9.13|^10.6",
         "pestphp/pest": "^4.1",
         "pestphp/pest-plugin-type-coverage": "^4.0",
         "rector/rector": "^2.2"
@@ -48,7 +47,7 @@
         "test:refactor": "rector process --dry-run --ansi",
         "test:types": "phpstan analyse --configuration=phpstan.neon.dist --ansi --memory-limit=1G",
         "test:type-coverage": "pest --colors=always --type-coverage --parallel",
-        "test:unit": "XDEBUG_MODE=coverage pest --colors=always --coverage --parallel",
+        "test:unit": "XDEBUG_MODE=coverage pest --colors=always --coverage",
         "test": [
             "@test:lint",
             "@test:refactor",
