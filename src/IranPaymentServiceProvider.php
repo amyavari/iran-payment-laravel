@@ -11,7 +11,7 @@ use Spatie\LaravelPackageTools\PackageServiceProvider;
 /**
  * @internal
  */
-final class IranSmsServiceProvider extends PackageServiceProvider
+final class IranPaymentServiceProvider extends PackageServiceProvider
 {
     public function configurePackage(Package $package): void
     {
