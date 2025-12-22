@@ -54,11 +54,11 @@ jobs:
       - name: Coding Style Checks
         run: composer test:lint
 
-      - name: Type Checks
-        run: composer test:types
+      - name: Code Quality Checks
+        run: composer test:refactor
 
-      - name: Type coverage Checks
+      - name: Type Coverage Checks
         run: composer test:type-coverage
 
-      - name: Refactor checks
-        run: composer test:refactor
+      - name: Type Checks
+        run: composer test:types

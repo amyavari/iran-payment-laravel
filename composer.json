@@ -47,7 +47,7 @@
         "test:refactor": "rector process --dry-run --ansi",
         "test:types": "phpstan analyse --configuration=phpstan.neon.dist --ansi --memory-limit=1G",
         "test:type-coverage": "pest --colors=always --type-coverage --parallel",
-        "test:unit": "XDEBUG_MODE=coverage pest --colors=always --coverage",
+        "test:unit": "pest --colors=always --coverage",
         "test": [
             "@test:lint",
             "@test:refactor",
