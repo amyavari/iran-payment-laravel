@@ -17,7 +17,7 @@ final class IranPaymentServiceProvider extends PackageServiceProvider
     {
         $package->name('iran-payment')
             ->hasConfigFile()
-            ->hasInstallCommand(function (InstallCommand $command) {
+            ->hasInstallCommand(function (InstallCommand $command): void {
                 $command
                     ->publishConfigFile()
                     ->askToStarRepoOnGitHub('amyavari/iran-payment-laravel');
