@@ -8,9 +8,11 @@ use AliYavari\IranPayment\Facades\Soap;
 use AliYavari\IranPayment\IranPaymentServiceProvider;
 use Illuminate\Support\Facades\Http;
 use Orchestra\Testbench\TestCase as Orchestra;
+use Override;
 
 abstract class TestCase extends Orchestra
 {
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();
