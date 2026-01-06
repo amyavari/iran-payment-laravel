@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Drivers;
 
 use AliYavari\IranPayment\Abstracts\Driver;
+use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Facades\Soap;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Support\Stringable;
 
@@ -17,13 +19,24 @@ use Illuminate\Support\Stringable;
  */
 final class BehpardakhtDriver extends Driver
 {
-    private const string WSDL = 'https://bpm.shaparak.ir/pgwchannel/services/pgw?wsdl';
+    private const string GATEWAY_WSDL_URL = 'https://bpm.shaparak.ir/pgwchannel/services/pgw?wsdl';
+
+    private const string PAYMENT_REDIRECT_URL = 'https://bpm.shaparak.ir/pgwchannel/startpay.mellat';
 
     private string $response;
 
     private ?string $orderId = null;
 
     private string $apiStatusCode;
+
+    private int $amount;
+
+    private string $refId;
+
+    /**
+     * @var array<string,string>
+     */
+    private array $metadata;
 
     public function __construct(
         private readonly string $terminalId,
@@ -54,6 +67,38 @@ final class BehpardakhtDriver extends Driver
     public function getTransactionId(): ?string
     {
         return $this->orderId;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getGatewayPayload(): ?array
+    {
+        return $this->whenSuccessful(fn (): array => [
+            'orderId' => $this->orderId,
+            'amount' => $this->amount,
+            'refId' => $this->refId,
+        ]);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getPaymentRedirectData(): ?PaymentRedirectDto
+    {
+        $payload = collect([
+            'RefId' => $this->refId,
+        ])
+            ->merge($this->metadata)
+            ->mapWithKeys(fn (string $value, string $key): array => [(string) Str::of($key)->studly() => $value])
+            ->all();
+
+        $headers = [
+            'Content-Type' => 'application/x-www-form-urlencoded',
+            'Referer' => URL::current(),
+        ];
+
+        return $this->whenSuccessful(fn (): PaymentRedirectDto => new PaymentRedirectDto(self::PAYMENT_REDIRECT_URL, 'POST', $payload, $headers));
     }
 
     /**
@@ -146,22 +191,29 @@ final class BehpardakhtDriver extends Driver
      */
     protected function createPayment(string $callbackUrl, int $amount, ?string $description = null, string|int|null $phone = null): void
     {
+        $this->amount = $amount;
+
+        $this->setPaymentMetadata($description, (string) $phone);
+
+        $now = now()->tz('Asia/Tehran');
+
         $data = collect([
             'terminalId' => (int) $this->terminalId,
             'userName' => $this->username,
             'userPassword' => $this->password,
             'orderId' => $this->generateOrderId(),
-            'amount' => $amount,
-            'localDate' => now('Asia/Tehran')->format('Ymd'),
-            'localTime' => now('Asia/Tehran')->format('His'),
+            'amount' => $this->amount,
+            'localDate' => $now->format('Ymd'),
+            'localTime' => $now->format('His'),
             'additionalData' => $description ?? '',
             'callBackUrl' => $callbackUrl,
             'payerId' => 0,
         ])
-            ->when($phone, fn (Collection $data) => $data->merge(['mobileNo' => $this->toDriverPhone($phone)]))
-            ->when($description, fn (Collection $data) => $data->merge(['cartItem' => $description]));
+            ->merge($this->metadata);
 
         $this->execute('bpPayRequest', $data->all());
+
+        $this->setRefId();
     }
 
     /**
@@ -185,7 +237,7 @@ final class BehpardakhtDriver extends Driver
     /**
      * Convert the phone number to the format expected by the gateway.
      */
-    private function toDriverPhone(string|int $phone): string
+    private function toDriverPhone(string $phone): string
     {
         return (string) Str::of($phone)
             ->whenStartsWith('09', fn (Stringable $phone) => $phone->replaceFirst('0', '98'))
@@ -204,7 +256,7 @@ final class BehpardakhtDriver extends Driver
      */
     private function execute(string $method, array $data): void
     {
-        $this->response = Soap::to(self::WSDL)->call($method, $data);
+        $this->response = Soap::to(self::GATEWAY_WSDL_URL)->call($method, $data);
 
         $this->setApiStatusCode();
     }
@@ -215,5 +267,24 @@ final class BehpardakhtDriver extends Driver
     private function setApiStatusCode(): void
     {
         $this->apiStatusCode = (string) Str::of($this->response)->before(',');
+    }
+
+    /**
+     * Set the reference ID required to redirect the user to the payment page.
+     */
+    private function setRefId(): void
+    {
+        $this->refId = (string) Str::of($this->response)->after(',');
+    }
+
+    /**
+     * Set payment metadata
+     */
+    private function setPaymentMetadata(?string $description, ?string $phone): void
+    {
+        $this->metadata = collect([])
+            ->when($phone, fn (Collection $data) => $data->merge(['mobileNo' => $this->toDriverPhone($phone)]))
+            ->when($description, fn (Collection $data) => $data->merge(['cartItem' => $description]))
+            ->all();
     }
 }

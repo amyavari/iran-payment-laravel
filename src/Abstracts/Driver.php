@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Abstracts;
 
 use AliYavari\IranPayment\Contracts\Payment;
+use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use Illuminate\Support\Str;
 
 abstract class Driver implements Payment
@@ -52,6 +53,16 @@ abstract class Driver implements Payment
     /**
      * {@inheritdoc}
      */
+    abstract public function getGatewayPayload(): ?array;
+
+    /**
+     * {@inheritdoc}
+     */
+    abstract public function getPaymentRedirectData(): ?PaymentRedirectDto;
+
+    /**
+     * {@inheritdoc}
+     */
     final public function create(int $amount, ?string $description = null, string|int|null $phone = null): static
     {
         $this->createPayment($this->getCallbackUrl(), $this->toRial($amount), $description, $phone);
@@ -82,11 +93,15 @@ abstract class Driver implements Payment
      */
     final public function error(): ?string
     {
-        if ($this->successful()) {
-            return null;
-        }
+        return $this->whenFailed(fn (): string => sprintf('کد %s- %s', $this->getGatewayStatusCode(), $this->getGatewayStatusMessage()));
+    }
 
-        return sprintf('کد %s- %s', $this->getGatewayStatusCode(), $this->getGatewayStatusMessage());
+    /**
+     * {@inheritdoc}
+     */
+    final public function getGateway(): string
+    {
+        return (string) Str::of(class_basename($this))->before('Driver')->snake();
     }
 
     /**
@@ -103,6 +118,34 @@ abstract class Driver implements Payment
         return (string) Str::of((string) $currentTimeInMillisecond)
             ->after('17')
             ->append((string) $randomNumber);
+    }
+
+    /**
+     * Executes the callback when the API call is successful.
+     *
+     * @return mixed|null
+     */
+    protected function whenSuccessful(callable $callback): mixed
+    {
+        if (! $this->successful()) {
+            return null;
+        }
+
+        return call_user_func($callback);
+    }
+
+    /**
+     * Executes the callback when the API call is successful.
+     *
+     * @return mixed|null
+     */
+    protected function whenFailed(callable $callback): mixed
+    {
+        if ($this->successful()) {
+            return null;
+        }
+
+        return call_user_func($callback);
     }
 
     /**

@@ -5,7 +5,14 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Tests\Fixtures;
 
 use AliYavari\IranPayment\Abstracts\Driver;
+use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+use Exception;
 
+/**
+ * @internal
+ *
+ * Test payment driver used for testing the abstract Driver class methods.
+ */
 final class TestDriver extends Driver
 {
     public array $payload;
@@ -41,7 +48,17 @@ final class TestDriver extends Driver
 
     public function getRawResponse(): mixed
     {
-        return '';
+        throw new Exception('Not implemented');
+    }
+
+    public function getGatewayPayload(): ?array
+    {
+        throw new Exception('Not implemented');
+    }
+
+    public function getPaymentRedirectData(): ?PaymentRedirectDto
+    {
+        throw new Exception('Not implemented');
     }
 
     protected function driverCallbackUrl(): string

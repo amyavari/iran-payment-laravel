@@ -118,6 +118,13 @@ it('returns error message with code if API call was not successful', function ()
         ->error()->toBe('کد 12- خطایی رخ داد.');
 });
 
+it('returns gateway name based on the naming convention', function (): void {
+    $driver = Mockery::namedMock('\Class\Namespace\CustomNameDriver', TestDriver::class)->makePartial();
+
+    expect($driver)
+        ->getGateway()->toBe('custom_name'); // Snake case of gateway class name
+});
+
 // ------------
 // Helpers
 // ------------

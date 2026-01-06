@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Facades\Payment;
 use AliYavari\IranPayment\Facades\Soap;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\URL;
 
 beforeEach(function (): void {
     $this->gateway = 'behpardakht';
@@ -92,6 +94,79 @@ it('returns failed response', function (): void {
         ->successful()->toBeFalse()
         ->error()->toBe('کد 11- شماره کارت نامعتبر است')
         ->getRawResponse()->toBe('11');
+});
+
+it('returns gateway payload which is needed to verify payment', function (): void {
+    fakeSoap(response: '0,AF82041a2Bf6989c7fF9');
+
+    $payment = Payment::gateway($this->gateway)->create(1_000);
+
+    expect($payment)
+        ->getGatewayPayload()->toBe([
+            'orderId' => $payment->getTransactionId(),
+            'amount' => 1_000,
+            'refId' => 'AF82041a2Bf6989c7fF9',
+        ]);
+});
+
+it('returns `null` as gateway payload if payment creation failed', function (): void {
+    fakeSoap(response: '12');
+
+    $payment = Payment::gateway($this->gateway)->create(1_000);
+
+    expect($payment)
+        ->getGatewayPayload()->toBeNull();
+});
+
+it('returns gateway redirect data if payment creation was successful with full data', function (): void {
+    fakeSoap(response: '0,AF82041a2Bf6989c7fF9');
+    URL::useOrigin('http://myapp.com');
+
+    $payment = Payment::gateway($this->gateway)->create(1_000, 'Description', '9123456789');
+
+    expect($payment)
+        ->getPaymentRedirectData()->scoped(fn ($paymentRedirectData) => $paymentRedirectData->toBeInstanceOf(PaymentRedirectDto::class)
+        ->url->toBe('https://bpm.shaparak.ir/pgwchannel/startpay.mellat')
+        ->method->toBe('POST')
+        ->payload->toBe([
+            'RefId' => 'AF82041a2Bf6989c7fF9',
+            'MobileNo' => '989123456789',
+            'CartItem' => 'Description',
+        ])
+        ->headers->toBe([
+            'Content-Type' => 'application/x-www-form-urlencoded',
+            'Referer' => 'http://myapp.com',
+        ])
+        );
+});
+
+it('returns gateway redirect data if payment creation was successful minimum data', function (): void {
+    fakeSoap(response: '0,AF82041a2Bf6989c7fF9');
+    URL::useOrigin('http://myapp.com');
+
+    $payment = Payment::gateway($this->gateway)->create(1_000);
+
+    expect($payment)
+        ->getPaymentRedirectData()->scoped(fn ($paymentRedirectData) => $paymentRedirectData->toBeInstanceOf(PaymentRedirectDto::class)
+        ->url->toBe('https://bpm.shaparak.ir/pgwchannel/startpay.mellat')
+        ->method->toBe('POST')
+        ->payload->toBe([
+            'RefId' => 'AF82041a2Bf6989c7fF9',
+        ])
+        ->headers->toBe([
+            'Content-Type' => 'application/x-www-form-urlencoded',
+            'Referer' => 'http://myapp.com',
+        ])
+        );
+});
+
+it('returns `null` as gateway redirect data if payment creation failed', function (): void {
+    fakeSoap(response: '12');
+
+    $payment = Payment::gateway($this->gateway)->create(1_000, phone: '9136080724');
+
+    expect($payment)
+        ->getPaymentRedirectData()->toBeNull();
 });
 
 // ------------

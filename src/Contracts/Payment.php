@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace AliYavari\IranPayment\Contracts;
 
+use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+
 /**
  * Public API for interacting with the amyavari/iran-payment-laravel package
  */
@@ -43,4 +45,21 @@ interface Payment
      * Get the payment transaction ID.
      */
     public function getTransactionId(): ?string;
+
+    /**
+     * Get the payment gateway name.
+     */
+    public function getGateway(): string;
+
+    /**
+     * Get the gateway payload required for payment verification.
+     *
+     * @return array<string,mixed>|null
+     */
+    public function getGatewayPayload(): ?array;
+
+    /**
+     * Get the data required to redirect the user to the payment page.
+     */
+    public function getPaymentRedirectData(): ?PaymentRedirectDto;
 }
