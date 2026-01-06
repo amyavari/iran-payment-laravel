@@ -23,6 +23,10 @@ final class BehpardakhtDriver extends Driver
 
     private const string PAYMENT_REDIRECT_URL = 'https://bpm.shaparak.ir/pgwchannel/startpay.mellat';
 
+    private const string SANDBOX_GATEWAY_WSDL_URL = 'https://pgw.dev.bpmellat.ir/pgwchannel/services/pgw?wsdl';
+
+    private const string SANDBOX_PAYMENT_REDIRECT_URL = 'https://pgw.dev.bpmellat.ir/pgwchannel/startpay.mellat';
+
     private string $response;
 
     private ?string $orderId = null;
@@ -98,7 +102,7 @@ final class BehpardakhtDriver extends Driver
             'Referer' => URL::current(),
         ];
 
-        return $this->whenSuccessful(fn (): PaymentRedirectDto => new PaymentRedirectDto(self::PAYMENT_REDIRECT_URL, 'POST', $payload, $headers));
+        return $this->whenSuccessful(fn (): PaymentRedirectDto => new PaymentRedirectDto($this->getGaymentRedirectUrl(), 'POST', $payload, $headers));
     }
 
     /**
@@ -256,7 +260,7 @@ final class BehpardakhtDriver extends Driver
      */
     private function execute(string $method, array $data): void
     {
-        $this->response = Soap::to(self::GATEWAY_WSDL_URL)->call($method, $data);
+        $this->response = Soap::to($this->getGatewayWsdlUrl())->call($method, $data);
 
         $this->setApiStatusCode();
     }
@@ -286,5 +290,21 @@ final class BehpardakhtDriver extends Driver
             ->when($phone, fn (Collection $data) => $data->merge(['mobileNo' => $this->toDriverPhone($phone)]))
             ->when($description, fn (Collection $data) => $data->merge(['cartItem' => $description]))
             ->all();
+    }
+
+    /**
+     * Get the gateway WSDL URL based on the configuration.
+     */
+    private function getGatewayWsdlUrl(): string
+    {
+        return $this->useSandbox() ? self::SANDBOX_GATEWAY_WSDL_URL : self::GATEWAY_WSDL_URL;
+    }
+
+    /**
+     * Get the gateway redirect URL based on the configuration.
+     */
+    private function getGaymentRedirectUrl(): string
+    {
+        return $this->useSandbox() ? self::SANDBOX_PAYMENT_REDIRECT_URL : self::PAYMENT_REDIRECT_URL;
     }
 }

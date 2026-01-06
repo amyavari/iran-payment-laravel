@@ -149,6 +149,14 @@ abstract class Driver implements Payment
     }
 
     /**
+     * Determine if the sandbox environment should be used.
+     */
+    protected function useSandbox(): bool
+    {
+        return config()->boolean('iran-payment.use_sandbox');
+    }
+
+    /**
      * Convert the amount to Rial if the application currency is Toman.
      */
     private function toRial(int $amount): int

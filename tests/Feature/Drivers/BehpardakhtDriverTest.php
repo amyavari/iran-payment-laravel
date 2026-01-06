@@ -169,6 +169,19 @@ it('returns `null` as gateway redirect data if payment creation failed', functio
         ->getPaymentRedirectData()->toBeNull();
 });
 
+it('communicates with sandbox environment if user set it in the configuration', function (): void {
+    Config::set('iran-payment.use_sandbox', true);
+
+    fakeSoap(response: '0,AF82041a2Bf6989c7fF9');
+
+    $payment = Payment::gateway($this->gateway)->create(1_000);
+
+    Soap::assertWsdl('https://pgw.dev.bpmellat.ir/pgwchannel/services/pgw?wsdl');
+
+    expect($payment)
+        ->getPaymentRedirectData()->url->toBe('https://pgw.dev.bpmellat.ir/pgwchannel/startpay.mellat');
+});
+
 // ------------
 // Helpers
 // ------------
