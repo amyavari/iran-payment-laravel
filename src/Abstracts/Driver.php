@@ -6,6 +6,9 @@ namespace AliYavari\IranPayment\Abstracts;
 
 use AliYavari\IranPayment\Contracts\Payment;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+use AliYavari\IranPayment\Enums\PaymentStatus;
+use AliYavari\IranPayment\Models\Payment as PaymentModel;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 abstract class Driver implements Payment
@@ -14,6 +17,8 @@ abstract class Driver implements Payment
      * Runtime user-defined callback URL.
      */
     private ?string $runtimeCallbackUrl = null;
+
+    private int $amount;
 
     /**
      * Get the driver's callback URL from configuration
@@ -65,7 +70,9 @@ abstract class Driver implements Payment
      */
     final public function create(int $amount, ?string $description = null, string|int|null $phone = null): static
     {
-        $this->createPayment($this->getCallbackUrl(), $this->toRial($amount), $description, $phone);
+        $this->amount = $this->toRial($amount);
+
+        $this->createPayment($this->getCallbackUrl(), $this->amount, $description, $phone);
 
         return $this;
     }
@@ -102,6 +109,28 @@ abstract class Driver implements Payment
     final public function getGateway(): string
     {
         return (string) Str::of(class_basename($this))->before('Driver')->snake();
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    final public function store(Model $payable): static
+    {
+        $this->whenSuccessful(function () use ($payable) {
+            $payment = new PaymentModel([
+                'transaction_id' => $this->getTransactionId(),
+                'amount' => $this->amount,
+                'gateway' => $this->getGateway(),
+                'gateway_payload' => $this->getGatewayPayload(),
+                'status' => PaymentStatus::Pending,
+            ]);
+
+            $payment->payable()->associate($payable)
+                ->addRawResponse('create', $this->getRawResponse())
+                ->save();
+        });
+
+        return $this;
     }
 
     /**

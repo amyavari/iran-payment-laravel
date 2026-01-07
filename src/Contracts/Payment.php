@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Contracts;
 
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Public API for interacting with the amyavari/iran-payment-laravel package
@@ -62,4 +63,9 @@ interface Payment
      * Get the data required to redirect the user to the payment page.
      */
     public function getPaymentRedirectData(): ?PaymentRedirectDto;
+
+    /**
+     * Store the created payment in the database
+     */
+    public function store(Model $payable): static;
 }

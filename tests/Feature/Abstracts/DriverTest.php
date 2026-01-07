@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use AliYavari\IranPayment\Enums\PaymentStatus;
+use AliYavari\IranPayment\Models\Payment;
 use AliYavari\IranPayment\Tests\Fixtures\TestDriver;
+use AliYavari\IranPayment\Tests\Fixtures\TestModel;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\URL;
 
@@ -15,7 +18,7 @@ it('generates 15-digit unique transaction ID', function (): void {
         $driver = new TestDriver();
         $driver->create(1_000);
 
-        $orderIds->push($driver->getTransactionId());
+        $orderIds->push($driver->callGenerateUniqueTimeBaseNumber());
     }
 
     $uniqueIds = $orderIds->unique();
@@ -123,6 +126,47 @@ it('returns gateway name based on the naming convention', function (): void {
 
     expect($driver)
         ->getGateway()->toBe('custom_name'); // Snake case of gateway class name
+});
+
+it('stores payment data in the database if payment creation was successful', function (): void {
+    setTestNow('2025-12-10 18:30:10');
+    $driver = new TestDriver(isSuccessful: true);
+
+    $payable = TestModel::query()->create();
+
+    $driver->create(1_000);
+
+    $driver->store($payable);
+
+    $this->assertDatabaseHas(Payment::class, [
+        'transaction_id' => $driver->getTransactionId(),
+        'payable_id' => $payable->getKey(),
+        'payable_type' => TestModel::class,
+        'amount' => '1000', // Rial
+        'gateway' => $driver->getGateway(),
+        'gateway_payload' => json_encode($driver->getGatewayPayload()),
+        'status' => PaymentStatus::Pending,
+        'error' => null,
+        'ref_number' => null,
+        'card_number' => null,
+        'verified_at' => null,
+        'settled_at' => null,
+        'reversed_at' => null,
+        'raw_responses' => json_encode([
+            'create_20251210183010' => $driver->getRawResponse(),
+        ]),
+    ]);
+});
+
+it("doesn't store payment data in the database if payment creation failed", function (): void {
+    $driver = new TestDriver(isSuccessful: false);
+
+    $payable = TestModel::query()->create();
+    $driver->create(1_000);
+
+    $driver->store($payable);
+
+    $this->assertDatabaseEmpty(Payment::class);
 });
 
 // ------------

@@ -11,7 +11,7 @@ use Exception;
 /**
  * @internal
  *
- * Test payment driver used for testing the abstract Driver class methods.
+ * Test class used for testing the abstract `Driver` class methods.
  */
 final class TestDriver extends Driver
 {
@@ -25,7 +25,9 @@ final class TestDriver extends Driver
     ) {}
 
     /**
-     * To assert and test this class
+     * Test-only helper method.
+     *
+     * Allows assertions that child class methods are invoked correctly.
      */
     public function payload(?string $key = null): mixed
     {
@@ -36,9 +38,19 @@ final class TestDriver extends Driver
         return $this->payload[$key];
     }
 
-    public function getTransactionId(): string
+    /**
+     * Test-only helper method.
+     *
+     * Exposes the protected generateUniqueTimeBaseNumber() method for testing.
+     */
+    public function callGenerateUniqueTimeBaseNumber(): string
     {
         return $this->generateUniqueTimeBaseNumber();
+    }
+
+    public function getTransactionId(): string
+    {
+        return '123456';
     }
 
     public function successful(): bool
@@ -48,12 +60,12 @@ final class TestDriver extends Driver
 
     public function getRawResponse(): mixed
     {
-        throw new Exception('Not implemented');
+        return 'raw response';
     }
 
     public function getGatewayPayload(): ?array
     {
-        throw new Exception('Not implemented');
+        return ['payload' => 'value'];
     }
 
     public function getPaymentRedirectData(): ?PaymentRedirectDto
