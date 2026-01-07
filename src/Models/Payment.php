@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AliYavari\IranPayment\Models;
 
+use AliYavari\IranPayment\Builders\PaymentBuilder;
 use AliYavari\IranPayment\Enums\PaymentStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -58,6 +59,14 @@ final class Payment extends Model
             ->all();
 
         return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function newEloquentBuilder($query): PaymentBuilder
+    {
+        return new PaymentBuilder($query);
     }
 
     /**
