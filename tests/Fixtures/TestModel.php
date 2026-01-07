@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AliYavari\IranPayment\Tests\Fixtures;
 
+use AliYavari\IranPayment\Concerns\HasPayment;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class TestModel extends Model
 {
-    use HasUuids;
+    use HasPayment,HasUuids;
 
     protected $guarded = [];
 }
