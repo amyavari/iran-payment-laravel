@@ -25,6 +25,7 @@
     "require-dev": {
         "larastan/larastan": "^3.8",
         "laravel/pint": "^1.26",
+        "nunomaduro/mock-final-classes": "^1.2",
         "orchestra/testbench": "^9.13|^10.6",
         "pestphp/pest": "^4.1",
         "pestphp/pest-plugin-type-coverage": "^4.0",
