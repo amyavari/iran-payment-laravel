@@ -116,7 +116,7 @@ abstract class Driver implements Payment
      */
     final public function store(Model $payable): static
     {
-        $this->whenSuccessful(function () use ($payable) {
+        $this->whenSuccessful(function () use ($payable): void {
             $payment = new PaymentModel([
                 'transaction_id' => $this->getTransactionId(),
                 'amount' => $this->amount,
@@ -125,9 +125,11 @@ abstract class Driver implements Payment
                 'status' => PaymentStatus::Pending,
             ]);
 
-            $payment->payable()->associate($payable)
-                ->addRawResponse('create', $this->getRawResponse())
-                ->save();
+            $payment->payable()->associate($payable);
+
+            $payment->addRawResponse('create', $this->getRawResponse());
+
+            $payment->save();
         });
 
         return $this;

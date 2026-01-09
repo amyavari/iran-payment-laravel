@@ -9,6 +9,7 @@ use AliYavari\IranPayment\Enums\PaymentStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Override;
 
 /**
  * @property-read string $id
@@ -18,14 +19,14 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property-read string $amount
  * @property-read string $gateway
  * @property-read PaymentStatus $status
- * @property-read array $gateway_payload
- * @property-read array $raw_responses
+ * @property-read array<string,mixed> $gateway_payload
+ * @property-read array<string,mixed> $raw_responses
  * @property-read string|null $error
  * @property-read string|null $ref_number
  * @property-read string|null $card_number
- * @property-read Illuminate\Support\Carbon|null $verified_at
- * @property-read Illuminate\Support\Carbon|null $settled_at
- * @property-read Illuminate\Support\Carbon|null $reversed_at
+ * @property-read \Illuminate\Support\Carbon|null $verified_at
+ * @property-read \Illuminate\Support\Carbon|null $settled_at
+ * @property-read \Illuminate\Support\Carbon|null $reversed_at
  */
 final class Payment extends Model
 {
@@ -35,6 +36,10 @@ final class Payment extends Model
 
     /**
      * Get the payable model associated with this payment.
+     *
+     * TODO: fix generic?!
+     *
+     * @return MorphTo<Model, $this>
      */
     public function payable(): MorphTo
     {
@@ -48,15 +53,12 @@ final class Payment extends Model
     {
         $now = now()->format('YmdHis');
 
-        if (is_null($this->raw_responses)) {
-            $this->raw_responses = [];
-        }
-
-        $this->raw_responses = collect($this->raw_responses)
-            ->merge([
-                "{$method}_{$now}" => $response,
-            ])
-            ->all();
+        $this->fill([
+            'raw_responses' => collect($this->raw_responses)
+                ->merge([
+                    "{$method}_{$now}" => $response,
+                ]),
+        ]);
 
         return $this;
     }
@@ -64,6 +66,7 @@ final class Payment extends Model
     /**
      * {@inheritdoc}
      */
+    #[Override]
     public function newEloquentBuilder($query): PaymentBuilder
     {
         return new PaymentBuilder($query);

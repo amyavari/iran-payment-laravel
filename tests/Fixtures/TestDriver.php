@@ -63,7 +63,7 @@ final class TestDriver extends Driver
         return 'raw response';
     }
 
-    public function getGatewayPayload(): ?array
+    public function getGatewayPayload(): array
     {
         return ['payload' => 'value'];
     }

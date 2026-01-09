@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * Provides the payments relationship for a model.
+ *
+ * @phpstan-ignore trait.unused
  */
 trait HasPayment
 {

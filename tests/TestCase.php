@@ -60,7 +60,7 @@ abstract class TestCase extends Orchestra
 
     private function migrateTestModel(): void
     {
-        Schema::create('test_models', function (Blueprint $table) {
+        Schema::create('test_models', function (Blueprint $table): void {
             $table->uuid('id');
             $table->timestamps();
         });

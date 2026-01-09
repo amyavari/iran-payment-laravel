@@ -11,11 +11,15 @@ use Illuminate\Database\Eloquent\Builder;
  * @internal
  *
  * Query builder class for `Payment` model
+ *
+ * @extends Builder<\AliYavari\IranPayment\Models\Payment>
  */
 final class PaymentBuilder extends Builder
 {
     /**
      * Get only payments that are verified as successful.
+     *
+     * @return Builder<\AliYavari\IranPayment\Models\Payment>
      */
     public function successful(): Builder
     {
@@ -24,6 +28,8 @@ final class PaymentBuilder extends Builder
 
     /**
      * Get only payments that are verified as failed.
+     *
+     * @return Builder<\AliYavari\IranPayment\Models\Payment>
      */
     public function failed(): Builder
     {
@@ -32,6 +38,8 @@ final class PaymentBuilder extends Builder
 
     /**
      * Get only pending (unverified) payments.
+     *
+     * @return Builder<\AliYavari\IranPayment\Models\Payment>
      */
     public function pending(): Builder
     {
