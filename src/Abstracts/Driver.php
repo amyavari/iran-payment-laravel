@@ -7,6 +7,8 @@ namespace AliYavari\IranPayment\Abstracts;
 use AliYavari\IranPayment\Contracts\Payment;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Enums\PaymentStatus;
+use AliYavari\IranPayment\Exceptions\ApiIsNotCalledException;
+use AliYavari\IranPayment\Exceptions\PaymentNotCreatedException;
 use AliYavari\IranPayment\Models\Payment as PaymentModel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -17,6 +19,8 @@ abstract class Driver implements Payment
      * Runtime user-defined callback URL.
      */
     private ?string $runtimeCallbackUrl = null;
+
+    private ?string $calledApiMethod = null;
 
     private int $amount;
 
@@ -41,14 +45,14 @@ abstract class Driver implements Payment
     abstract protected function getGatewayStatusMessage(): string;
 
     /**
-     * {@inheritdoc}
+     * Check whether the API request was successful.
      */
-    abstract public function successful(): bool;
+    abstract protected function isSuccessful(): bool;
 
     /**
-     * {@inheritdoc}
+     * Get the raw response from the gateway API.
      */
-    abstract public function getRawResponse(): mixed;
+    abstract protected function getGatewayRawResponse(): mixed;
 
     /**
      * {@inheritdoc}
@@ -70,6 +74,8 @@ abstract class Driver implements Payment
      */
     final public function create(int $amount, ?string $description = null, string|int|null $phone = null): static
     {
+        $this->setCalledApiMethod(__FUNCTION__);
+
         $this->amount = $this->toRial($amount);
 
         $this->createPayment($this->getCallbackUrl(), $this->amount, $description, $phone);
@@ -85,6 +91,16 @@ abstract class Driver implements Payment
         $this->runtimeCallbackUrl = $callbackUrl;
 
         return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    final public function successful(): bool
+    {
+        $this->ensureApiIsCalled();
+
+        return $this->isSuccessful();
     }
 
     /**
@@ -106,6 +122,16 @@ abstract class Driver implements Payment
     /**
      * {@inheritdoc}
      */
+    final public function getRawResponse(): mixed
+    {
+        $this->ensureApiIsCalled();
+
+        return $this->getGatewayRawResponse();
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     final public function getGateway(): string
     {
         return (string) Str::of(class_basename($this))->before('Driver')->snake();
@@ -116,6 +142,8 @@ abstract class Driver implements Payment
      */
     final public function store(Model $payable): static
     {
+        $this->ensurePaymentCreationIsCalled();
+
         $this->whenSuccessful(function () use ($payable): void {
             $payment = new PaymentModel([
                 'transaction_id' => $this->getTransactionId(),
@@ -213,5 +241,37 @@ abstract class Driver implements Payment
     private function ensureAbsoluteUrl(string $callbackUrl): string
     {
         return secure_url($callbackUrl);
+    }
+
+    /**
+     * Records which API method has been called.
+     */
+    private function setCalledApiMethod(string $method): void
+    {
+        $this->calledApiMethod = $method;
+    }
+
+    /**
+     * Throws an exception if an API method has not been called.
+     *
+     * @throws ApiIsNotCalledException
+     */
+    private function ensureApiIsCalled(): void
+    {
+        if (! $this->calledApiMethod) {
+            throw new ApiIsNotCalledException('You must call an API method before checking its status.');
+        }
+    }
+
+    /**
+     * throws and exception if the create payment API call has not been called.
+     *
+     * @throws PaymentNotCreatedException
+     */
+    private function ensurePaymentCreationIsCalled(): void
+    {
+        if ($this->calledApiMethod !== 'create') {
+            throw new PaymentNotCreatedException('Payment must be created via the "create" method before storing.');
+        }
     }
 }

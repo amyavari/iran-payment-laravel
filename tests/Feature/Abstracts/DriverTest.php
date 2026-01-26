@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use AliYavari\IranPayment\Enums\PaymentStatus;
+use AliYavari\IranPayment\Exceptions\ApiIsNotCalledException;
+use AliYavari\IranPayment\Exceptions\PaymentNotCreatedException;
 use AliYavari\IranPayment\Models\Payment;
 use AliYavari\IranPayment\Tests\Fixtures\TestDriver;
 use AliYavari\IranPayment\Tests\Fixtures\TestModel;
@@ -93,15 +95,41 @@ it('converts currency to Rial if the app currency is Toman', function (string $c
     'Rial' => ['Rial', 1_000],
 ]);
 
+it('throws an exception if we call status checking methods before an API call', function (string $method): void {
+    $driver = new TestDriver();
+
+    $driver->{$method}();
+})->throws(ApiIsNotCalledException::class, 'You must call an API method before checking its status.')
+    ->with([
+        'successful',
+        'failed',
+        'error',
+        'getRawResponse',
+    ]);
+
+it("doesn't throw an exception if we call status checking methods after an API call", function (string $method): void {
+    $driver = new TestDriver();
+
+    $driver->create(1_000)->{$method}(); // Create API call
+})->throwsNoExceptions()
+    ->with([
+        'successful',
+        'failed',
+        'error',
+        'getRawResponse',
+    ]);
+
 it('returns the opposite of successful as failed', function (): void {
     // Successful
     $driver = new TestDriver(isSuccessful: true);
+    $driver->create(1_000);
 
     expect($driver)
         ->failed()->toBeFalse();
 
     // Failed
     $driver = new TestDriver(isSuccessful: false);
+    $driver->create(1_000);
 
     expect($driver)
         ->failed()->toBeTrue();
@@ -109,6 +137,7 @@ it('returns the opposite of successful as failed', function (): void {
 
 it('returns `null` as error if API call was successful', function (): void {
     $driver = new TestDriver(isSuccessful: true);
+    $driver->create(1_000);
 
     expect($driver)
         ->error()->toBeNull();
@@ -116,6 +145,7 @@ it('returns `null` as error if API call was successful', function (): void {
 
 it('returns error message with code if API call was not successful', function (): void {
     $driver = new TestDriver(isSuccessful: false, errorCode: 12, errorMessage: 'خطایی رخ داد.');
+    $driver->create(1_000);
 
     expect($driver)
         ->error()->toBe('کد 12- خطایی رخ داد.');
@@ -168,6 +198,14 @@ it("doesn't store payment data in the database if payment creation failed", func
 
     $this->assertDatabaseEmpty(Payment::class);
 });
+
+it('throws an exception if we try to store payment without creating it', function (): void {
+    $driver = new TestDriver(isSuccessful: true);
+
+    $payable = TestModel::query()->create();
+
+    $driver->store($payable);
+})->throws(PaymentNotCreatedException::class, 'Payment must be created via the "create" method before storing.');
 
 // ------------
 // Helpers

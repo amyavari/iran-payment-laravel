@@ -23,22 +23,30 @@ interface Payment
     public function callbackUrl(string $callbackUrl): static;
 
     /**
-     * Check if payment creation was successfully.
+     * Check whether the API request was successful.
+     *
+     * @throws \AliYavari\IranPayment\Exceptions\ApiIsNotCalledException
      */
     public function successful(): bool;
 
     /**
-     * Check if payment creation failed.
+     * Check whether the API request failed.
+     *
+     * @throws \AliYavari\IranPayment\Exceptions\ApiIsNotCalledException
      */
     public function failed(): bool;
 
     /**
-     * Get the error message if payment creation failed
+     * Get the error message returned by the API, if the request failed.
+     *
+     * @throws \AliYavari\IranPayment\Exceptions\ApiIsNotCalledException
      */
     public function error(): ?string;
 
     /**
      * Get the raw response from the gateway API.
+     *
+     * @throws \AliYavari\IranPayment\Exceptions\ApiIsNotCalledException
      */
     public function getRawResponse(): mixed;
 
@@ -66,6 +74,8 @@ interface Payment
 
     /**
      * Store the created payment in the database
+     *
+     * @throws \AliYavari\IranPayment\Exceptions\PaymentNotCreatedException
      */
     public function store(Model $payable): static;
 }

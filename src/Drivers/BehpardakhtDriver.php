@@ -52,22 +52,6 @@ final class BehpardakhtDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    public function successful(): bool
-    {
-        return $this->apiStatusCode === '0';
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getRawResponse(): string
-    {
-        return $this->response;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     public function getTransactionId(): ?string
     {
         return $this->orderId;
@@ -108,6 +92,19 @@ final class BehpardakhtDriver extends Driver
     /**
      * {@inheritdoc}
      */
+    protected function isSuccessful(): bool
+    {
+        return $this->apiStatusCode === '0';
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function getGatewayRawResponse(): string
+    {
+        return $this->response;
+    }
+
     protected function getGatewayStatusCode(): string
     {
         return $this->apiStatusCode;

@@ -53,16 +53,6 @@ final class TestDriver extends Driver
         return '123456';
     }
 
-    public function successful(): bool
-    {
-        return $this->isSuccessful;
-    }
-
-    public function getRawResponse(): mixed
-    {
-        return 'raw response';
-    }
-
     public function getGatewayPayload(): array
     {
         return ['payload' => 'value'];
@@ -71,6 +61,16 @@ final class TestDriver extends Driver
     public function getPaymentRedirectData(): ?PaymentRedirectDto
     {
         throw new Exception('Not implemented');
+    }
+
+    protected function getGatewayRawResponse(): mixed
+    {
+        return 'raw response';
+    }
+
+    protected function isSuccessful(): bool
+    {
+        return $this->isSuccessful;
     }
 
     protected function driverCallbackUrl(): string
