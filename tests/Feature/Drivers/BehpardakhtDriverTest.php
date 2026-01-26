@@ -182,6 +182,70 @@ it('communicates with sandbox environment if user set it in the configuration', 
         ->getPaymentRedirectData()->url->toBe('https://pgw.dev.bpmellat.ir/pgwchannel/startpay.mellat');
 });
 
+it('creates payment instance from callback', function (): void {
+    $callbackData = [
+        'RefId' => 'AF82041a2Bf6989c7fF9',
+        'ResCode' => 0,
+        'SaleOrderId' => 123456789012345,
+    ];
+
+    $payment = Payment::gateway($this->gateway)->fromCallback($callbackData);
+
+    expect($payment)
+        ->getGateway()->toBe($this->gateway)
+        ->getTransactionId()->toBe('123456789012345');
+});
+
+it('returns payment details if it is a successful response callback', function (): void {
+    $callbackData = [
+        'RefId' => 'AF82041a2Bf6989c7fF9',
+        'ResCode' => 0,
+        'SaleOrderId' => 123456789012345,
+        'SaleReferenceId' => 227926981246,
+        'CardHolderInfo' => '1234-*-*-1234',
+        'CardHolderPan' => '1234ABsab',
+        'FinalAmount' => '1000',
+    ];
+
+    $payment = Payment::gateway($this->gateway)->fromCallback($callbackData);
+
+    expect($payment)
+        ->getRefNumber()->toBe('227926981246')
+        ->getCardNumber()->toBe('1234-*-*-1234');
+});
+
+it('returns `null` as payment details if they are not provided in the callback data', function (): void {
+    $callbackData = [
+        'RefId' => 'AF82041a2Bf6989c7fF9',
+        'ResCode' => 0,
+        'SaleOrderId' => 123456789012345,
+    ];
+
+    $payment = Payment::gateway($this->gateway)->fromCallback($callbackData);
+
+    expect($payment)
+        ->getRefNumber()->toBeNull()
+        ->getCardNumber()->toBeNull();
+});
+
+it('throws an exception if we try to create an instance from callback without necessary keys', function (string $key): void {
+    $callbackData = Arr::except([
+        'RefId' => 'AF82041a2Bf6989c7fF9',
+        'ResCode' => 0,
+        'SaleOrderId' => 123456789012345,
+    ], $key);
+
+    expect(fn () => Payment::gateway($this->gateway)->fromCallback($callbackData))
+        ->toThrow(
+            MissingCallbackDataException::class,
+            sprintf('To create %s gateway instance from callback, "RefId, ResCode, SaleOrderId" are required. "%s" is missing.', $this->gateway, $key)
+        );
+})->with([
+    'RefId',
+    'ResCode',
+    'SaleOrderId',
+]);
+
 // ------------
 // Helpers
 // ------------

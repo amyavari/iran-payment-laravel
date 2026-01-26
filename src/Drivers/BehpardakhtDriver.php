@@ -6,7 +6,9 @@ namespace AliYavari\IranPayment\Drivers;
 
 use AliYavari\IranPayment\Abstracts\Driver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Facades\Soap;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -41,6 +43,11 @@ final class BehpardakhtDriver extends Driver
      * @var array<string,string>
      */
     private array $metadata;
+
+    /**
+     * @var array<string,mixed>
+     */
+    private array $callbackData;
 
     public function __construct(
         private readonly string $terminalId,
@@ -87,6 +94,38 @@ final class BehpardakhtDriver extends Driver
         ];
 
         return $this->whenSuccessful(fn (): PaymentRedirectDto => new PaymentRedirectDto($this->getGaymentRedirectUrl(), 'POST', $payload, $headers));
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function fromCallback(array $callbackData): static
+    {
+        $this->ensureCallbackDataHasKeys($callbackData, ['RefId', 'ResCode', 'SaleOrderId']);
+
+        $this->callbackData = $callbackData;
+
+        $this->orderId = (string) Arr::get($callbackData, 'SaleOrderId');
+
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getRefNumber(): ?string
+    {
+        $refNumber = Arr::get($this->callbackData, 'SaleReferenceId');
+
+        return is_null($refNumber) ? null : (string) $refNumber;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getCardNumber(): ?string
+    {
+        return Arr::get($this->callbackData, 'CardHolderInfo');
     }
 
     /**
@@ -303,5 +342,22 @@ final class BehpardakhtDriver extends Driver
     private function getGaymentRedirectUrl(): string
     {
         return $this->useSandbox() ? self::SANDBOX_PAYMENT_REDIRECT_URL : self::PAYMENT_REDIRECT_URL;
+    }
+
+    /**
+     * Throws an exception if callback data doesn't have all of the given keys.
+     *
+     * @param  array<string,mixed>  $callbackData
+     * @param  array<string>  $keys
+     *
+     * @throws MissingCallbackDataException
+     */
+    private function ensureCallbackDataHasKeys(array $callbackData, array $keys): void
+    {
+        foreach ($keys as $key) {
+            if (! Arr::has($callbackData, $key)) {
+                throw MissingCallbackDataException::make($this->getGateway(), $keys, $key);
+            }
+        }
     }
 }

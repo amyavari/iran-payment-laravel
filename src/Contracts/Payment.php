@@ -78,4 +78,21 @@ interface Payment
      * @throws \AliYavari\IranPayment\Exceptions\PaymentNotCreatedException
      */
     public function store(Model $payable): static;
+
+    /**
+     * Create a payment instance from gateway callback data
+     *
+     * @param  array<string,mixed>  $callbackData
+     */
+    public function fromCallback(array $callbackData): static;
+
+    /**
+     * Get the reference number assigned to the transaction by the bank.
+     */
+    public function getRefNumber(): ?string;
+
+    /**
+     * Get user's card number used to pay.
+     */
+    public function getCardNumber(): ?string;
 }

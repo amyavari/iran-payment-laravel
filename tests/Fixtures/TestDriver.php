@@ -63,6 +63,21 @@ final class TestDriver extends Driver
         throw new Exception('Not implemented');
     }
 
+    public function fromCallback(array $callbackData): static
+    {
+        return $this;
+    }
+
+    public function getCardNumber(): ?string
+    {
+        throw new Exception('Not implemented');
+    }
+
+    public function getRefNumber(): ?string
+    {
+        throw new Exception('Not implemented');
+    }
+
     protected function getGatewayRawResponse(): mixed
     {
         return 'raw response';

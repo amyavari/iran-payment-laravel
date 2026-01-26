@@ -72,6 +72,21 @@ abstract class Driver implements Payment
     /**
      * {@inheritdoc}
      */
+    abstract public function fromCallback(array $callbackData): static;
+
+    /**
+     * {@inheritdoc}
+     */
+    abstract public function getRefNumber(): ?string;
+
+    /**
+     * {@inheritdoc}
+     */
+    abstract public function getCardNumber(): ?string;
+
+    /**
+     * {@inheritdoc}
+     */
     final public function create(int $amount, ?string $description = null, string|int|null $phone = null): static
     {
         $this->setCalledApiMethod(__FUNCTION__);
