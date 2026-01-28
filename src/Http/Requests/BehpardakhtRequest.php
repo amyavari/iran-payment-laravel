@@ -6,6 +6,9 @@ namespace AliYavari\IranPayment\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * Form request for validating and sanitizing callback data from the Behpardakht gateway.
+ */
 final class BehpardakhtRequest extends FormRequest
 {
     /**

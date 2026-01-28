@@ -18,7 +18,8 @@ use Illuminate\Support\Facades\Schema;
  *
  * Expects the consuming class to have the following properties:
  * - Payment|null $payment
- * - array $callbackData
+ * - array $callbackPayload
+ * - int $amount
  */
 trait ManagesModel
 {
@@ -92,7 +93,7 @@ trait ManagesModel
             'error' => $exception->getMessage(),
             'verified_at' => now(),
         ], [
-            'callback' => $this->callbackData,
+            'callback' => $this->callbackPayload,
             'payload' => $payload,
         ]);
     }

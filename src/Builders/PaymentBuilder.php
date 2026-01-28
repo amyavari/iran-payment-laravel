@@ -18,30 +18,24 @@ final class PaymentBuilder extends Builder
 {
     /**
      * Get only payments that are verified as successful.
-     *
-     * @return Builder<\AliYavari\IranPayment\Models\Payment>
      */
-    public function successful(): Builder
+    public function successful(): self
     {
         return $this->where('status', PaymentStatus::Successful);
     }
 
     /**
      * Get only payments that are verified as failed.
-     *
-     * @return Builder<\AliYavari\IranPayment\Models\Payment>
      */
-    public function failed(): Builder
+    public function failed(): self
     {
         return $this->where('status', PaymentStatus::Failed);
     }
 
     /**
      * Get only pending (unverified) payments.
-     *
-     * @return Builder<\AliYavari\IranPayment\Models\Payment>
      */
-    public function pending(): Builder
+    public function pending(): self
     {
         return $this->where('status', PaymentStatus::Pending);
     }

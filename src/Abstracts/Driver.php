@@ -15,6 +15,11 @@ use AliYavari\IranPayment\Models\Payment as PaymentModel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
+/**
+ * @internal
+ *
+ * Abstract base class for payment gateway drivers.
+ */
 abstract class Driver implements Payment
 {
     use ManagesModel;
@@ -24,16 +29,27 @@ abstract class Driver implements Payment
      */
     private ?string $runtimeCallbackUrl = null;
 
+    /**
+     * Name of the API method invoked by the consumer.
+     */
     private ?string $calledApiMethod = null;
 
+    /**
+     * Payment amount.
+     */
     private int $amount;
 
+    /**
+     * Associated Eloquent payment model instance.
+     */
     private ?PaymentModel $payment = null;
 
     /**
+     * Callback data sent by the gateway after the user completes the payment.
+     *
      * @var array<string,mixed>
      */
-    private array $callbackData;
+    private array $callbackPayload;
 
     /**
      * Get the driver's callback URL from configuration
@@ -68,18 +84,18 @@ abstract class Driver implements Payment
     /**
      * Verify the payment via the driver
      *
-     * @param  array<string,mixed>  $payload
+     * @param  array<string,mixed>  $storedPayload
      *
      * @throws InvalidCallbackDataException
      */
-    abstract protected function verifyPayment(array $payload): void;
+    abstract protected function verifyPayment(array $storedPayload): void;
 
     /**
      * Create new instance of gateway driver
      *
-     * @param  array<string,mixed>  $callbackData
+     * @param  array<string,mixed>  $callbackPayload
      */
-    abstract protected function newFromCallback(array $callbackData): static;
+    abstract protected function newFromCallback(array $callbackPayload): static;
 
     /**
      * {@inheritdoc}
@@ -197,11 +213,11 @@ abstract class Driver implements Payment
     /**
      * {@inheritdoc}
      */
-    final public function fromCallback(array $callbackData): static
+    final public function fromCallback(array $callbackPayload): static
     {
-        $this->callbackData = $callbackData;
+        $this->callbackPayload = $callbackPayload;
 
-        return $this->newFromCallback($callbackData);
+        return $this->newFromCallback($callbackPayload);
     }
 
     /**
@@ -226,22 +242,6 @@ abstract class Driver implements Payment
         $this->updatePaymentAfterVerification();
 
         return $this;
-    }
-
-    /**
-     * Generate a random 15-digit, time-based transaction ID.
-     */
-    protected function generateUniqueTimeBaseNumber(): string
-    {
-        $randomNumber = random_int(1_000, 9_999);
-
-        $currentTimeInMillisecond = now()->getTimestampMs();
-
-        // The first `17` of timestamp doesn't add anything unique.
-        // So, we remove it to have more space for random digits.
-        return (string) Str::of((string) $currentTimeInMillisecond)
-            ->after('17')
-            ->append((string) $randomNumber);
     }
 
     /**
@@ -303,9 +303,9 @@ abstract class Driver implements Payment
     /**
      * Prepends the application root if a relative path is provided.
      */
-    private function ensureAbsoluteUrl(string $callbackUrl): string
+    private function ensureAbsoluteUrl(string $url): string
     {
-        return secure_url($callbackUrl);
+        return secure_url($url);
     }
 
     /**

@@ -16,7 +16,7 @@ use Override;
  * @property-read string $transaction_id
  * @property-read int|string $payable_id
  * @property-read string $payable_type
- * @property-read string $amount
+ * @property-read string $amount (in Rial)
  * @property-read string $gateway
  * @property-read PaymentStatus $status
  * @property-read array<string,mixed> $gateway_payload

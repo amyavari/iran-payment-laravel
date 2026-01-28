@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Drivers;
 
 use AliYavari\IranPayment\Abstracts\Driver;
+use AliYavari\IranPayment\Concerns\HasUniqueNumber;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
@@ -18,40 +19,72 @@ use Illuminate\Support\Stringable;
 /**
  * @internal
  *
- * Based on version 1.38 of IPG documentation.
+ * Based on version 1.38 (September 2025) of IPG documentation.
  */
 final class BehpardakhtDriver extends Driver
 {
+    use HasUniqueNumber;
+
+    /**
+     * WSDL URL of the payment gateway.
+     */
     private const string GATEWAY_WSDL_URL = 'https://bpm.shaparak.ir/pgwchannel/services/pgw?wsdl';
 
+    /**
+     * URL of the payment page where the user should be redirected.
+     */
     private const string PAYMENT_REDIRECT_URL = 'https://bpm.shaparak.ir/pgwchannel/startpay.mellat';
 
+    /**
+     * URL of the payment page where the user should be redirected.
+     */
     private const string SANDBOX_GATEWAY_WSDL_URL = 'https://pgw.dev.bpmellat.ir/pgwchannel/services/pgw?wsdl';
 
+    /**
+     * Sandbox payment page URL.
+     */
     private const string SANDBOX_PAYMENT_REDIRECT_URL = 'https://pgw.dev.bpmellat.ir/pgwchannel/startpay.mellat';
 
     /**
-     * @var array<string,mixed>|string
+     * Status code returned by the last API call.
      */
-    private string|array $response;
-
-    private ?string $orderId = null;
-
     private string $apiStatusCode;
 
+    /**
+     * Raw response from the last API call.
+     *
+     * @var array<string,mixed>|string
+     */
+    private string|array $rawResponse;
+
+    /**
+     * Transaction ID
+     */
+    private ?string $transactionId = null;
+
+    /**
+     * Amount of the payment in Rial.
+     */
     private int $amount;
 
+    /**
+     * Reference ID used to redirect the user to the payment page.
+     */
     private string $refId;
 
     /**
+     * Payment metadata used for creating a payment or sending to the payment page.
+     *
      * @var array<string,string>
      */
     private array $metadata;
 
     /**
-     * @var array<string,mixed>
+     * Callback data sent by the gateway after the user completes the payment.
+     *
+     * @var Collection<string,mixed>
      */
-    private array $callbackData;
+    private Collection $callbackPayload;
 
     public function __construct(
         private readonly string $terminalId,
@@ -65,7 +98,7 @@ final class BehpardakhtDriver extends Driver
      */
     public function getTransactionId(): ?string
     {
-        return $this->orderId;
+        return $this->transactionId;
     }
 
     /**
@@ -74,7 +107,7 @@ final class BehpardakhtDriver extends Driver
     public function getGatewayPayload(): ?array
     {
         return $this->whenSuccessful(fn (): array => [
-            'orderId' => $this->orderId,
+            'orderId' => $this->transactionId,
             'amount' => $this->amount,
             'refId' => $this->refId,
         ]);
@@ -89,7 +122,7 @@ final class BehpardakhtDriver extends Driver
             'RefId' => $this->refId,
         ])
             ->merge($this->metadata)
-            ->mapWithKeys(fn (string $value, string $key): array => [(string) Str::of($key)->studly() => $value])
+            ->mapWithKeys(fn (string $value, string $key): array => [Str::studly($key) => $value])
             ->all();
 
         $headers = [
@@ -105,7 +138,7 @@ final class BehpardakhtDriver extends Driver
      */
     public function getRefNumber(): ?string
     {
-        $refNumber = Arr::get($this->callbackData, 'SaleReferenceId');
+        $refNumber = $this->callbackPayload->get('SaleReferenceId');
 
         return is_null($refNumber) ? null : (string) $refNumber;
     }
@@ -115,19 +148,19 @@ final class BehpardakhtDriver extends Driver
      */
     public function getCardNumber(): ?string
     {
-        return Arr::get($this->callbackData, 'CardHolderInfo');
+        return $this->callbackPayload->get('CardHolderInfo');
     }
 
     /**
      * {@inheritdoc}
      */
-    protected function newFromCallback(array $callbackData): static
+    protected function newFromCallback(array $callbackPayload): static
     {
-        $this->ensureCallbackDataHasKeys($callbackData, ['RefId', 'ResCode', 'SaleOrderId']);
+        $this->callbackPayload = collect($callbackPayload);
 
-        $this->callbackData = $callbackData;
+        $this->ensureCallbackDataHasKeys(['RefId', 'ResCode', 'SaleOrderId']);
 
-        $this->orderId = (string) Arr::get($callbackData, 'SaleOrderId');
+        $this->transactionId = (string) $this->callbackPayload->get('SaleOrderId');
 
         return $this;
     }
@@ -145,30 +178,29 @@ final class BehpardakhtDriver extends Driver
      */
     protected function getGatewayRawResponse(): mixed
     {
-        return $this->response;
+        return $this->rawResponse;
     }
 
     /**
      * {@inheritdoc}
      */
-    protected function verifyPayment(array $payload): void
+    protected function verifyPayment(array $storedPayload): void
     {
-        if ((int) Arr::get($this->callbackData, 'ResCode') !== 0) {
-            $this->apiStatusCode = (string) Arr::get($this->callbackData, 'ResCode');
-            $this->response = $this->callbackData;
+        if ($this->isFailedPaymentBasedOnCallback()) {
+            $this->setPaymentStatusBasedOnCallback();
 
             return;
         }
 
-        $this->ensureCallbackDataMatchesPayload($this->callbackData, $payload);
+        $this->ensureCallbackDataMatchesPayload($storedPayload);
 
         $data = [
             'terminalId' => (int) $this->terminalId,
             'userName' => $this->username,
             'userPassword' => $this->password,
-            'orderId' => (int) $this->orderId,
-            'saleOrderId' => (int) $this->orderId,
-            'saleReferenceId' => Arr::get($this->callbackData, 'SaleReferenceId'),
+            'orderId' => (int) $this->transactionId,
+            'saleOrderId' => (int) $this->transactionId,
+            'saleReferenceId' => $this->callbackPayload->get('SaleReferenceId'),
         ];
 
         $this->execute('bpVerifyRequest', $data);
@@ -302,9 +334,9 @@ final class BehpardakhtDriver extends Driver
      */
     private function generateOrderId(): int
     {
-        $this->orderId = $this->generateUniqueTimeBaseNumber();
+        $this->transactionId = $this->generateUniqueTimeBaseNumber();
 
-        return (int) $this->orderId;
+        return (int) $this->transactionId;
     }
 
     /**
@@ -329,7 +361,7 @@ final class BehpardakhtDriver extends Driver
      */
     private function execute(string $method, array $data): void
     {
-        $this->response = Soap::to($this->getGatewayWsdlUrl())->call($method, $data);
+        $this->rawResponse = Soap::to($this->getGatewayWsdlUrl())->call($method, $data);
 
         $this->setApiStatusCode();
     }
@@ -339,7 +371,7 @@ final class BehpardakhtDriver extends Driver
      */
     private function setApiStatusCode(): void
     {
-        $this->apiStatusCode = (string) Str::of($this->response)->before(',');
+        $this->apiStatusCode = (string) Str::of($this->rawResponse)->before(',');
     }
 
     /**
@@ -347,7 +379,7 @@ final class BehpardakhtDriver extends Driver
      */
     private function setRefId(): void
     {
-        $this->refId = (string) Str::of($this->response)->after(',');
+        $this->refId = (string) Str::of($this->rawResponse)->after(',');
     }
 
     /**
@@ -380,29 +412,44 @@ final class BehpardakhtDriver extends Driver
     /**
      * Throws an exception if callback data doesn't have all of the given keys.
      *
-     * @param  array<string,mixed>  $callbackData
      * @param  array<string>  $keys
      *
      * @throws MissingCallbackDataException
      */
-    private function ensureCallbackDataHasKeys(array $callbackData, array $keys): void
+    private function ensureCallbackDataHasKeys(array $keys): void
     {
         foreach ($keys as $key) {
-            if (! Arr::has($callbackData, $key)) {
+            if (! $this->callbackPayload->has($key)) {
                 throw MissingCallbackDataException::make($this->getGateway(), $keys, $key);
             }
         }
     }
 
     /**
-     * Throws an exception if callback data doesn't match with payload data.
+     * Determine whether the payment failed based on the callback.
+     */
+    private function isFailedPaymentBasedOnCallback(): bool
+    {
+        return ((string) $this->callbackPayload->get('ResCode')) !== '0';
+    }
+
+    /**
+     * Set payment status by callback.
+     */
+    private function setPaymentStatusBasedOnCallback(): void
+    {
+        $this->apiStatusCode = (string) $this->callbackPayload->get('ResCode');
+        $this->rawResponse = $this->callbackPayload->all();
+    }
+
+    /**
+     * Throws an exception if callback data doesn't match with the stored gateway payload.
      *
-     * @param  array<string,mixed>  $callbackData
-     * @param  array<string,mixed>  $payload
+     * @param  array<string,mixed>  $storedPayload
      *
      * @throws InvalidCallbackDataException
      */
-    private function ensureCallbackDataMatchesPayload(array $callbackData, array $payload): void
+    private function ensureCallbackDataMatchesPayload(array $storedPayload): void
     {
         $keyMapper = [
             'RefId' => 'refId',
@@ -410,11 +457,9 @@ final class BehpardakhtDriver extends Driver
             'FinalAmount' => 'amount',
         ];
 
-        foreach ($keyMapper as $callbackKey => $payloadKey) {
-            if ((string) Arr::get($callbackData, $callbackKey) !== (string) Arr::get($payload, $payloadKey)) {
-                throw new InvalidCallbackDataException(
-                    sprintf('Callback data and payload for "%s" doesn\'t match.', $payloadKey)
-                );
+        foreach ($keyMapper as $callbackKey => $storedKey) {
+            if ((string) $this->callbackPayload->get($callbackKey) !== (string) Arr::get($storedPayload, $storedKey)) {
+                throw InvalidCallbackDataException::make($callbackKey, $storedKey);
             }
         }
     }

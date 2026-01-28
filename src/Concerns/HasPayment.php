@@ -8,7 +8,7 @@ use AliYavari\IranPayment\Models\Payment;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
- * Provides the payments relationship for a model.
+ * Provides the payments relationship for a payable model.
  *
  * @phpstan-ignore trait.unused
  */

@@ -9,6 +9,9 @@ use AliYavari\IranPayment\Drivers\BehpardakhtDriver;
 use Illuminate\Support\Manager;
 use Override;
 
+/**
+ * @internal
+ */
 final class PaymentManager extends Manager
 {
     /**
@@ -37,6 +40,9 @@ final class PaymentManager extends Manager
         return parent::driver($driver);
     }
 
+    /**
+     * Get a gateway driver instance
+     */
     public function gateway(string $gateway): Payment
     {
         return $this->driver($gateway);

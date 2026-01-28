@@ -40,16 +40,6 @@ final class TestDriver extends Driver
         return $this->payload[$key];
     }
 
-    /**
-     * Test-only helper method.
-     *
-     * Exposes the protected generateUniqueTimeBaseNumber() method for testing.
-     */
-    public function callGenerateUniqueTimeBaseNumber(): string
-    {
-        return $this->generateUniqueTimeBaseNumber();
-    }
-
     public function getTransactionId(): string
     {
         return '123456';

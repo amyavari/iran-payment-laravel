@@ -74,23 +74,23 @@ interface Payment
     public function getPaymentRedirectData(): ?PaymentRedirectDto;
 
     /**
-     * Store the created payment in the database
+     * Store the created payment in the database.
      *
      * @throws \AliYavari\IranPayment\Exceptions\PaymentNotCreatedException
      */
     public function store(Model $payable): static;
 
     /**
-     * Get the stored payment Eloquent model
+     * Get the stored payment Eloquent model.
      */
     public function getModel(): ?PaymentModel;
 
     /**
-     * Create a payment instance from gateway callback data
+     * Create a payment instance from gateway callback.
      *
-     * @param  array<string,mixed>  $callbackData
+     * @param  array<string,mixed>  $callbackPayload
      */
-    public function fromCallback(array $callbackData): static;
+    public function fromCallback(array $callbackPayload): static;
 
     /**
      * Get the reference number assigned to the transaction by the bank.

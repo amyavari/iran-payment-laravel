@@ -14,25 +14,6 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 
-it('generates 15-digit unique transaction ID', function (): void {
-    $orderIds = collect([]);
-
-    for ($i = 1; $i <= 50; $i++) {
-        freezeTimeUntilSeconds();
-
-        $driver = new TestDriver();
-        $driver->create(1_000);
-
-        $orderIds->push($driver->callGenerateUniqueTimeBaseNumber());
-    }
-
-    $uniqueIds = $orderIds->unique();
-
-    expect($uniqueIds)
-        ->toHaveLength(50)
-        ->each->toHaveLength(15);
-});
-
 it('creates new payment with runtime user defined callback URL', function (): void {
     $driver = new TestDriver(driverCallbackUrl: 'http://test.com');
 
@@ -387,7 +368,7 @@ it('stores failed payment status if gateway threw invalid callback data exceptio
             'error_message' => 'Gateway exception error message',
         ],
         'raw_responses' => [],
-                        'owned_by_iran_payment' => true,
+        'owned_by_iran_payment' => true,
     ]);
 
     setTestNow('2025-12-10 18:30:20');

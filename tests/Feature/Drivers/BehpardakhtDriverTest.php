@@ -249,7 +249,7 @@ it('throws an exception if we try to create an instance from callback without ne
     'SaleOrderId',
 ]);
 
-it("throws an exception if any of stored payload and the callback data doesn't match", function (string $toChange): void {
+it("throws an exception if any of stored payload and the callback data doesn't match", function (string $payloadKey, string $callbackKey): void {
     $callbackData = [
         'RefId' => 'AF82041a2Bf6989c7fF9',
         'ResCode' => 0,
@@ -265,19 +265,19 @@ it("throws an exception if any of stored payload and the callback data doesn't m
         'amount' => 1_000,
         'refId' => 'AF82041a2Bf6989c7fF9',
     ])
-        ->merge([$toChange => '123'])
+        ->merge([$payloadKey => '123'])
         ->all();
 
     $payment = Payment::gateway($this->gateway)->fromCallback($callbackData);
 
     expect(fn () => $payment->verify($payload))
-        ->toThrow(InvalidCallbackDataException::class, "Callback data and payload for \"{$toChange}\" doesn't match.");
+        ->toThrow(InvalidCallbackDataException::class, "\"{$callbackKey}\" in the callback doesn't match with \"{$payloadKey}\" in the stored gateway payload.");
 
     Soap::assertNothingIsCalled();
 })->with([
-    'orderId',
-    'amount',
-    'refId',
+    ['orderId', 'SaleOrderId'],
+    ['amount', 'FinalAmount'],
+    ['refId', 'RefId'],
 ]);
 
 it("doesn't verify the payment if callback data status is not successful", function (): void {
