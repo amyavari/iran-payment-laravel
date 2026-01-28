@@ -181,7 +181,7 @@ abstract class Driver implements Payment
         $this->ensurePaymentCreationIsCalled();
 
         $this->whenSuccessful(function () use ($payable): void {
-            $payment = new PaymentModel([
+            $this->payment = new PaymentModel([
                 'transaction_id' => $this->getTransactionId(),
                 'amount' => $this->amount,
                 'gateway' => $this->getGateway(),
@@ -190,14 +190,20 @@ abstract class Driver implements Payment
                 'owned_by_iran_payment' => true,
             ]);
 
-            $payment->payable()->associate($payable);
-
-            $payment->addRawResponse('create', $this->getRawResponse());
-
-            $payment->save();
+            $this->payment->payable()->associate($payable)
+                ->addRawResponse('create', $this->getRawResponse())
+                ->save();
         });
 
         return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    final public function getModel(): ?PaymentModel
+    {
+        return $this->payment;
     }
 
     /**

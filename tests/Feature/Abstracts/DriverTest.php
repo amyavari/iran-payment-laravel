@@ -162,7 +162,7 @@ it('returns gateway name based on the naming convention', function (): void {
         ->getGateway()->toBe('custom_name'); // Snake case of gateway class name
 });
 
-it('stores payment data in the database if payment creation was successful', function (): void {
+it('stores payment data in the database if payment creation was successful and returns it', function (): void {
     setTestNow('2025-12-10 18:30:10');
     $driver = new TestDriver(isSuccessful: true);
 
@@ -191,9 +191,13 @@ it('stores payment data in the database if payment creation was successful', fun
         ]),
         'owned_by_iran_payment' => true,
     ]);
+
+    expect($driver)
+        ->getModel()->toBeInstanceOf(Payment::class)
+        ->getModel()->transaction_id->toBe($driver->getTransactionId());
 });
 
-it("doesn't store payment data in the database if payment creation failed", function (): void {
+it("doesn't store payment data in the database if payment creation failed and returns `null` as payment model", function (): void {
     $driver = new TestDriver(isSuccessful: false);
 
     $payable = TestModel::query()->create();
@@ -202,6 +206,9 @@ it("doesn't store payment data in the database if payment creation failed", func
     $driver->store($payable);
 
     $this->assertDatabaseEmpty(Payment::class);
+
+    expect($driver)
+        ->getModel()->toBeNull();
 });
 
 it('throws an exception if we try to store payment without creating it', function (): void {
@@ -417,6 +424,28 @@ it("just throws gateway invalid callback data exception if we didn't store it in
 
     expect(fn (): TestDriver => $driver->fromCallback(['key' => 'value'])->verify($payload))
         ->toThrow(InvalidCallbackDataException::class, 'Gateway exception error message');
+});
+
+it('returns payment model after verification if we stored it internally', function (): void {
+    $driver = new TestDriver(isSuccessful: true);
+    $payable = TestModel::query()->create();
+    $driver->create(1_000);
+    $driver->store($payable);
+
+    $driver = new TestDriver();
+    $driver->verify();
+
+    expect($driver)
+        ->getModel()->toBeInstanceOf(Payment::class)
+        ->getModel()->transaction_id->toBe($driver->getTransactionId());
+});
+
+it("returns `null` as payment model after verification if we didn't store it internally", function (): void {
+    $driver = new TestDriver();
+    $driver->verify(['key' => 'value']);
+
+    expect($driver)
+        ->getModel()->toBeNull();
 });
 
 // ------------

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Contracts;
 
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+use AliYavari\IranPayment\Models\Payment as PaymentModel;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -78,6 +79,11 @@ interface Payment
      * @throws \AliYavari\IranPayment\Exceptions\PaymentNotCreatedException
      */
     public function store(Model $payable): static;
+
+    /**
+     * Get the stored payment Eloquent model
+     */
+    public function getModel(): ?PaymentModel;
 
     /**
      * Create a payment instance from gateway callback data
