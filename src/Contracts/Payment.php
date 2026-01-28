@@ -95,4 +95,14 @@ interface Payment
      * Get user's card number used to pay.
      */
     public function getCardNumber(): ?string;
+
+    /**
+     * Verify the payment
+     *
+     * @param  array<string,mixed>|null  $gatewayPayload
+     *
+     * @throws \AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException
+     * @throws \AliYavari\IranPayment\Exceptions\InvalidCallbackDataException
+     */
+    public function verify(?array $gatewayPayload = null): static;
 }

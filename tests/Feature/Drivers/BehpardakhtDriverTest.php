@@ -3,8 +3,11 @@
 declare(strict_types=1);
 
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
+use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Facades\Payment;
 use AliYavari\IranPayment\Facades\Soap;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\URL;
 
@@ -74,7 +77,7 @@ it("converts phone number to gateway accepted format if it's necessary", functio
     'With country code, first zero and first plus' => '+9809123456789',
 ]);
 
-it('returns successful response', function (): void {
+it('returns successful response for successful payment creation', function (): void {
     fakeSoap(response: '0,AF82041a2Bf6989c7fF9'); // Sample successful API response
 
     $payment = Payment::gateway($this->gateway)->create(1_000);
@@ -85,7 +88,7 @@ it('returns successful response', function (): void {
         ->getRawResponse()->toBe('0,AF82041a2Bf6989c7fF9');
 });
 
-it('returns failed response', function (): void {
+it('returns failed response for failed payment creation', function (): void {
     fakeSoap(response: '11'); // Sample failed API response
 
     $payment = Payment::gateway($this->gateway)->create(1_000);
@@ -169,7 +172,7 @@ it('returns `null` as gateway redirect data if payment creation failed', functio
         ->getPaymentRedirectData()->toBeNull();
 });
 
-it('communicates with sandbox environment if user set it in the configuration', function (): void {
+it('communicates with sandbox environment for payment creation if user set it in the configuration', function (): void {
     Config::set('iran-payment.use_sandbox', true);
 
     fakeSoap(response: '0,AF82041a2Bf6989c7fF9');
@@ -245,6 +248,169 @@ it('throws an exception if we try to create an instance from callback without ne
     'ResCode',
     'SaleOrderId',
 ]);
+
+it("throws an exception if any of stored payload and the callback data doesn't match", function (string $toChange): void {
+    $callbackData = [
+        'RefId' => 'AF82041a2Bf6989c7fF9',
+        'ResCode' => 0,
+        'SaleOrderId' => 123456789012345,
+        'SaleReferenceId' => 227926981246,
+        'CardHolderInfo' => '1234-*-*-1234',
+        'CardHolderPan' => '1234ABsab',
+        'FinalAmount' => '1000',
+    ];
+
+    $payload = collect([
+        'orderId' => '123456789012345',
+        'amount' => 1_000,
+        'refId' => 'AF82041a2Bf6989c7fF9',
+    ])
+        ->merge([$toChange => '123'])
+        ->all();
+
+    $payment = Payment::gateway($this->gateway)->fromCallback($callbackData);
+
+    expect(fn () => $payment->verify($payload))
+        ->toThrow(InvalidCallbackDataException::class, "Callback data and payload for \"{$toChange}\" doesn't match.");
+
+    Soap::assertNothingIsCalled();
+})->with([
+    'orderId',
+    'amount',
+    'refId',
+]);
+
+it("doesn't verify the payment if callback data status is not successful", function (): void {
+    $callbackData = [
+        'RefId' => 'AF82041a2Bf6989c7fF9',
+        'ResCode' => 11, // Not successful
+        'SaleOrderId' => 123456789012345,
+    ];
+
+    $payment = Payment::gateway($this->gateway)->fromCallback($callbackData);
+
+    $payment->verify([]);
+
+    Soap::assertNothingIsCalled();
+
+    expect($payment)
+        ->successful()->toBeFalse()
+        ->error()->toBe('کد 11- شماره کارت نامعتبر است')
+        ->getRawResponse()->toBe($callbackData);
+});
+
+it('verifies the payment', function (): void {
+    $callbackData = [
+        'RefId' => 'AF82041a2Bf6989c7fF9',
+        'ResCode' => 0,
+        'SaleOrderId' => 123456789012345,
+        'SaleReferenceId' => 227926981246,
+        'CardHolderInfo' => '1234-*-*-1234',
+        'CardHolderPan' => '1234ABsab',
+        'FinalAmount' => '1000',
+    ];
+
+    $payload = [
+        'orderId' => '123456789012345',
+        'amount' => 1_000,
+        'refId' => 'AF82041a2Bf6989c7fF9',
+    ];
+
+    $payment = Payment::gateway($this->gateway)->fromCallback($callbackData);
+
+    $payment->verify($payload);
+
+    Soap::assertWsdl('https://bpm.shaparak.ir/pgwchannel/services/pgw?wsdl');
+    Soap::assertMethodCalled('bpVerifyRequest');
+
+    expect(Soap::getArguments(0))
+        ->terminalId->toBe(1234)
+        ->userName->toBe('username')
+        ->userPassword->toBe('password')
+        ->orderId->toBe(123456789012345)
+        ->saleOrderId->toBe(123456789012345)
+        ->saleReferenceId->toBe(227926981246);
+});
+
+it('returns successful response for successful payment verification', function (): void {
+    $callbackData = [
+        'RefId' => 'AF82041a2Bf6989c7fF9',
+        'ResCode' => 0,
+        'SaleOrderId' => 123456789012345,
+        'SaleReferenceId' => 227926981246,
+        'CardHolderInfo' => '1234-*-*-1234',
+        'CardHolderPan' => '1234ABsab',
+        'FinalAmount' => '1000',
+    ];
+
+    $payload = [
+        'orderId' => '123456789012345',
+        'amount' => 1_000,
+        'refId' => 'AF82041a2Bf6989c7fF9',
+    ];
+
+    fakeSoap(response: '0'); // Sample successful API response
+
+    $payment = Payment::gateway($this->gateway)->fromCallback($callbackData)->verify($payload);
+
+    expect($payment)
+        ->successful()->toBeTrue()
+        ->error()->toBeNull()
+        ->getRawResponse()->toBe('0');
+});
+
+it('returns failed response for failed payment verification', function (): void {
+    $callbackData = [
+        'RefId' => 'AF82041a2Bf6989c7fF9',
+        'ResCode' => 0,
+        'SaleOrderId' => 123456789012345,
+        'SaleReferenceId' => 227926981246,
+        'CardHolderInfo' => '1234-*-*-1234',
+        'CardHolderPan' => '1234ABsab',
+        'FinalAmount' => '1000',
+    ];
+
+    $payload = [
+        'orderId' => '123456789012345',
+        'amount' => 1_000,
+        'refId' => 'AF82041a2Bf6989c7fF9',
+    ];
+
+    fakeSoap(response: '11'); // Sample failed API response
+
+    $payment = Payment::gateway($this->gateway)->fromCallback($callbackData)->verify($payload);
+
+    expect($payment)
+        ->successful()->toBeFalse()
+        ->error()->toBe('کد 11- شماره کارت نامعتبر است')
+        ->getRawResponse()->toBe('11');
+});
+
+it('communicates with sandbox environment for payment verification if user set it in the configuration', function (): void {
+    Config::set('iran-payment.use_sandbox', true);
+
+    $callbackData = [
+        'RefId' => 'AF82041a2Bf6989c7fF9',
+        'ResCode' => 0,
+        'SaleOrderId' => 123456789012345,
+        'SaleReferenceId' => 227926981246,
+        'CardHolderInfo' => '1234-*-*-1234',
+        'CardHolderPan' => '1234ABsab',
+        'FinalAmount' => '1000',
+    ];
+
+    $payload = [
+        'orderId' => '123456789012345',
+        'amount' => 1_000,
+        'refId' => 'AF82041a2Bf6989c7fF9',
+    ];
+
+    fakeSoap();
+
+    Payment::gateway($this->gateway)->fromCallback($callbackData)->verify($payload);
+
+    Soap::assertWsdl('https://pgw.dev.bpmellat.ir/pgwchannel/services/pgw?wsdl');
+});
 
 // ------------
 // Helpers

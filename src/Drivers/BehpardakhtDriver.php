@@ -6,6 +6,7 @@ namespace AliYavari\IranPayment\Drivers;
 
 use AliYavari\IranPayment\Abstracts\Driver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Facades\Soap;
 use Illuminate\Support\Arr;
@@ -29,7 +30,10 @@ final class BehpardakhtDriver extends Driver
 
     private const string SANDBOX_PAYMENT_REDIRECT_URL = 'https://pgw.dev.bpmellat.ir/pgwchannel/startpay.mellat';
 
-    private string $response;
+    /**
+     * @var array<string,mixed>|string
+     */
+    private string|array $response;
 
     private ?string $orderId = null;
 
@@ -99,20 +103,6 @@ final class BehpardakhtDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    public function fromCallback(array $callbackData): static
-    {
-        $this->ensureCallbackDataHasKeys($callbackData, ['RefId', 'ResCode', 'SaleOrderId']);
-
-        $this->callbackData = $callbackData;
-
-        $this->orderId = (string) Arr::get($callbackData, 'SaleOrderId');
-
-        return $this;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     public function getRefNumber(): ?string
     {
         $refNumber = Arr::get($this->callbackData, 'SaleReferenceId');
@@ -131,6 +121,20 @@ final class BehpardakhtDriver extends Driver
     /**
      * {@inheritdoc}
      */
+    protected function newFromCallback(array $callbackData): static
+    {
+        $this->ensureCallbackDataHasKeys($callbackData, ['RefId', 'ResCode', 'SaleOrderId']);
+
+        $this->callbackData = $callbackData;
+
+        $this->orderId = (string) Arr::get($callbackData, 'SaleOrderId');
+
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     protected function isSuccessful(): bool
     {
         return $this->apiStatusCode === '0';
@@ -139,11 +143,40 @@ final class BehpardakhtDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    protected function getGatewayRawResponse(): string
+    protected function getGatewayRawResponse(): mixed
     {
         return $this->response;
     }
 
+    /**
+     * {@inheritdoc}
+     */
+    protected function verifyPayment(array $payload): void
+    {
+        if ((int) Arr::get($this->callbackData, 'ResCode') !== 0) {
+            $this->apiStatusCode = (string) Arr::get($this->callbackData, 'ResCode');
+            $this->response = $this->callbackData;
+
+            return;
+        }
+
+        $this->ensureCallbackDataMatchesPayload($this->callbackData, $payload);
+
+        $data = [
+            'terminalId' => (int) $this->terminalId,
+            'userName' => $this->username,
+            'userPassword' => $this->password,
+            'orderId' => (int) $this->orderId,
+            'saleOrderId' => (int) $this->orderId,
+            'saleReferenceId' => Arr::get($this->callbackData, 'SaleReferenceId'),
+        ];
+
+        $this->execute('bpVerifyRequest', $data);
+    }
+
+    /**
+     *  {@inheritdoc}
+     */
     protected function getGatewayStatusCode(): string
     {
         return $this->apiStatusCode;
@@ -357,6 +390,31 @@ final class BehpardakhtDriver extends Driver
         foreach ($keys as $key) {
             if (! Arr::has($callbackData, $key)) {
                 throw MissingCallbackDataException::make($this->getGateway(), $keys, $key);
+            }
+        }
+    }
+
+    /**
+     * Throws an exception if callback data doesn't match with payload data.
+     *
+     * @param  array<string,mixed>  $callbackData
+     * @param  array<string,mixed>  $payload
+     *
+     * @throws InvalidCallbackDataException
+     */
+    private function ensureCallbackDataMatchesPayload(array $callbackData, array $payload): void
+    {
+        $keyMapper = [
+            'RefId' => 'refId',
+            'SaleOrderId' => 'orderId',
+            'FinalAmount' => 'amount',
+        ];
+
+        foreach ($keyMapper as $callbackKey => $payloadKey) {
+            if ((string) Arr::get($callbackData, $callbackKey) !== (string) Arr::get($payload, $payloadKey)) {
+                throw new InvalidCallbackDataException(
+                    sprintf('Callback data and payload for "%s" doesn\'t match.', $payloadKey)
+                );
             }
         }
     }

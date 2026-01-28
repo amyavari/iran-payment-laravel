@@ -27,6 +27,7 @@ use Override;
  * @property-read \Illuminate\Support\Carbon|null $verified_at
  * @property-read \Illuminate\Support\Carbon|null $settled_at
  * @property-read \Illuminate\Support\Carbon|null $reversed_at
+ * @property-read bool $owned_by_iran_payment
  */
 final class Payment extends Model
 {
@@ -36,8 +37,6 @@ final class Payment extends Model
 
     /**
      * Get the payable model associated with this payment.
-     *
-     * TODO: fix generic?!
      *
      * @return MorphTo<Model, $this>
      */
@@ -93,6 +92,7 @@ final class Payment extends Model
             'verified_at' => 'datetime',
             'settled_at' => 'datetime',
             'reversed_at' => 'datetime',
+            'owned_by_iran_payment' => 'bool',
         ];
     }
 }

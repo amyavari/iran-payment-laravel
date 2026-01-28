@@ -13,7 +13,7 @@ use PHPUnit\Framework\Assert;
  */
 final class Soap
 {
-    private string $wsdl;
+    private ?string $wsdl = null;
 
     private string $method;
 
@@ -34,6 +34,14 @@ final class Soap
         $this->args = $args;
 
         return $this->response;
+    }
+
+    /**
+     * Assert nothing is called
+     */
+    public function assertNothingIsCalled(): void
+    {
+        Assert::assertNull($this->wsdl);
     }
 
     /**

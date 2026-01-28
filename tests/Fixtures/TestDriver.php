@@ -6,7 +6,9 @@ namespace AliYavari\IranPayment\Tests\Fixtures;
 
 use AliYavari\IranPayment\Abstracts\Driver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use Exception;
+use Pest\Support\Arr;
 
 /**
  * @internal
@@ -63,11 +65,6 @@ final class TestDriver extends Driver
         throw new Exception('Not implemented');
     }
 
-    public function fromCallback(array $callbackData): static
-    {
-        return $this;
-    }
-
     public function getCardNumber(): ?string
     {
         throw new Exception('Not implemented');
@@ -76,6 +73,11 @@ final class TestDriver extends Driver
     public function getRefNumber(): ?string
     {
         throw new Exception('Not implemented');
+    }
+
+    protected function newFromCallback(array $callbackData): static
+    {
+        return $this;
     }
 
     protected function getGatewayRawResponse(): mixed
@@ -96,7 +98,7 @@ final class TestDriver extends Driver
     protected function createPayment(string $callbackUrl, int $amount, ?string $description = null, string|int|null $phone = null): void
     {
         $this->payload = [
-            'method' => __METHOD__,
+            'method' => 'create',
             'amount' => $amount,
             'callback_url' => $callbackUrl,
             'description' => $description,
@@ -112,5 +114,17 @@ final class TestDriver extends Driver
     protected function getGatewayStatusMessage(): string
     {
         return $this->errorMessage;
+    }
+
+    protected function verifyPayment(array $payload): void
+    {
+        if (Arr::get($payload, 'throw') === true) {
+            throw new InvalidCallbackDataException(Arr::get($payload, 'error_message'));
+        }
+
+        $this->payload = [
+            'method' => 'verify',
+            'gateway_payload' => $payload,
+        ];
     }
 }

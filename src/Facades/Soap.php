@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Facade;
  *
  * @method static SoapClientWrapper to(string $wsdl) Initializes the SoapClient with the given WSDL URL
  * @method static void assertWsdl(string $wsdl) Assert the given WSDL URL is called.
+ * @method static void assertNothingIsCalled() Assert nothing is called.
  * @method static void assertMethodCalled(string $method) Assert the given method is called.
  * @method static mixed getArguments(?int $index = null) Get the arguments passed to the `call()` method.
  *

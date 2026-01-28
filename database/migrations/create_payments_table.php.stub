@@ -28,6 +28,7 @@ return new class extends Migration
             $table->timestamp('verified_at')->nullable();
             $table->timestamp('settled_at')->nullable();
             $table->timestamp('reversed_at')->nullable();
+            $table->boolean('owned_by_iran_payment')->default(false);
             $table->timestamps();
         });
     }
