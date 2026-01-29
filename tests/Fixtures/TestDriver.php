@@ -6,9 +6,7 @@ namespace AliYavari\IranPayment\Tests\Fixtures;
 
 use AliYavari\IranPayment\Abstracts\Driver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
-use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use Exception;
-use Pest\Support\Arr;
 
 /**
  * @internal
@@ -17,27 +15,118 @@ use Pest\Support\Arr;
  */
 final class TestDriver extends Driver
 {
-    public array $payload;
+    public array $receivedData;
 
-    public function __construct(
-        private readonly bool $isSuccessful = true,
-        private readonly string $driverCallbackUrl = '',
-        private readonly int $errorCode = 0,
-        private readonly string $errorMessage = '',
-    ) {}
+    private bool $isSuccessful = true;
+
+    private string $driverCallbackUrl = '';
+
+    private int $errorCode = 0;
+
+    private string $errorMessage = '';
+
+    private Exception $exception;
+
+    /**
+     * Test-only helper method
+     *
+     * Driver should return successful response
+     */
+    public function asSuccessful(): self
+    {
+        $this->isSuccessful = true;
+
+        return $this;
+    }
+
+    /**
+     * Test-only helper method
+     *
+     * Driver should return failed response
+     */
+    public function asFailed(): self
+    {
+        $this->isSuccessful = false;
+        $this->errorCode = 12;
+        $this->errorMessage = 'خطایی رخ داد.';
+
+        return $this;
+    }
+
+    /**
+     * Test-only helper method
+     *
+     * Set driver's default callback URL
+     */
+    public function withCallbackUrl(string $callback): self
+    {
+        $this->driverCallbackUrl = $callback;
+
+        return $this;
+    }
+
+    /**
+     * Test-only helper method
+     *
+     * Driver should throw the exception
+     */
+    public function throwing(Exception $exception): self
+    {
+        $this->exception = $exception;
+
+        return $this;
+    }
+
+    /**
+     * Test-only helper method
+     *
+     * Driver should be treated as one API is called.
+     */
+    public function apiCalled(): self
+    {
+        $this->create(10); // any call just to mark as called
+
+        return $this;
+    }
+
+    /**
+     * Test-only helper method
+     *
+     * Calls create method.
+     */
+    public function callCreate(): self
+    {
+        $this->create(10);
+
+        return $this;
+    }
+
+    /**
+     * Test-only helper method
+     *
+     * Calls store method.
+     */
+    public function callStore(): self
+    {
+        $payable = TestModel::query()->create();
+
+        $this->store($payable);
+
+        return $this;
+    }
 
     /**
      * Test-only helper method.
      *
      * Allows assertions that child class methods are invoked correctly.
      */
-    public function payload(?string $key = null): mixed
+    public function receivedData(?string $key = null): mixed
     {
         if (is_null($key)) {
-            return $this->payload;
+            return $this->receivedData;
         }
 
-        return $this->payload[$key];
+        return $this->receivedData[$key];
     }
 
     public function getTransactionId(): string
@@ -87,7 +176,11 @@ final class TestDriver extends Driver
 
     protected function createPayment(string $callbackUrl, int $amount, ?string $description = null, string|int|null $phone = null): void
     {
-        $this->payload = [
+        if (isset($this->exception)) {
+            throw $this->exception;
+        }
+
+        $this->receivedData = [
             'method' => 'create',
             'amount' => $amount,
             'callback_url' => $callbackUrl,
@@ -106,15 +199,15 @@ final class TestDriver extends Driver
         return $this->errorMessage;
     }
 
-    protected function verifyPayment(array $payload): void
+    protected function verifyPayment(array $storedPayload): void
     {
-        if (Arr::get($payload, 'throw') === true) {
-            throw new InvalidCallbackDataException(Arr::get($payload, 'error_message'));
+        if (isset($this->exception)) {
+            throw $this->exception;
         }
 
-        $this->payload = [
+        $this->receivedData = [
             'method' => 'verify',
-            'gateway_payload' => $payload,
+            'passed_payload' => $storedPayload,
         ];
     }
 }

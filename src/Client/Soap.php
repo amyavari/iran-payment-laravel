@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AliYavari\IranPayment\Client;
 
+use AliYavari\IranPayment\Contracts\Soap as SoapInterface;
 use AliYavari\IranPayment\Exceptions\StrayRequestException;
 use SoapClient;
 
@@ -12,7 +13,7 @@ use SoapClient;
  *
  * Wrapper around SoapClient to simplify faking and testing.
  */
-final class Soap
+final class Soap implements SoapInterface
 {
     private SoapClient $soapClient;
 
@@ -29,9 +30,7 @@ final class Soap
     }
 
     /**
-     * Initializes the SoapClient with the given WSDL URL.
-     *
-     * @throws StrayRequestException
+     * {@inheritdoc}
      */
     public function to(string $wsdl): static
     {
@@ -47,9 +46,7 @@ final class Soap
     }
 
     /**
-     * Calls a SOAP method with the given data and returns the response.
-     *
-     * @param  array<mixed>  $args
+     * {@inheritdoc}
      */
     public function call(string $method, array ...$args): mixed
     {

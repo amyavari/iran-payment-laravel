@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AliYavari\IranPayment\Tests\Fakes;
 
+use AliYavari\IranPayment\Contracts\Soap as SoapInterface;
 use PHPUnit\Framework\Assert;
 
 /**
@@ -11,7 +12,7 @@ use PHPUnit\Framework\Assert;
  *
  * Fake class to assert SOAP calls.
  */
-final class Soap
+final class Soap implements SoapInterface
 {
     private ?string $wsdl = null;
 
@@ -19,8 +20,13 @@ final class Soap
 
     private array $args;
 
-    public function __construct(private readonly mixed $response) {}
+    public function __construct(
+        private readonly mixed $response
+    ) {}
 
+    /**
+     * {@inheritdoc}
+     */
     public function to(string $wsdl): static
     {
         $this->wsdl = $wsdl;
@@ -28,6 +34,9 @@ final class Soap
         return $this;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function call(string $method, array ...$args): mixed
     {
         $this->method = $method;

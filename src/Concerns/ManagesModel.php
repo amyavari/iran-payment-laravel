@@ -64,7 +64,7 @@ trait ManagesModel
      */
     private function ensureTableExists(): void
     {
-        if (! Schema::hasColumn('payments', 'owned_by_iran_payment')) {
+        if (! Schema::hasColumns('payments', ['owned_by_iran_payment', 'transaction_id'])) {
             throw new MissingVerificationPayloadException('Verification payload was not provided and the "payments" table does not exist.');
         }
     }
