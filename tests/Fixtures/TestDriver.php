@@ -104,13 +104,13 @@ final class TestDriver extends Driver
     /**
      * Test-only helper method
      *
-     * Calls store method.
+     * Stores a test payment record.
      */
-    public function callStore(): self
+    public function storeTestPayment(): self
     {
         $payable = TestModel::query()->create();
 
-        $this->store($payable);
+        $this->asSuccessful()->store($payable)->callCreate();
 
         return $this;
     }

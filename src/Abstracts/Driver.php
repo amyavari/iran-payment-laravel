@@ -10,7 +10,6 @@ use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\ApiIsNotCalledException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException;
-use AliYavari\IranPayment\Exceptions\PaymentNotCreatedException;
 use AliYavari\IranPayment\Models\Payment as PaymentModel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -43,6 +42,11 @@ abstract class Driver implements Payment
      * Associated Eloquent payment model instance.
      */
     private ?PaymentModel $payment = null;
+
+    /**
+     * The Eloquent model this payment belongs to.
+     */
+    private Model $payable;
 
     /**
      * Callback data sent by the gateway after the user completes the payment.
@@ -133,6 +137,10 @@ abstract class Driver implements Payment
 
         $this->createPayment($this->getCallbackUrl(), $this->amount, $description, $phone);
 
+        if ($this->shouldStorePayment()) {
+            $this->storePayment();
+        }
+
         return $this;
     }
 
@@ -195,9 +203,7 @@ abstract class Driver implements Payment
      */
     final public function store(Model $payable): static
     {
-        $this->ensurePaymentCreationIsCalled();
-
-        $this->payment = $this->storePayment($payable);
+        $this->payable = $payable;
 
         return $this;
     }
@@ -329,15 +335,11 @@ abstract class Driver implements Payment
     }
 
     /**
-     * throws and exception if the create payment API call has not been called.
-     *
-     * @throws PaymentNotCreatedException
+     * Determine whether the payment should be stored.
      */
-    private function ensurePaymentCreationIsCalled(): void
+    private function shouldStorePayment(): bool
     {
-        if ($this->calledApiMethod !== 'create') {
-            throw new PaymentNotCreatedException('Payment must be created via the "create" method before storing.');
-        }
+        return isset($this->payable) && $this->isSuccessful();
     }
 
     /**

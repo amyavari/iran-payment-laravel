@@ -75,8 +75,6 @@ interface Payment
 
     /**
      * Store the created payment in the database.
-     *
-     * @throws \AliYavari\IranPayment\Exceptions\PaymentNotCreatedException
      */
     public function store(Model $payable): static;
 

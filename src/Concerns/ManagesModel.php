@@ -8,7 +8,6 @@ use AliYavari\IranPayment\Enums\PaymentStatus;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException;
 use AliYavari\IranPayment\Models\Payment;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -17,33 +16,30 @@ use Illuminate\Support\Facades\Schema;
  * Provides logic for interacting with payment Eloquent models.
  *
  * Expects the consuming class to have the following properties:
- * - Payment|null $payment
- * - array $callbackPayload
- * - int $amount
+ * - $payment
+ * - $payable
+ * - $callbackPayload
+ * - $amount
  */
 trait ManagesModel
 {
     /**
      * Stores the payment in the database
      */
-    private function storePayment(Model $payable): ?Payment
+    private function storePayment(): void
     {
-        return $this->whenSuccessful(function () use ($payable): Payment {
-            $payment = new Payment([
-                'transaction_id' => $this->getTransactionId(),
-                'amount' => $this->amount,
-                'gateway' => $this->getGateway(),
-                'gateway_payload' => $this->getGatewayPayload(),
-                'status' => PaymentStatus::Pending,
-                'owned_by_iran_payment' => true,
-            ]);
+        $this->payment = new Payment([
+            'transaction_id' => $this->getTransactionId(),
+            'amount' => $this->amount,
+            'gateway' => $this->getGateway(),
+            'gateway_payload' => $this->getGatewayPayload(),
+            'status' => PaymentStatus::Pending,
+            'owned_by_iran_payment' => true,
+        ]);
 
-            $payment->payable()->associate($payable)
-                ->addRawResponse('create', $this->getRawResponse())
-                ->save();
-
-            return $payment;
-        });
+        $this->payment->payable()->associate($this->payable)
+            ->addRawResponse('create', $this->getRawResponse())
+            ->save();
     }
 
     /**

@@ -6,7 +6,6 @@ use AliYavari\IranPayment\Enums\PaymentStatus;
 use AliYavari\IranPayment\Exceptions\ApiIsNotCalledException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException;
-use AliYavari\IranPayment\Exceptions\PaymentNotCreatedException;
 use AliYavari\IranPayment\Models\Payment;
 use AliYavari\IranPayment\Tests\Fixtures\TestDriver;
 use AliYavari\IranPayment\Tests\Fixtures\TestModel;
@@ -26,7 +25,7 @@ use Illuminate\Support\Facades\URL;
  * - receivedData()     Returns the data sent from the abstract driver to the concrete driver.
  * - apiCalled()        Calls a dummy API to mark the API as called, so its status can be asserted.
  * - callCreate()       Calls the `create` method with required arguments.
- * - callStore()        Calls the `store` method with required arguments.
+ * - storeTestPayment() Stores a test payment record in the database.
  *
  * @see TestDriver
  */
@@ -174,9 +173,10 @@ it('stores payment data in the database when payment creation is successful and 
 
     $payable = payable();
 
-    $driver = testDriver()->asSuccessful()->create(amount: 1_000);
-
-    $driver->store($payable);
+    $driver = testDriver()
+        ->asSuccessful()
+        ->store($payable)
+        ->create(amount: 1_000);
 
     $this->assertDatabaseHas(Payment::class, [
         'transaction_id' => $driver->getTransactionId(),
@@ -204,9 +204,10 @@ it('stores payment data in the database when payment creation is successful and 
 });
 
 it('does not store payment data in the database when payment creation fails and returns null as the payment model', function (): void {
-    $driver = testDriver()->asFailed()->callCreate();
-
-    $driver->store(payable());
+    $driver = testDriver()
+        ->asFailed()
+        ->store(payable())
+        ->callCreate();
 
     $this->assertDatabaseEmpty(Payment::class);
 
@@ -214,20 +215,25 @@ it('does not store payment data in the database when payment creation fails and 
         ->getModel()->toBeNull();
 });
 
-it('throws an exception when trying to store a payment without creating it', function (): void {
-    $driver = testDriver();
+it('does not store payment data in the database when the store method is not called', function (): void {
+    // Successful creation
+    $driver = testDriver()
+        ->asSuccessful()
+        ->callCreate();
 
-    $driver->store(payable());
-})->throws(PaymentNotCreatedException::class, 'Payment must be created via the "create" method before storing.');
+    expect($driver)
+        ->getModel()->toBeNull();
 
-it('throws an exception when trying to store a payment after a non‑creation API call', function (string $method): void {
-    $driver = testDriver()->asSuccessful()->{$method}([]);
+    // Failed creation
+    $driver = testDriver()
+        ->asFailed()
+        ->callCreate();
 
-    $driver->store(payable());
-})->throws(PaymentNotCreatedException::class, 'Payment must be created via the "create" method before storing.')
-    ->with([
-        'verify',
-    ]);
+    expect($driver)
+        ->getModel()->toBeNull();
+
+    $this->assertDatabaseEmpty(Payment::class);
+});
 
 it('just verifies the payment when the gateway payload is provided', function (): void {
     $driver = testDriver()->verify(['key' => 'value']);
@@ -238,7 +244,7 @@ it('just verifies the payment when the gateway payload is provided', function ()
 });
 
 it('verifies the payment by fetching the gateway payload from the database when it is not provided', function (): void {
-    testDriver()->asSuccessful()->callCreate()->callStore();
+    testDriver()->storeTestPayment();
 
     $driver = testDriver()->verify();
 
@@ -267,7 +273,7 @@ it('throws an exception when trying to fetch the gateway payload from the databa
     ]);
 
 it('throws an exception when trying to fetch the gateway payload from the database and the record does not exist in the database', function (array $toUpdate): void {
-    $model = testDriver()->asSuccessful()->callCreate()->callStore()->getModel();
+    $model = testDriver()->storeTestPayment()->getModel();
 
     $model->update($toUpdate);
 
@@ -280,12 +286,11 @@ it('throws an exception when trying to fetch the gateway payload from the databa
 
 it('updates the successful payment in the database when the gateway payload is not provided', function (): void {
     setTestNow('2025-12-10 18:30:10');
-    testDriver()->asSuccessful()->callCreate()->callStore();
+    testDriver()->storeTestPayment();
 
     setTestNow('2025-12-10 18:30:20');
-    $driver = testDriver()->asSuccessful();
 
-    $driver->verify();
+    $driver = testDriver()->asSuccessful()->verify();
 
     $this->assertDatabaseHas(Payment::class, [
         'transaction_id' => $driver->getTransactionId(),
@@ -303,12 +308,10 @@ it('updates the successful payment in the database when the gateway payload is n
 
 it('updates the failed payment in the database when the gateway payload is not provided', function (): void {
     setTestNow('2025-12-10 18:30:10');
-    testDriver()->asSuccessful()->callCreate()->callStore();
+    testDriver()->storeTestPayment();
 
     setTestNow('2025-12-10 18:30:20');
-    $driver = testDriver()->asFailed();
-
-    $driver->verify();
+    $driver = testDriver()->asFailed()->verify();
 
     $this->assertDatabaseHas(Payment::class, [
         'transaction_id' => $driver->getTransactionId(),
@@ -326,7 +329,7 @@ it('updates the failed payment in the database when the gateway payload is not p
 
 it('stores a failed payment status when the gateway throws an invalid callback data exception', function (): void {
     setTestNow('2025-12-10 18:30:10');
-    testDriver()->asSuccessful()->callCreate()->callStore();
+    testDriver()->storeTestPayment();
 
     setTestNow('2025-12-10 18:30:20');
     $driver = testDriver()->throwing(new InvalidCallbackDataException('Gateway exception error message'));
@@ -359,7 +362,7 @@ it('just throws the invalid callback data exception if it was not stored interna
 });
 
 it('returns the payment model after verification when it was stored internally', function (): void {
-    testDriver()->asSuccessful()->callCreate()->callStore();
+    testDriver()->storeTestPayment();
 
     $driver = testDriver()->verify();
 
