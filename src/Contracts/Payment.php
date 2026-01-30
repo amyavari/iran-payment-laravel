@@ -107,6 +107,7 @@ interface Payment
      *
      * @throws \AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException
      * @throws \AliYavari\IranPayment\Exceptions\InvalidCallbackDataException
+     * @throws \AliYavari\IranPayment\Exceptions\PaymentAlreadyVerifiedException
      */
     public function verify(?array $gatewayPayload = null): static;
 }

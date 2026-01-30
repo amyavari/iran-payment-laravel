@@ -10,6 +10,7 @@ use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\ApiIsNotCalledException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException;
+use AliYavari\IranPayment\Exceptions\PaymentAlreadyVerifiedException;
 use AliYavari\IranPayment\Models\Payment as PaymentModel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -237,6 +238,8 @@ abstract class Driver implements Payment
             $gatewayPayload = $this->getStoredPayload();
         }
 
+        $this->ensurePaymentIsNotVerified();
+
         try {
             $this->verifyPayment($gatewayPayload);
         } catch (InvalidCallbackDataException $invalidCallbackDataException) {
@@ -358,5 +361,27 @@ abstract class Driver implements Payment
         $this->ensurePaymentExists();
 
         return $this->payment->gateway_payload;
+    }
+
+    /**
+     * Throws an exception if payment is already verified.
+     *
+     * @throws PaymentAlreadyVerifiedException
+     */
+    private function ensurePaymentIsNotVerified(): void
+    {
+        if ($this->isVerified()) {
+            throw new PaymentAlreadyVerifiedException(
+                sprintf('Payment with transaction ID "%s" has already been verified.', $this->getTransactionId())
+            );
+        }
+    }
+
+    /**
+     * Determine whether the payment has been verified.
+     */
+    private function isVerified(): bool
+    {
+        return (bool) $this->payment?->verified_at;
     }
 }

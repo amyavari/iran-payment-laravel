@@ -6,6 +6,7 @@ use AliYavari\IranPayment\Enums\PaymentStatus;
 use AliYavari\IranPayment\Exceptions\ApiIsNotCalledException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException;
+use AliYavari\IranPayment\Exceptions\PaymentAlreadyVerifiedException;
 use AliYavari\IranPayment\Models\Payment;
 use AliYavari\IranPayment\Tests\Fixtures\TestDriver;
 use AliYavari\IranPayment\Tests\Fixtures\TestModel;
@@ -376,6 +377,28 @@ it('returns `null` as the payment model after verification when it was not store
 
     expect($driver)
         ->getModel()->toBeNull();
+});
+
+it('throws an exception when trying to verify an already verified and stored internally payment', function (): void {
+    $model = testDriver()->storeTestPayment()->getModel();
+
+    $model->update(['verified_at' => '2025-12-10 18:30:10']);
+
+    $driver = testDriver();
+
+    expect(fn () => $driver->verify())
+        ->toThrow(
+            PaymentAlreadyVerifiedException::class,
+            sprintf('Payment with transaction ID "%s" has already been verified.', $driver->getTransactionId())
+        );
+
+    expect($driver)
+        ->receivedData()->toBe([]); // Nothing is called
+
+    $this->assertDatabaseHas(Payment::class, [
+        'transaction_id' => $model->transaction_id,
+        'verified_at' => '2025-12-10 18:30:10', // Nothing is changed
+    ]);
 });
 
 // ------------

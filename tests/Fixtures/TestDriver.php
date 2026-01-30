@@ -15,7 +15,7 @@ use Exception;
  */
 final class TestDriver extends Driver
 {
-    public array $receivedData;
+    public array $receivedData = [];
 
     private bool $isSuccessful = true;
 
