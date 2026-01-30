@@ -10,6 +10,7 @@ use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Facades\Soap;
+use Exception;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\URL;
@@ -194,16 +195,15 @@ final class BehpardakhtDriver extends Driver
 
         $this->ensureCallbackDataMatchesPayload($storedPayload);
 
-        $data = [
-            'terminalId' => (int) $this->terminalId,
-            'userName' => $this->username,
-            'userPassword' => $this->password,
-            'orderId' => (int) $this->transactionId,
-            'saleOrderId' => (int) $this->transactionId,
-            'saleReferenceId' => $this->callbackPayload->get('SaleReferenceId'),
-        ];
+        $this->execute('bpVerifyRequest', $this->followUpPayload());
+    }
 
-        $this->execute('bpVerifyRequest', $data);
+    /**
+     * {@inheritdoc}
+     */
+    protected function settlePayment(): void
+    {
+        $this->execute('bpSettleRequest', $this->followUpPayload());
     }
 
     /**
@@ -462,5 +462,23 @@ final class BehpardakhtDriver extends Driver
                 throw InvalidCallbackDataException::make($callbackKey, $storedKey);
             }
         }
+    }
+
+    /**
+     * Returns the payload used for follow‑up payment operations
+     * such as verification, settlement, and reversal.
+     *
+     * @return array<string,mixed>
+     */
+    private function followUpPayload(): array
+    {
+        return [
+            'terminalId' => (int) $this->terminalId,
+            'userName' => $this->username,
+            'userPassword' => $this->password,
+            'orderId' => (int) $this->transactionId,
+            'saleOrderId' => (int) $this->transactionId,
+            'saleReferenceId' => $this->callbackPayload->get('SaleReferenceId'),
+        ];
     }
 }

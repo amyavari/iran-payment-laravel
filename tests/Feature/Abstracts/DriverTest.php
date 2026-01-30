@@ -7,6 +7,7 @@ use AliYavari\IranPayment\Exceptions\ApiIsNotCalledException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException;
 use AliYavari\IranPayment\Exceptions\PaymentAlreadyVerifiedException;
+use AliYavari\IranPayment\Exceptions\PaymentNotVerifiedException;
 use AliYavari\IranPayment\Models\Payment;
 use AliYavari\IranPayment\Tests\Fixtures\TestDriver;
 use AliYavari\IranPayment\Tests\Fixtures\TestModel;
@@ -386,7 +387,7 @@ it('throws an exception when trying to verify an already verified and stored int
 
     $driver = testDriver();
 
-    expect(fn () => $driver->verify())
+    expect(fn (): TestDriver => $driver->verify())
         ->toThrow(
             PaymentAlreadyVerifiedException::class,
             sprintf('Payment with transaction ID "%s" has already been verified.', $driver->getTransactionId())
@@ -399,6 +400,65 @@ it('throws an exception when trying to verify an already verified and stored int
         'transaction_id' => $model->transaction_id,
         'verified_at' => '2025-12-10 18:30:10', // Nothing is changed
     ]);
+});
+
+it('just settles the payment if it was not stored internally', function (): void {
+    $driver = testDriver()->verify([])->settle();
+
+    expect($driver)
+        ->receivedData('method')->toBe('settle');
+});
+
+it('settles the payment and updates it in the database if it was stored internally', function (): void {
+    setTestNow('2025-12-10 18:30:10');
+    testDriver()->storeTestPayment();
+
+    setTestNow('2025-12-10 18:30:20');
+    $driver = testDriver()->asSuccessful()->verify();
+
+    setTestNow('2025-12-10 18:30:30');
+    $driver->asFailed()->settle(); // Different status to ensure nothing else is changed
+
+    $this->assertDatabaseHas(Payment::class, [
+        'transaction_id' => $driver->getTransactionId(),
+        'status' => PaymentStatus::Successful,
+        'error' => null,
+        'settled_at' => '2025-12-10 18:30:30',
+        'raw_responses' => json_encode([
+            'create_20251210183010' => $driver->getRawResponse(),
+            'verify_20251210183020' => $driver->getRawResponse(),
+            'settle_20251210183030' => $driver->getRawResponse(), // In our testDriver they're the same.
+        ]),
+    ]);
+
+    expect($driver)
+        ->receivedData('method')->toBe('settle');
+});
+
+it('updates the payment in the database after calling the settle API', function (): void {
+    $driver = testDriver()->storeTestPayment()->verify();
+
+    $driver->throwing(new Exception()); // Stop execution at the API call
+
+    try {
+        $driver->settle();
+    } catch (Exception $e) {
+    }
+
+    $this->assertDatabaseHas(Payment::class, [
+        'transaction_id' => $driver->getTransactionId(),
+        'settled_at' => null, // Not updated
+    ]);
+});
+
+it('throws an exception if settle is called on an object that was not verified', function (): void {
+    $driver = testDriver();
+
+    expect(fn (): TestDriver => $driver->settle())
+        ->toThrow(PaymentNotVerifiedException::class, 'You must verify the payment before settling it.');
+
+    expect($driver)
+        ->receivedData()->toBe([]); // Nothing is called
 });
 
 // ------------

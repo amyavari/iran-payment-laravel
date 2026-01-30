@@ -11,6 +11,7 @@ use AliYavari\IranPayment\Exceptions\ApiIsNotCalledException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException;
 use AliYavari\IranPayment\Exceptions\PaymentAlreadyVerifiedException;
+use AliYavari\IranPayment\Exceptions\PaymentNotVerifiedException;
 use AliYavari\IranPayment\Models\Payment as PaymentModel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -94,6 +95,11 @@ abstract class Driver implements Payment
      * @throws InvalidCallbackDataException
      */
     abstract protected function verifyPayment(array $storedPayload): void;
+
+    /**
+     * Settle the payment via the driver
+     */
+    abstract protected function settlePayment(): void;
 
     /**
      * Create new instance of gateway driver
@@ -254,6 +260,20 @@ abstract class Driver implements Payment
     }
 
     /**
+     * {@inheritdoc}
+     */
+    final public function settle(): static
+    {
+        $this->ensureVerificationIsCalled();
+
+        $this->settlePayment();
+
+        $this->updatePaymentAfterSettlement();
+
+        return $this;
+    }
+
+    /**
      * Executes the callback when the API call is successful.
      *
      * @return mixed|null
@@ -383,5 +403,17 @@ abstract class Driver implements Payment
     private function isVerified(): bool
     {
         return (bool) $this->payment?->verified_at;
+    }
+
+    /**
+     * Throws an exception if `verify` API method has not been called.
+     *
+     * @throws PaymentNotVerifiedException
+     */
+    private function ensureVerificationIsCalled(): void
+    {
+        if ($this->calledApiMethod !== 'verify') {
+            throw new PaymentNotVerifiedException('You must verify the payment before settling it.');
+        }
     }
 }

@@ -117,4 +117,14 @@ trait ManagesModel
             ->addRawResponse($method, $rawResponse ?? $this->getRawResponse())
             ->save();
     }
+
+    /**
+     * Update the payment record after Settlement.
+     */
+    private function updatePaymentAfterSettlement(): void
+    {
+        $this->updatePaymentIfExists('settle', [
+            'settled_at' => now(),
+        ]);
+    }
 }

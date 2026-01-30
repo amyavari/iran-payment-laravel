@@ -210,4 +210,15 @@ final class TestDriver extends Driver
             'passed_payload' => $storedPayload,
         ];
     }
+
+    protected function settlePayment(): void
+    {
+        if (isset($this->exception)) {
+            throw $this->exception;
+        }
+
+        $this->receivedData = [
+            'method' => 'settle',
+        ];
+    }
 }

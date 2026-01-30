@@ -110,4 +110,11 @@ interface Payment
      * @throws \AliYavari\IranPayment\Exceptions\PaymentAlreadyVerifiedException
      */
     public function verify(?array $gatewayPayload = null): static;
+
+    /**
+     * Settle the payment
+     *
+     * @throws \AliYavari\IranPayment\Exceptions\PaymentNotVerifiedException
+     */
+    public function settle(): static;
 }
