@@ -221,4 +221,15 @@ final class TestDriver extends Driver
             'method' => 'settle',
         ];
     }
+
+    protected function reversePayment(): void
+    {
+        if (isset($this->exception)) {
+            throw $this->exception;
+        }
+
+        $this->receivedData = [
+            'method' => 'reverse',
+        ];
+    }
 }

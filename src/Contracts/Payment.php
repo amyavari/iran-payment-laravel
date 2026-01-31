@@ -117,4 +117,11 @@ interface Payment
      * @throws \AliYavari\IranPayment\Exceptions\PaymentNotVerifiedException
      */
     public function settle(): static;
+
+    /**
+     * Reverse the payment
+     *
+     * @throws \AliYavari\IranPayment\Exceptions\PaymentNotVerifiedException
+     */
+    public function reverse(): static;
 }

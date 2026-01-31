@@ -359,6 +359,51 @@ it('communicates with sandbox environment for payment settlement when configured
     Soap::assertWsdl('https://pgw.dev.bpmellat.ir/pgwchannel/services/pgw?wsdl');
 });
 
+it('reverses the payment', function (): void {
+    verifiedPayment()->reverse();
+
+    Soap::assertWsdl('https://bpm.shaparak.ir/pgwchannel/services/pgw?wsdl');
+    Soap::assertMethodCalled('bpReversalRequest');
+
+    expect(Soap::getArguments(0))
+        ->terminalId->toBe(1234)
+        ->userName->toBe('username')
+        ->userPassword->toBe('password')
+        ->orderId->toBe(123456789012345)
+        ->saleOrderId->toBe(123456789012345)
+        ->saleReferenceId->toBe(227926981246);
+});
+
+it('returns successful response on successful payment reversal', function (): void {
+    fakeSoap(response: '0'); // Sample successful API response
+
+    $payment = verifiedPayment()->reverse();
+
+    expect($payment)
+        ->successful()->toBeTrue()
+        ->error()->toBeNull()
+        ->getRawResponse()->toBe('0');
+});
+
+it('returns failed response on failed payment reversal', function (): void {
+    fakeSoap(response: '11'); // Sample failed API response
+
+    $payment = verifiedPayment()->reverse();
+
+    expect($payment)
+        ->successful()->toBeFalse()
+        ->error()->toBe('کد 11- شماره کارت نامعتبر است')
+        ->getRawResponse()->toBe('11');
+});
+
+it('communicates with sandbox environment for payment reversal when configured', function (): void {
+    Config::set('iran-payment.use_sandbox', true);
+
+    verifiedPayment()->reverse();
+
+    Soap::assertWsdl('https://pgw.dev.bpmellat.ir/pgwchannel/services/pgw?wsdl');
+});
+
 // ------------
 // Helpers
 // ------------

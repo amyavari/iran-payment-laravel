@@ -207,6 +207,14 @@ final class BehpardakhtDriver extends Driver
     }
 
     /**
+     * {@inheritdoc}
+     */
+    protected function reversePayment(): void
+    {
+        $this->execute('bpReversalRequest', $this->followUpPayload());
+    }
+
+    /**
      *  {@inheritdoc}
      */
     protected function getGatewayStatusCode(): string

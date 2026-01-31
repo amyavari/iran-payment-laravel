@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use AliYavari\IranPayment\Abstracts\Driver;
 use AliYavari\IranPayment\Enums\PaymentStatus;
 use AliYavari\IranPayment\Exceptions\ApiIsNotCalledException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
@@ -442,7 +443,7 @@ it('updates the payment in the database after calling the settle API', function 
 
     try {
         $driver->settle();
-    } catch (Exception $e) {
+    } catch (Exception) {
     }
 
     $this->assertDatabaseHas(Payment::class, [
@@ -455,7 +456,66 @@ it('throws an exception if settle is called on an object that was not verified',
     $driver = testDriver();
 
     expect(fn (): TestDriver => $driver->settle())
-        ->toThrow(PaymentNotVerifiedException::class, 'You must verify the payment before settling it.');
+        ->toThrow(PaymentNotVerifiedException::class, 'You must verify the payment before running settle method.');
+
+    expect($driver)
+        ->receivedData()->toBe([]); // Nothing is called
+});
+
+it('just reverses the payment if it was not stored internally', function (): void {
+    $driver = testDriver()->verify([])->reverse();
+
+    expect($driver)
+        ->receivedData('method')->toBe('reverse');
+});
+
+it('reverses the payment and updates it in the database if it was stored internally', function (): void {
+    setTestNow('2025-12-10 18:30:10');
+    testDriver()->storeTestPayment();
+
+    setTestNow('2025-12-10 18:30:20');
+    $driver = testDriver()->asSuccessful()->verify();
+
+    setTestNow('2025-12-10 18:30:30');
+    $driver->asFailed()->reverse(); // Different status to ensure nothing else is changed
+
+    $this->assertDatabaseHas(Payment::class, [
+        'transaction_id' => $driver->getTransactionId(),
+        'status' => PaymentStatus::Successful,
+        'error' => null,
+        'reversed_at' => '2025-12-10 18:30:30',
+        'raw_responses' => json_encode([
+            'create_20251210183010' => $driver->getRawResponse(),
+            'verify_20251210183020' => $driver->getRawResponse(),
+            'reverse_20251210183030' => $driver->getRawResponse(), // In our testDriver they're the same.
+        ]),
+    ]);
+
+    expect($driver)
+        ->receivedData('method')->toBe('reverse');
+});
+
+it('updates the payment in the database after calling the reverse API', function (): void {
+    $driver = testDriver()->storeTestPayment()->verify();
+
+    $driver->throwing(new Exception()); // Stop execution at the API call
+
+    try {
+        $driver->reverse();
+    } catch (Exception) {
+    }
+
+    $this->assertDatabaseHas(Payment::class, [
+        'transaction_id' => $driver->getTransactionId(),
+        'reversed_at' => null, // Not updated
+    ]);
+});
+
+it('throws an exception if reverse is called on an object that was not verified', function (): void {
+    $driver = testDriver();
+
+    expect(fn (): TestDriver => $driver->reverse())
+        ->toThrow(PaymentNotVerifiedException::class, 'You must verify the payment before running reverse method.');
 
     expect($driver)
         ->receivedData()->toBe([]); // Nothing is called

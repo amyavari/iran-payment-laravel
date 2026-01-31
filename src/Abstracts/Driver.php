@@ -102,6 +102,11 @@ abstract class Driver implements Payment
     abstract protected function settlePayment(): void;
 
     /**
+     * Reverse the payment via the driver
+     */
+    abstract protected function reversePayment(): void;
+
+    /**
      * Create new instance of gateway driver
      *
      * @param  array<string,mixed>  $callbackPayload
@@ -264,11 +269,25 @@ abstract class Driver implements Payment
      */
     final public function settle(): static
     {
-        $this->ensureVerificationIsCalled();
+        $this->ensurePaymentIsVerifiedFor(__FUNCTION__);
 
         $this->settlePayment();
 
         $this->updatePaymentAfterSettlement();
+
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    final public function reverse(): static
+    {
+        $this->ensurePaymentIsVerifiedFor(__FUNCTION__);
+
+        $this->reversePayment();
+
+        $this->updatePaymentAfterReversal();
 
         return $this;
     }
@@ -410,10 +429,12 @@ abstract class Driver implements Payment
      *
      * @throws PaymentNotVerifiedException
      */
-    private function ensureVerificationIsCalled(): void
+    private function ensurePaymentIsVerifiedFor(string $method): void
     {
         if ($this->calledApiMethod !== 'verify') {
-            throw new PaymentNotVerifiedException('You must verify the payment before settling it.');
+            throw new PaymentNotVerifiedException(
+                sprintf('You must verify the payment before running %s method.', $method)
+            );
         }
     }
 }
