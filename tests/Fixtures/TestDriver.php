@@ -15,7 +15,9 @@ use Exception;
  */
 final class TestDriver extends Driver
 {
-    public array $receivedData = [];
+    private array $receivedParameters;
+
+    private array $calledMethods = [];
 
     private bool $isSuccessful = true;
 
@@ -118,15 +120,25 @@ final class TestDriver extends Driver
     /**
      * Test-only helper method.
      *
-     * Allows assertions that child class methods are invoked correctly.
+     * Returns parameters received by the last invoked child method.
      */
-    public function receivedData(?string $key = null): mixed
+    public function receivedParameters(?string $key = null): mixed
     {
         if (is_null($key)) {
-            return $this->receivedData;
+            return $this->receivedParameters;
         }
 
-        return $this->receivedData[$key];
+        return $this->receivedParameters[$key];
+    }
+
+    /**
+     * Test-only helper method.
+     *
+     * Returns the list of child class methods that were invoked.
+     */
+    public function calledMethods(): mixed
+    {
+        return $this->calledMethods;
     }
 
     public function getTransactionId(): string
@@ -176,17 +188,37 @@ final class TestDriver extends Driver
 
     protected function createPayment(string $callbackUrl, int $amount, ?string $description = null, string|int|null $phone = null): void
     {
-        if (isset($this->exception)) {
-            throw $this->exception;
-        }
+        $this->throwExceptionIfNeeded();
 
-        $this->receivedData = [
-            'method' => 'create',
+        $this->storeMethodCall('create', [
+            'callbackUrl' => $callbackUrl,
             'amount' => $amount,
-            'callback_url' => $callbackUrl,
             'description' => $description,
             'phone' => $phone,
-        ];
+        ]);
+    }
+
+    protected function verifyPayment(array $storedPayload): void
+    {
+        $this->throwExceptionIfNeeded();
+
+        $this->storeMethodCall('verify', [
+            'storedPayload' => $storedPayload,
+        ]);
+    }
+
+    protected function settlePayment(): void
+    {
+        $this->throwExceptionIfNeeded();
+
+        $this->storeMethodCall('settle', []);
+    }
+
+    protected function reversePayment(): void
+    {
+        $this->throwExceptionIfNeeded();
+
+        $this->storeMethodCall('reverse', []);
     }
 
     protected function getGatewayStatusCode(): string
@@ -199,37 +231,22 @@ final class TestDriver extends Driver
         return $this->errorMessage;
     }
 
-    protected function verifyPayment(array $storedPayload): void
+    /**
+     * Test-only helper method.
+     */
+    private function throwExceptionIfNeeded(): void
     {
         if (isset($this->exception)) {
             throw $this->exception;
         }
-
-        $this->receivedData = [
-            'method' => 'verify',
-            'passed_payload' => $storedPayload,
-        ];
     }
 
-    protected function settlePayment(): void
+    /**
+     * Test-only helper method.
+     */
+    private function storeMethodCall(string $method, array $parameters): void
     {
-        if (isset($this->exception)) {
-            throw $this->exception;
-        }
-
-        $this->receivedData = [
-            'method' => 'settle',
-        ];
-    }
-
-    protected function reversePayment(): void
-    {
-        if (isset($this->exception)) {
-            throw $this->exception;
-        }
-
-        $this->receivedData = [
-            'method' => 'reverse',
-        ];
+        $this->calledMethods[] = $method;
+        $this->receivedParameters = $parameters;
     }
 }

@@ -21,14 +21,15 @@ use Illuminate\Support\Facades\URL;
  * To keep test cases simple and readable, the concrete `TestDriver` provides
  * several helper methods:
  *
- * - withCallbackUrl()  Sets the driver’s default callback URL.
- * - asSuccessful()     Forces the next API call to be successful.
- * - asFailed()         Forces the next API call to fail with a default error code and message.
- * - throwing()         Makes the next API call throw the given exception.
- * - receivedData()     Returns the data sent from the abstract driver to the concrete driver.
- * - apiCalled()        Calls a dummy API to mark the API as called, so its status can be asserted.
- * - callCreate()       Calls the `create` method with required arguments.
- * - storeTestPayment() Stores a test payment record in the database.
+ * - withCallbackUrl()      Sets the driver’s default callback URL.
+ * - asSuccessful()         Forces the next API call to be successful.
+ * - asFailed()             Forces the next API call to fail with a default error code and message.
+ * - throwing()             Makes the next API call throw the given exception.
+ * - calledMethods()        Returns the list of child class methods that were called.
+ * - receivedParameters()   Returns parameters received by the last invoked child method.
+ * - apiCalled()            Calls a dummy API to mark the API as called, so its status can be asserted.
+ * - callCreate()           Calls the `create` method with required arguments.
+ * - storeTestPayment()     Stores a test payment record in the database.
  *
  * @see TestDriver
  */
@@ -38,11 +39,11 @@ it('calls the concrete driver’s creation method with all passed data', functio
     $driver->create(1_000, 'Description', 9123456789);
 
     expect($driver)
-        ->receivedData('method')->toBe('create')
-        ->receivedData('amount')->toBe(1_000)
-        ->receivedData('callback_url')->toBe('http://test.com')
-        ->receivedData('description')->toBe('Description')
-        ->receivedData('phone')->toBe(9123456789);
+        ->calledMethods()->toBe(['create'])
+        ->receivedParameters('amount')->toBe(1_000)
+        ->receivedParameters('callbackUrl')->toBe('http://test.com')
+        ->receivedParameters('description')->toBe('Description')
+        ->receivedParameters('phone')->toBe(9123456789);
 });
 
 it('creates a new payment with a runtime-defined callback URL', function (): void {
@@ -53,7 +54,7 @@ it('creates a new payment with a runtime-defined callback URL', function (): voi
     $driver->callCreate();
 
     expect($driver)
-        ->receivedData('callback_url')->toBe('http://newCallback.test');
+        ->receivedParameters('callbackUrl')->toBe('http://newCallback.test');
 });
 
 it('creates a new payment with the driver callback URL when not set at runtime', function (): void {
@@ -62,7 +63,7 @@ it('creates a new payment with the driver callback URL when not set at runtime',
     $driver->callCreate();
 
     expect($driver)
-        ->receivedData('callback_url')->toBe('http://test.com');
+        ->receivedParameters('callbackUrl')->toBe('http://test.com');
 });
 
 it('converts a relative callback URL to an absolute one', function (): void {
@@ -74,7 +75,7 @@ it('converts a relative callback URL to an absolute one', function (): void {
     $driver->callCreate();
 
     expect($driver)
-        ->receivedData('callback_url')->toBe('https://myapp.com/callback/endpoint');
+        ->receivedParameters('callbackUrl')->toBe('https://myapp.com/callback/endpoint');
 
     // Runtime's callback URL
     $driver->callbackUrl('/runtime/callback/endpoint');
@@ -82,7 +83,7 @@ it('converts a relative callback URL to an absolute one', function (): void {
     $driver->callCreate();
 
     expect($driver)
-        ->receivedData('callback_url')->toBe('https://myapp.com/runtime/callback/endpoint');
+        ->receivedParameters('callbackUrl')->toBe('https://myapp.com/runtime/callback/endpoint');
 });
 
 it('does not change an absolute callback URL', function (): void {
@@ -92,7 +93,7 @@ it('does not change an absolute callback URL', function (): void {
     $driver->callCreate();
 
     expect($driver)
-        ->receivedData('callback_url')->toBe('http://test.com/callback/endpoint');
+        ->receivedParameters('callbackUrl')->toBe('http://test.com/callback/endpoint');
 
     // Runtime's callback URL
     $driver->callbackUrl('http://test.com/runtime/callback/endpoint');
@@ -100,7 +101,7 @@ it('does not change an absolute callback URL', function (): void {
     $driver->callCreate();
 
     expect($driver)
-        ->receivedData('callback_url')->toBe('http://test.com/runtime/callback/endpoint');
+        ->receivedParameters('callbackUrl')->toBe('http://test.com/runtime/callback/endpoint');
 });
 
 it('converts currency to Rial if the app currency is Toman', function (string $currency, int $result): void {
@@ -109,7 +110,7 @@ it('converts currency to Rial if the app currency is Toman', function (string $c
     $driver = testDriver()->create(amount: 1_000);
 
     expect($driver)
-        ->receivedData('amount')->toBe($result);
+        ->receivedParameters('amount')->toBe($result);
 })->with([
     'Toman' => ['Toman', 10_000],
     'Rial' => ['Rial', 1_000],
@@ -242,8 +243,8 @@ it('just verifies the payment when the gateway payload is provided', function ()
     $driver = testDriver()->verify(['key' => 'value']);
 
     expect($driver)
-        ->receivedData('method')->toBe('verify')
-        ->receivedData('passed_payload')->toBe(['key' => 'value']);
+        ->calledMethods()->toBe(['verify'])
+        ->receivedParameters('storedPayload')->toBe(['key' => 'value']);
 });
 
 it('verifies the payment by fetching the gateway payload from the database when it is not provided', function (): void {
@@ -252,8 +253,8 @@ it('verifies the payment by fetching the gateway payload from the database when 
     $driver = testDriver()->verify();
 
     expect($driver)
-        ->receivedData('method')->toBe('verify')
-        ->receivedData('passed_payload')->toBe($driver->getGatewayPayload());
+        ->calledMethods()->toBe(['verify'])
+        ->receivedParameters('storedPayload')->toBe($driver->getGatewayPayload());
 });
 
 it('throws an exception when trying to fetch the gateway payload from the database and the table does not exist', function (): void {
@@ -395,7 +396,7 @@ it('throws an exception when trying to verify an already verified and stored int
         );
 
     expect($driver)
-        ->receivedData()->toBe([]); // Nothing is called
+        ->calledMethods()->toBe([]); // Nothing is called
 
     $this->assertDatabaseHas(Payment::class, [
         'transaction_id' => $model->transaction_id,
@@ -407,7 +408,7 @@ it('just settles the payment if it was not stored internally', function (): void
     $driver = testDriver()->verify([])->settle();
 
     expect($driver)
-        ->receivedData('method')->toBe('settle');
+        ->calledMethods()->toBe(['verify', 'settle']);
 });
 
 it('settles the payment and updates it in the database if it was stored internally', function (): void {
@@ -433,7 +434,7 @@ it('settles the payment and updates it in the database if it was stored internal
     ]);
 
     expect($driver)
-        ->receivedData('method')->toBe('settle');
+        ->calledMethods()->toBe(['verify', 'settle']);
 });
 
 it('updates the payment in the database after calling the settle API', function (): void {
@@ -459,14 +460,14 @@ it('throws an exception if settle is called on an object that was not verified',
         ->toThrow(PaymentNotVerifiedException::class, 'You must verify the payment before running settle method.');
 
     expect($driver)
-        ->receivedData()->toBe([]); // Nothing is called
+        ->calledMethods()->toBe([]); // Nothing is called
 });
 
 it('just reverses the payment if it was not stored internally', function (): void {
     $driver = testDriver()->verify([])->reverse();
 
     expect($driver)
-        ->receivedData('method')->toBe('reverse');
+        ->calledMethods()->toBe(['verify', 'reverse']);
 });
 
 it('reverses the payment and updates it in the database if it was stored internally', function (): void {
@@ -492,7 +493,7 @@ it('reverses the payment and updates it in the database if it was stored interna
     ]);
 
     expect($driver)
-        ->receivedData('method')->toBe('reverse');
+        ->calledMethods()->toBe(['verify', 'reverse']);
 });
 
 it('updates the payment in the database after calling the reverse API', function (): void {
@@ -518,7 +519,7 @@ it('throws an exception if reverse is called on an object that was not verified'
         ->toThrow(PaymentNotVerifiedException::class, 'You must verify the payment before running reverse method.');
 
     expect($driver)
-        ->receivedData()->toBe([]); // Nothing is called
+        ->calledMethods()->toBe([]); // Nothing is called
 });
 
 // ------------
