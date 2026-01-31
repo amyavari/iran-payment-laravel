@@ -526,13 +526,6 @@ it('throws an exception if reverse is called on an object that was not verified'
 // Helpers
 // ------------
 
-function freezeTimeUntilSeconds(): void
-{
-    $microSeconds = (int) (microtime(true) * 1000) % 1000;
-
-    setTestNowIran("2025-12-10 18:30:10.{$microSeconds}");
-}
-
 function testDriver(): TestDriver
 {
     return new TestDriver();

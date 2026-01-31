@@ -21,3 +21,14 @@ it('generates 15-digit unique transaction ID', function (): void {
         ->toHaveLength(50)
         ->each->toHaveLength(15);
 });
+
+// ------------
+// Helpers
+// ------------
+
+function freezeTimeUntilSeconds(): void
+{
+    $microSeconds = (int) (microtime(true) * 1000) % 1000;
+
+    setTestNowIran("2025-12-10 18:30:10.{$microSeconds}");
+}
