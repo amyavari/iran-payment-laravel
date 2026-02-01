@@ -7,6 +7,7 @@ namespace AliYavari\IranPayment\Tests\Fixtures;
 use AliYavari\IranPayment\Abstracts\Driver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use Exception;
+use Illuminate\Support\Arr;
 
 /**
  * @internal
@@ -19,7 +20,7 @@ final class TestDriver extends Driver
 
     private array $calledMethods = [];
 
-    private bool $isSuccessful = true;
+    private array $isSuccessful = [];
 
     private string $driverCallbackUrl = '';
 
@@ -32,11 +33,11 @@ final class TestDriver extends Driver
     /**
      * Test-only helper method
      *
-     * Driver should return successful response
+     * Driver should return a successful response for the given method call.
      */
-    public function asSuccessful(): self
+    public function asSuccessful(string $method = 'all'): self
     {
-        $this->isSuccessful = true;
+        Arr::set($this->isSuccessful, $method, true);
 
         return $this;
     }
@@ -44,11 +45,12 @@ final class TestDriver extends Driver
     /**
      * Test-only helper method
      *
-     * Driver should return failed response
+     * Driver should return a failed response for the given method call.
      */
-    public function asFailed(): self
+    public function asFailed(string $method = 'all'): self
     {
-        $this->isSuccessful = false;
+        Arr::set($this->isSuccessful, $method, false);
+
         $this->errorCode = 12;
         $this->errorMessage = 'خطایی رخ داد.';
 
@@ -106,13 +108,25 @@ final class TestDriver extends Driver
     /**
      * Test-only helper method
      *
+     * Calls verify method that indicates there is no internal DB record.
+     */
+    public function callVerifyNoModel(): self
+    {
+        $this->verify([]);
+
+        return $this;
+    }
+
+    /**
+     * Test-only helper method
+     *
      * Stores a test payment record.
      */
     public function storeTestPayment(): self
     {
         $payable = TestModel::query()->create();
 
-        $this->asSuccessful()->store($payable)->callCreate();
+        $this->asSuccessful('create')->store($payable)->callCreate();
 
         return $this;
     }
@@ -173,12 +187,14 @@ final class TestDriver extends Driver
 
     protected function getGatewayRawResponse(): mixed
     {
-        return 'raw response';
+        return Arr::last($this->calledMethods).' raw response';
     }
 
     protected function isSuccessful(): bool
     {
-        return $this->isSuccessful;
+        $default = Arr::get($this->isSuccessful, 'all', true);
+
+        return Arr::get($this->isSuccessful, Arr::last($this->calledMethods), $default);
     }
 
     protected function driverCallbackUrl(): string

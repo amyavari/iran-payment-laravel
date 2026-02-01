@@ -14,6 +14,7 @@ use AliYavari\IranPayment\Exceptions\PaymentAlreadyVerifiedException;
 use AliYavari\IranPayment\Exceptions\PaymentNotVerifiedException;
 use AliYavari\IranPayment\Models\Payment as PaymentModel;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 /**
@@ -56,6 +57,31 @@ abstract class Driver implements Payment
      * @var array<string,mixed>
      */
     private array $callbackPayload;
+
+    /**
+     * Determine whether the payment should be auto-settled.
+     */
+    private bool $autoSettle = false;
+
+    /**
+     * Determine whether the payment should be auto-reversed.
+     */
+    private bool $autoReverse = false;
+
+    /**
+     * The verification success status used for auto-settle and auto-reverse.
+     */
+    private bool $verificationSuccessfulStatus;
+
+    /**
+     * The verification error message used for auto-settle and auto-reverse.
+     */
+    private mixed $verificationErrorMessage;
+
+    /**
+     * The verification raw response used for auto-settle and auto-reverse.
+     */
+    private mixed $verificationRawResponse;
 
     /**
      * Get the driver's callback URL from configuration
@@ -173,7 +199,8 @@ abstract class Driver implements Payment
     {
         $this->ensureApiIsCalled();
 
-        return $this->isSuccessful();
+        return $this->verificationSuccessfulStatus
+            ?? $this->isSuccessful();
     }
 
     /**
@@ -189,7 +216,10 @@ abstract class Driver implements Payment
      */
     final public function error(): ?string
     {
-        return $this->whenFailed(fn (): string => sprintf('کد %s- %s', $this->getGatewayStatusCode(), $this->getGatewayStatusMessage()));
+        return $this->verificationErrorMessage
+            ?? $this->whenFailed(
+                fn (): string => sprintf('کد %s- %s', $this->getGatewayStatusCode(), $this->getGatewayStatusMessage())
+            );
     }
 
     /**
@@ -199,7 +229,8 @@ abstract class Driver implements Payment
     {
         $this->ensureApiIsCalled();
 
-        return $this->getGatewayRawResponse();
+        return $this->verificationRawResponse
+            ?? $this->getGatewayRawResponse();
     }
 
     /**
@@ -261,6 +292,14 @@ abstract class Driver implements Payment
 
         $this->updatePaymentAfterVerification();
 
+        if ($this->successful()) {
+            $this->settleIfAutoEnabled();
+        }
+
+        if ($this->failed()) {
+            $this->reverseIfAutoEnabled();
+        }
+
         return $this;
     }
 
@@ -288,6 +327,26 @@ abstract class Driver implements Payment
         $this->reversePayment();
 
         $this->updatePaymentAfterReversal();
+
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    final public function autoSettle(bool $autoSettle = true): static
+    {
+        $this->autoSettle = $autoSettle;
+
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    final public function autoReverse(bool $autoReverse = true): static
+    {
+        $this->autoReverse = $autoReverse;
 
         return $this;
     }
@@ -436,5 +495,63 @@ abstract class Driver implements Payment
                 sprintf('You must verify the payment before running %s method.', $method)
             );
         }
+    }
+
+    /**
+     * Settle the payment automatically when is enabled.
+     */
+    private function settleIfAutoEnabled(): void
+    {
+        if ($this->autoSettle) {
+            $this->preserveVerificationState(fn (): static => $this->settle());
+        }
+    }
+
+    /**
+     * Reverse the payment automatically when is enabled.
+     */
+    private function reverseIfAutoEnabled(): void
+    {
+        if ($this->autoReverse) {
+            $this->preserveVerificationState(fn (): static => $this->reverse());
+        }
+    }
+
+    /**
+     * Execute the given callback while preserving the current verification state.
+     */
+    private function preserveVerificationState(callable $callback): void
+    {
+        $state = $this->snapshotVerificationState();
+
+        call_user_func($callback);
+
+        $this->restoreVerificationState($state);
+    }
+
+    /**
+     * Capture the current verification state.
+     *
+     * @return Collection<string,mixed>
+     */
+    private function snapshotVerificationState(): Collection
+    {
+        return collect([
+            'successful' => $this->isSuccessful(),
+            'error' => $this->error(),
+            'raw_response' => $this->getRawResponse(),
+        ]);
+    }
+
+    /**
+     * Restore a previously captured verification state.
+     *
+     * @param  Collection<string,mixed>  $state
+     */
+    private function restoreVerificationState(Collection $state): void
+    {
+        $this->verificationSuccessfulStatus = $state->get('successful');
+        $this->verificationErrorMessage = $state->get('error');
+        $this->verificationRawResponse = $state->get('raw_response');
     }
 }

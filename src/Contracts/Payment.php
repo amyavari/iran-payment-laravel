@@ -124,4 +124,14 @@ interface Payment
      * @throws \AliYavari\IranPayment\Exceptions\PaymentNotVerifiedException
      */
     public function reverse(): static;
+
+    /**
+     * Enable automatic settlement after verification if the payment is successful.
+     */
+    public function autoSettle(bool $autoSettle = true): static;
+
+    /**
+     * Enable automatic reversal after verification if the payment fails.
+     */
+    public function autoReverse(bool $autoReverse = true): static;
 }
