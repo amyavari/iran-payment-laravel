@@ -167,6 +167,11 @@ abstract class Driver implements Payment
     /**
      * {@inheritdoc}
      */
+    abstract public function noCallback(string $transactionId): static;
+
+    /**
+     * {@inheritdoc}
+     */
     final public function create(int $amount, ?string $description = null, string|int|null $phone = null): static
     {
         $this->setCalledApiMethod(__FUNCTION__);

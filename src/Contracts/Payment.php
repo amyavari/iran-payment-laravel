@@ -91,6 +91,11 @@ interface Payment
     public function fromCallback(array $callbackPayload): static;
 
     /**
+     * Create a payment instance with no gateway callback.
+     */
+    public function noCallback(string $transactionId): static;
+
+    /**
      * Get the reference number assigned to the transaction by the bank.
      */
     public function getRefNumber(): ?string;

@@ -404,6 +404,53 @@ it('communicates with sandbox environment for payment reversal when configured',
     Soap::assertWsdl('https://pgw.dev.bpmellat.ir/pgwchannel/services/pgw?wsdl');
 });
 
+it('creates payment instance with no callback data', function (): void {
+    $payment = driver()->noCallback(transactionId: '123');
+
+    expect($payment)
+        ->toBeInstanceOf(BehpardakhtDriver::class)
+        ->getTransactionId()->toBe('123');
+});
+
+it('returns failed verification with no callback data', function (): void {
+    $payment = driver()->noCallback('123');
+
+    $payment->verify(gatewayPayload());
+
+    expect($payment)
+        ->successful()->toBeFalse()
+        ->error()->toBe('کد 1001- درگاه از وریفای بدون callback پشتیبانی نمی کند.')
+        ->getRawResponse()->toBe('No API is called.');
+
+    Soap::assertNothingIsCalled();
+});
+
+it('returns failed settlement with no callback data', function (): void {
+    $payment = driver()->noCallback('123')->verify(gatewayPayload());
+
+    $payment->settle();
+
+    expect($payment)
+        ->successful()->toBeFalse()
+        ->error()->toBe('کد 1002- درگاه از تسویه بدون callback پشتیبانی نمی کند.')
+        ->getRawResponse()->toBe('No API is called.');
+
+    Soap::assertNothingIsCalled();
+});
+
+it('returns successful reversal with no callback data', function (): void {
+    $payment = driver()->noCallback('123')->verify(gatewayPayload());
+
+    $payment->reverse();
+
+    expect($payment)
+        ->successful()->toBeTrue()
+        ->error()->toBeNull()
+        ->getRawResponse()->toBe('No API is called.');
+
+    Soap::assertNothingIsCalled();
+});
+
 // ------------
 // Helpers
 // ------------

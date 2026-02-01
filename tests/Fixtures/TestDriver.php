@@ -180,6 +180,11 @@ final class TestDriver extends Driver
         throw new Exception('Not implemented');
     }
 
+    public function noCallback(string $transactionId): static
+    {
+        return $this;
+    }
+
     protected function newFromCallback(array $callbackData): static
     {
         return $this;

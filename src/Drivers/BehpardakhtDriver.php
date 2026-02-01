@@ -6,6 +6,7 @@ namespace AliYavari\IranPayment\Drivers;
 
 use AliYavari\IranPayment\Abstracts\Driver;
 use AliYavari\IranPayment\Concerns\HasUniqueNumber;
+use AliYavari\IranPayment\Concerns\NoCallbackDefaults;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
@@ -24,7 +25,7 @@ use Illuminate\Support\Stringable;
  */
 final class BehpardakhtDriver extends Driver
 {
-    use HasUniqueNumber;
+    use HasUniqueNumber, NoCallbackDefaults;
 
     /**
      * WSDL URL of the payment gateway.
@@ -155,6 +156,18 @@ final class BehpardakhtDriver extends Driver
     /**
      * {@inheritdoc}
      */
+    public function noCallback(string $transactionId): static
+    {
+        $this->transactionId = $transactionId;
+
+        $this->enableNoCallback();
+
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     protected function newFromCallback(array $callbackPayload): static
     {
         $this->callbackPayload = collect($callbackPayload);
@@ -171,6 +184,10 @@ final class BehpardakhtDriver extends Driver
      */
     protected function isSuccessful(): bool
     {
+        if ($this->isNoCallback()) {
+            return $this->isNoCallbackSuccessful($this->apiStatusCode);
+        }
+
         return $this->apiStatusCode === '0';
     }
 
@@ -187,6 +204,12 @@ final class BehpardakhtDriver extends Driver
      */
     protected function verifyPayment(array $storedPayload): void
     {
+        if ($this->isNoCallback()) {
+            $this->setPaymentStatusForNoCallback('verify');
+
+            return;
+        }
+
         if ($this->isFailedPaymentBasedOnCallback()) {
             $this->setPaymentStatusBasedOnCallback();
 
@@ -203,6 +226,12 @@ final class BehpardakhtDriver extends Driver
      */
     protected function settlePayment(): void
     {
+        if ($this->isNoCallback()) {
+            $this->setPaymentStatusForNoCallback('settle');
+
+            return;
+        }
+
         $this->execute('bpSettleRequest', $this->followUpPayload());
     }
 
@@ -211,6 +240,12 @@ final class BehpardakhtDriver extends Driver
      */
     protected function reversePayment(): void
     {
+        if ($this->isNoCallback()) {
+            $this->setPaymentStatusForNoCallback('reverse');
+
+            return;
+        }
+
         $this->execute('bpReversalRequest', $this->followUpPayload());
     }
 
@@ -227,6 +262,10 @@ final class BehpardakhtDriver extends Driver
      */
     protected function getGatewayStatusMessage(): string
     {
+        if ($this->isNoCallback()) {
+            return $this->noCallbackMessage($this->apiStatusCode);
+        }
+
         return match ($this->apiStatusCode) {
             '0' => 'تراکنش با موفقیت انجام شد',
             '11' => 'شماره کارت نامعتبر است',
@@ -431,6 +470,16 @@ final class BehpardakhtDriver extends Driver
                 throw MissingCallbackDataException::make($this->getGateway(), $keys, $key);
             }
         }
+    }
+
+    /**
+     * Set the payment status when the gateway is called without callback data.
+     */
+    private function setPaymentStatusForNoCallback(string $method): void
+    {
+        $this->apiStatusCode = $this->noCallbackStatusCode($method);
+        $this->rawResponse = $this->noCallbackRawResponse();
+
     }
 
     /**

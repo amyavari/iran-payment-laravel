@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use AliYavari\IranPayment\Contracts\Payment as PaymentInterface;
 use AliYavari\IranPayment\Enums\PaymentStatus;
+use AliYavari\IranPayment\Facades\Payment as PaymentFacade;
 use AliYavari\IranPayment\Models\Payment;
 use AliYavari\IranPayment\Tests\Fixtures\TestModel;
 
@@ -66,6 +68,26 @@ it('returns only pending payment relationship', function (): void {
     expect(Payment::query()->pending()->get())
         ->toHaveCount(1)
         ->first()->is($pendingPayment)->toBeTrue();
+});
+
+it('creates a gateway payment instance from stored payment', function (): void {
+    $payment = createPayment(fake()->randomElement(PaymentStatus::cases()));
+
+    $mockedGateway = Mockery::mock(PaymentInterface::class);
+    $mockedGateway->shouldReceive('noCallback')
+        ->with($payment->transaction_id)
+        ->once();
+
+    PaymentFacade::partialMock()
+        ->shouldReceive('gateway')
+        ->with($payment->gateway)
+        ->once()
+        ->andReturn($mockedGateway);
+
+    $gateway = $payment->toGatewayPayment();
+
+    expect($gateway)
+        ->toBe($mockedGateway);
 });
 
 // ------------

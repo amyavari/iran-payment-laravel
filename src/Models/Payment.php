@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Models;
 
 use AliYavari\IranPayment\Builders\PaymentBuilder;
+use AliYavari\IranPayment\Contracts\Payment as PaymentInterface;
 use AliYavari\IranPayment\Enums\PaymentStatus;
+use AliYavari\IranPayment\Facades\Payment as PaymentFacade;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -60,6 +62,14 @@ final class Payment extends Model
         ]);
 
         return $this;
+    }
+
+    /**
+     * Create the gateway payment instance from this payment model.
+     */
+    public function toGatewayPayment(): PaymentInterface
+    {
+        return PaymentFacade::gateway($this->gateway)->noCallback($this->transaction_id);
     }
 
     /**
