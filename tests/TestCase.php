@@ -6,6 +6,7 @@ namespace AliYavari\IranPayment\Tests;
 
 use AliYavari\IranPayment\Facades\Soap;
 use AliYavari\IranPayment\IranPaymentServiceProvider;
+use DG\BypassFinals;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
@@ -20,6 +21,7 @@ abstract class TestCase extends Orchestra
     {
         parent::setUp();
 
+        $this->enableFinalClassMocking();
         $this->preventStrayRequests();
     }
 
@@ -64,5 +66,10 @@ abstract class TestCase extends Orchestra
             $table->uuid('id');
             $table->timestamps();
         });
+    }
+
+    private function enableFinalClassMocking(): void
+    {
+        BypassFinals::enable(bypassReadOnly: false);
     }
 }
