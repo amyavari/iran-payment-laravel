@@ -46,14 +46,11 @@ To view the Persian documentation, please refer to [README_FA.md](./docs/README_
     - [Automatic Store](#automatic-store)
     - [Manual Store](#manual-store)
   - [Redirect User to Payment Page](#redirect-user-to-payment-page)
-    - [Automatic Redirection](#automatic-redirection)
-    - [Manual Redirection](#manual-redirection)
-  - [Verification, Settle and Refund](#verification-settle-and-refund)
-    - [Verification](#verification)
-    - [Settle](#settle)
-    - [Refund or Reverse](#refund-or-reverse)
+  - [Verification](#verification)
+    - [Verify, Settle and Refund](#verify-settle-and-refund)
+    - [Successful Payment Details](#successful-payment-details)
     - [Form Request Classes](#form-request-classes)
-    - [Verification and Settle Without Callback](#verification-and-settle-without-callback)
+    - [Verification Without Callback](#verification-without-callback)
 - [Testing](#testing)
 - [Contributing](#contributing)
 
@@ -119,9 +116,10 @@ PAYMENT_USE_SANDBOX=<true or false>
 # See the "gateways" section in config/iran-payment.php
 ```
 
-**Note:** For the `PAYMENT_GATEWAY`, refer to the `gateway Key` column in the [List of Available Payment Gateways](#list-of-available-payment-gateways).
+**Notes:**
 
-**Note:** For each gateway’s callback URL and credentials, define the required keys under your desired gateway(s) in the `gateways` section of [config/iran-payment.php](./config/iran-payment.php)
+- For the `PAYMENT_GATEWAY`, refer to the `gateway Key` column in the [List of Available Payment Gateways](#list-of-available-payment-gateways).
+- For each gateway’s callback URL and credentials, define the required keys under your desired gateway(s) in the `gateways` section of [config/iran-payment.php](./config/iran-payment.php)
 
 ## Usage
 
@@ -166,64 +164,82 @@ $payment->getRawResponse(); // string|array
 
 #### Automatic Store
 
-You can use the package’s internal functionality to store a created payment in the database, or handle it yourself using the [Manual Store](#manual-store)
-methods.
+The package can automatically store payments and keep them in sync during later API calls such as verification, settlement, or reversal.
 
-**Note:** For automatic storage, you must publish and run the migration files. See [Publish Vendor Files](#publish-vendor-files).
+If you prefer full control, [Manual Store](#manual-store) approach.
+
+Enable automatic storage by chaining `store()` **before** calling `create()`:
 
 ```php
-// Store the payment and associate it with the Eloquent model the payment is for.
-$payment->store(Model $payable);
+use AliYavari\IranPayment\Facades\Payment;
+
+// Store the payment and associate it with a payable Eloquent model
+Payment::store(Model $payable)->create(...);
+
+Payment::{other configurations}->store(Model $payable)->create(...);
 ```
 
-##### Track Payment Through Your Payable Model
+**Notes:**
 
-When using automatic storage, you can add the `AliYavari\IranPayment\Concerns\Payable` trait to your payable model to easily track its payment statuses.
+- For automatic storage, you must publish and run the migration files. See [Publish Vendor Files](#publish-vendor-files).
+- If payment creation fails, no record will be stored.
+- Once enabled, the package will automatically update the payment record in subsequent API calls.
+
+##### Accessing the Stored Payment
+
+After a payment is created, and during any subsequent API calls such as `verify()`, `settle()`, or `reverse()`, you can access the underlying payment model:
 
 ```php
-<?php
+$payment->getModel();      // \AliYavari\IranPayment\Models\Payment
 
-declare(strict_types=1);
+// Access the associated payable model
+$payment->getModel()->payable;
+```
 
+To see all available attributes, refer to [`src/Models/Payment.php`](./src/Models/Payment.php)
+
+##### Tracking Payments via the Payable Model
+
+When using automatic storage, add the `AliYavari\IranPayment\Concerns\HasPayment` trait to your payable model to track its payments:
+
+```php
+// Example payable model (Course)
 namespace App\Models;
 
-use AliYavari\IranPayment\Concerns\Payable;
+use AliYavari\IranPayment\Concerns\HasPayment;
 use Illuminate\Database\Eloquent\Model;
 
 final class Course extends Model
 {
-    use Payable;
+    use HasPayment;
 
     //
 }
 
-// Access the payments relationship (MorphMany)
-
-// Returns a query builder instance for all payments
-$course->payments();
-
-// Returns a collection of all related Payment models
-$course->payments;
-
-// Returns a query builder for only successful payments
-$course->payments()->successful();
-
-// Returns a query builder for only failed payments
-$course->payments()->failed();
+// Payments relationship (MorphMany)
+$course->payments(); // AliYavari\IranPayment\Models\Payment
 ```
 
 **Note:** For more information about this relationship, see [Eloquent relationships: one-to-many polymorphic].
 
-##### Prune Old Failed Payments
+##### Querying Stored Payments
 
-To help keep your payment table clean, this package provides an Artisan command to prune old payment records (failed ones). You can schedule this command using [Laravel's task scheduler]
-
-Example: Delete failed payments created before 30 days ago
+The `Payment` model provides query scopes for common payment states:
 
 ```php
-use Illuminate\Support\Facades\Schedule;
+use AliYavari\IranPayment\Models\Payment as PaymentModel;
 
-Schedule::command('iran-payment:prune-failed-payments --days=30')->daily();
+// Verified and successful payments
+PaymentModel::query()->successful()->...
+
+// Verified and failed payments
+PaymentModel::query()->failed()->...
+
+// Pending (unverified) payments
+PaymentModel::query()->pending()->...
+
+// Via a payable model using HasPayment
+$course->payments()->..
 ```
 
 #### Manual Store
@@ -243,17 +259,7 @@ $payment->getTransactionId();    // string|null
 
 ### Redirect User to Payment Page
 
-#### Automatic Redirection
-
-To automatically redirect the user to the payment page, use:
-
-```php
-$payment->redirect();
-```
-
-#### Manual Redirection
-
-If you prefer to manually handle the redirection to the gateway’s payment page, use the data provided by the following method:
+To redirect user to the gateway’s payment page, use the data provided by the following method:
 
 ```php
 $redirectData = $payment->getPaymentRedirectData();
@@ -270,54 +276,69 @@ $redirectData->payload;     // array
 // Required HTTP headers
 $redirectData->headers;     // array
 
-// Get all redirect information as an array (useful for sending to frontend)
-$redirectData->toArray();
+// Get all redirect information as an array
+$redirectData->toArray();   // array
 ```
 
-### Verification, Settle and Refund
+### Verification
 
-#### Verification
+#### Verify, Settle and Refund
 
 After the user is redirected back to your application from the gateway, you can verify the payment using these methods:
 
-**Note:** After calling `verify()`, `settle()`, or `reverse()`, you can use the methods in [Checking API Call Status](#checking-api-call-status) to check the result of the API call.
+**Notes:**
+
+- After calling `verify()`, `settle()`, or `reverse()`, you can use the methods in [Checking API Call Status](#checking-api-call-status) to check the result of the API call.
+- If the payment was stored in the database using this package, these methods will automatically update the payment record. To access the underlying payment model, see [Automatic Store](#automatic-store)
 
 ```php
 use AliYavari\IranPayment\Facades\Payment;
 
 // Create a gateway instance from callback data
-$payment = Payment::gateway(string $gateway)->fromCallBack(array $callbackData);
+$payment = Payment::gateway(string $gateway)->fromCallback(array $callbackPayload);
 
 // If you used the internal automatic storage
 $payment->verify();
 
-// If you stored the payment manually:
-// Get the transaction ID (to find the record in your database)
-$payment->getTransactionId();
-
-// Verify payment manually using your stored payload
+// If you stored the payment manually, pass your stored payload to the verify method
 $payment->verify(array $gatewayPayload);
+
+// To find the payment in your database (for manual storage)
+$payment->getTransactionId();
 ```
 
-**Note:** To get `$callbackData`, this package provides basic `FormRequest` classes to validate callback data.
-These classes are located in `AliYavari\IranPayment\Requests\<Gateway>Request`. See [Form Request classes](#form-request-classes)
-
-#### Settle
-
-Some gateways (especially Shaparak gateways) require you to settle the payment after successful verification:
+To settle or reverse the payment:
 
 ```php
-// Request the gateway to transfer the money into your account
+// Settle the payment (call if verification is successful)
 $payment->settle();
+
+// Reverse or refund the payment (call if verification fails)
+$payment->reverse();
+
+// Let the package handle settle or reverse automatically when needed
+$payment
+  ->autoSettle(bool $autoSettle = true)
+  ->autoReverse(bool $autoReverse = true)
+  ->verify(...); // Manual or automatic storage
 ```
 
-#### Refund or Reverse
+**Notes:**
 
-If you need to refund a transaction, or if something failed during verification, use:
+- To get `$callbackPayload`, this package provides basic `FormRequest` classes to validate callback data.
+  These classes are located in `AliYavari\IranPayment\Requests\<Gateway>Request`. See [Form Request classes](#form-request-classes)
+- If auto-settle and/or auto-reverse is enabled, the [Checking API Call Status](#checking-api-call-status) applies to **verification**.
+
+#### Successful Payment Details
+
+If the payment is successful, the following methods are available to retrieve additional payment details:
 
 ```php
-// Request the gateway to refund or reverse the transaction
-$payment->reverse();
+// Get the reference number assigned to the transaction by the bank.
+$payment->getRefNumber();   // string|null
+
+// Get user's card number used to pay.
+$payment->getCardNumber();  // string|null
 ```
 
 #### Form Request Classes
@@ -332,12 +353,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use AliYavari\IranPayment\Requests\SepRequest;
+use AliYavari\IranPayment\Http\Requests\SepRequest;
 use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
 
 final class SepVerificationController extends Controller
 {
-    public function update(SepRequest $request): JsonResponse
+    public function update(SepRequest $request): RedirectResponse
     {
         $callbackData = $request->validated();
 
@@ -350,34 +372,35 @@ Available Form Request classes:
 
 ```php
 // Behpardakht
-use AliYavari\IranPayment\Requests\BehpardakhtRequest;
+use AliYavari\IranPayment\Http\Requests\BehpardakhtRequest;
 
 // Sep
-use AliYavari\IranPayment\Requests\SepRequest;
+use AliYavari\IranPayment\Http\Requests\SepRequest;
 
 // Zarinpal
-use AliYavari\IranPayment\Requests\ZarinpalRequest;
+use AliYavari\IranPayment\Http\Requests\ZarinpalRequest;
 
 // IDPay
-use AliYavari\IranPayment\Requests\IdPayRequest;
+use AliYavari\IranPayment\Http\Requests\IdPayRequest;
 ```
 
-#### Verification and Settle Without Callback
+#### Verification Without Callback
 
-Sometimes the user does not return to your website after the payment. In this situation, some gateways (mainly Shaparak-based ones) automatically reverse the transaction, while others do not.
-To handle this case the same way across all gateways, you can use the following methods. The package will apply each gateway’s rules internally and provide you with a simple, consistent API:
-
-**Note:** After calling `verifyPendingNoCallback()`, or `settle()`, you can use the methods in [Checking API Call Status](#checking-api-call-status) to check the result of the API call.
+Sometimes the user does not return to your website after completing the payment. In this case, you should use the `noCallback()` method instead of `fromCallback()`. All other steps remain the same.
 
 ```php
 use AliYavari\IranPayment\Facades\Payment;
 
-// Verify
-$payment = Payment::verifyPendingNoCallback(array $gatewayPayload);
-
-// Settle if verification was successful
-$payment->settle();
+$payment = Payment::gateway(string $gateway)->noCallback(string $transactionId);
 ```
+
+If you are using [Automatic Store](#automatic-store), you can directly rebuild the gateway payment instance from the stored model:
+
+```php
+$payment = $paymentModel->toGatewayPayment();
+```
+
+**Note:** Some gateways (mainly Shaparak-based gateways) automatically reverse the transaction if the callback is not received, while others allow verification without a callback. This package applies each gateway’s rules internally.
 
 ## Testing
 
@@ -431,9 +454,10 @@ Payment::fake([
 ]);
 ```
 
-**Note:** Defining both _global behavior_ and _per-gateway behaviors_ together is not allowed in a single call. Use one strategy per `fake()` call.
+**Notes:**
 
-**Note:** If you define multiple behaviors for the same gateway, the last one will override the previous definitions.
+- Defining both _global behavior_ and _per-gateway behaviors_ together is not allowed in a single call. Use one strategy per `fake()` call.
+- If you define multiple behaviors for the same gateway, the last one will override the previous definitions.
 
 ## Contributing
 

@@ -1,0 +1,43 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('payments', function (Blueprint $table) {
+            $table->uuid('id');
+            $table->string('transaction_id')->unique();
+            $table->morphs('payable');
+            $table->string('amount');
+            $table->string('gateway');
+            $table->string('status');
+            $table->json('gateway_payload');
+            $table->json('raw_responses');
+            $table->string('error')->nullable();
+            $table->string('ref_number')->nullable();
+            $table->string('card_number')->nullable();
+            $table->timestamp('verified_at')->nullable();
+            $table->timestamp('settled_at')->nullable();
+            $table->timestamp('reversed_at')->nullable();
+            $table->boolean('owned_by_iran_payment')->default(false);
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('payments');
+    }
+};

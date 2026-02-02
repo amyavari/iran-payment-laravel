@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use AliYavari\IranPayment\Tests\TestCase;
+use Carbon\Carbon;
+use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,7 +18,7 @@ use AliYavari\IranPayment\Tests\TestCase;
 */
 
 pest()->extend(TestCase::class)
- // ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+    ->use(LazilyRefreshDatabase::class)
     ->in('Feature');
 
 /*
@@ -43,7 +45,18 @@ expect()->extend('toBeOne', fn () => $this->toBe(1));
 |
 */
 
-function something(): void
+/**
+ * Sets the current test time in Iran's timezone.
+ */
+function setTestNowIran(string $dateTime = '2025-12-10 18:30:10'): void
 {
-    // ..
+    setTestNow($dateTime.'+03:30'); // Iran Standard Time
+}
+
+/**
+ * Sets the current test time.
+ */
+function setTestNow(string $dateTime = '2025-12-10 18:30:10'): void
+{
+    Carbon::setTestNow($dateTime);
 }
