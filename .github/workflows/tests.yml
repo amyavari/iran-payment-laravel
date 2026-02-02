@@ -41,7 +41,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: dom, mbstring, zip, fileinfo, pdo_sqlite, intl
+          extensions: dom, mbstring, zip, fileinfo, pdo_sqlite, intl, soap
           coverage: pcov
 
       - name: Get Composer cache directory
@@ -68,4 +68,4 @@ jobs:
         run: php ./vendor/bin/testbench migrate:fresh
 
       - name: Run unit test
-        run: php ./vendor/bin/pest --coverage --color=always --do-not-cache-result
+        run: composer test:unit -- --ci --do-not-cache-result

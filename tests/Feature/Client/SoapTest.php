@@ -14,7 +14,7 @@ it('calls a WSDL service correctly', function (): void {
     expect($response)
         ->toBeInstanceOf(stdClass::class)
         ->NumberToWordsResult->toBe('one hundred ');
-})->skip('This test calls real external service. To run it, make sure the php-soap extension is installed.');
+})->skipLocally(); // This test calls real external service. To run it, make sure the php-soap extension is installed.
 
 it('prevents real requests', function (): void {
     Soap::preventStrayRequests(prevent: true);
