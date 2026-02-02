@@ -71,7 +71,7 @@ interface Payment
     /**
      * Get the data required to redirect the user to the payment page.
      */
-    public function getPaymentRedirectData(): ?PaymentRedirectDto;
+    public function getRedirectData(): ?PaymentRedirectDto;
 
     /**
      * Store the created payment in the database.

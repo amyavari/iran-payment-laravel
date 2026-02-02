@@ -239,7 +239,9 @@ PaymentModel::query()->failed()->...
 PaymentModel::query()->pending()->...
 
 // Via a payable model using HasPayment
-$course->payments()->..
+$course->payments()->successful()->...
+$course->payments()->failed()->...
+$course->payments()->pending()->...
 ```
 
 #### Manual Store
@@ -262,7 +264,7 @@ $payment->getTransactionId();    // string|null
 To redirect user to the gateway’s payment page, use the data provided by the following method:
 
 ```php
-$redirectData = $payment->getPaymentRedirectData();
+$redirectData = $payment->getRedirectData();
 
 // Redirect URL
 $redirectData->url;         // string
@@ -296,15 +298,23 @@ use AliYavari\IranPayment\Facades\Payment;
 
 // Create a gateway instance from callback data
 $payment = Payment::gateway(string $gateway)->fromCallback(array $callbackPayload);
+```
 
-// If you used the internal automatic storage
+If you used the internal automatic storage
+
+```php
+// Call verify without any arguments
 $payment->verify();
+```
 
-// If you stored the payment manually, pass your stored payload to the verify method
-$payment->verify(array $gatewayPayload);
+If you stored the payment manually,
 
-// To find the payment in your database (for manual storage)
+```php
+// To find the payment in your database
 $payment->getTransactionId();
+
+// Call verify with the stored gateway payload
+$payment->verify(array $gatewayPayload);
 ```
 
 To settle or reverse the payment:

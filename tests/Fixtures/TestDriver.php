@@ -165,7 +165,7 @@ final class TestDriver extends Driver
         return ['payload' => 'value'];
     }
 
-    public function getPaymentRedirectData(): ?PaymentRedirectDto
+    public function getRedirectData(): ?PaymentRedirectDto
     {
         throw new Exception('Not implemented');
     }

@@ -130,7 +130,7 @@ it('returns gateway redirect data on successful payment creation with full passe
 
     $payment = driver()->create(1_000, 'Description', '9123456789');
 
-    expect($payment->getPaymentRedirectData())
+    expect($payment->getRedirectData())
         ->toBeInstanceOf(PaymentRedirectDto::class)
         ->url->toBe('https://bpm.shaparak.ir/pgwchannel/startpay.mellat')
         ->method->toBe('POST')
@@ -151,7 +151,7 @@ it('returns gateway redirect data on successful payment creation with minimum pa
 
     $payment = driver()->create(1_000);
 
-    expect($payment->getPaymentRedirectData())
+    expect($payment->getRedirectData())
         ->toBeInstanceOf(PaymentRedirectDto::class)
         ->url->toBe('https://bpm.shaparak.ir/pgwchannel/startpay.mellat')
         ->method->toBe('POST')
@@ -170,7 +170,7 @@ it('returns `null` as gateway redirect data on failed payment creation', functio
     $payment = driver()->create(1_000);
 
     expect($payment)
-        ->getPaymentRedirectData()->toBeNull();
+        ->getRedirectData()->toBeNull();
 });
 
 it('communicates with sandbox environment for payment creation when configured', function (): void {
@@ -181,7 +181,7 @@ it('communicates with sandbox environment for payment creation when configured',
     Soap::assertWsdl('https://pgw.dev.bpmellat.ir/pgwchannel/services/pgw?wsdl');
 
     expect($payment)
-        ->getPaymentRedirectData()->url->toBe('https://pgw.dev.bpmellat.ir/pgwchannel/startpay.mellat');
+        ->getRedirectData()->url->toBe('https://pgw.dev.bpmellat.ir/pgwchannel/startpay.mellat');
 });
 
 it('creates payment instance from callback data', function (): void {

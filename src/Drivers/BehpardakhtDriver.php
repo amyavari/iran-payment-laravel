@@ -118,7 +118,7 @@ final class BehpardakhtDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    public function getPaymentRedirectData(): ?PaymentRedirectDto
+    public function getRedirectData(): ?PaymentRedirectDto
     {
         $payload = collect([
             'RefId' => $this->refId,
