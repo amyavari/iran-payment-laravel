@@ -152,7 +152,7 @@ abstract class Driver implements Payment
     /**
      * {@inheritdoc}
      */
-    abstract public function getPaymentRedirectData(): ?PaymentRedirectDto;
+    abstract public function getRedirectData(): ?PaymentRedirectDto;
 
     /**
      * {@inheritdoc}
