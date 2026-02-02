@@ -396,7 +396,7 @@ final class BehpardakhtDriver extends Driver
             ->whenStartsWith('+98', fn (Stringable $phone) => $phone->replaceFirst('+98', '98'))
             ->whenStartsWith('9809', fn (Stringable $phone) => $phone->replaceFirst('9809', '989'))
             ->when(
-                fn (Stringable $phone): bool => $phone->startsWith('9') && $phone->doesntStartWith('98'),
+                fn (Stringable $phone): bool => $phone->startsWith('9') && ! $phone->startsWith('98'),
                 fn (Stringable $phone) => $phone->prepend('98')
             );
     }
