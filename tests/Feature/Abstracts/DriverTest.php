@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use AliYavari\IranPayment\Abstracts\Driver;
 use AliYavari\IranPayment\Enums\PaymentStatus;
 use AliYavari\IranPayment\Exceptions\ApiIsNotCalledException;
+use AliYavari\IranPayment\Exceptions\CallbackMethodNotCalledException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException;
 use AliYavari\IranPayment\Exceptions\PaymentAlreadyVerifiedException;
@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
+pest()->only();
 /**
  * To keep test cases simple and readable, the concrete `TestDriver` provides
  * several helper methods:
@@ -30,7 +31,8 @@ use Illuminate\Support\Str;
  * - receivedParameters()   Returns parameters received by the last invoked child method.
  * - apiCalled()            Calls a dummy API to mark the API as called, so its status can be asserted.
  * - callCreate()           Calls the `create` method with the required arguments.
- * - callVerifyNoModel()    Calls the `verify` method with the required arguments to indicate there is no internal DB record.
+ * - callCallback()         Calls the `fromCallback` method with the required arguments.
+ * - performVerification()  Calls the `verify` method after executing all required steps.
  * - storeTestPayment()     Stores a test payment record in the database.
  *
  * @see TestDriver
@@ -130,7 +132,7 @@ it('throws an exception when status checks are called before any API call', func
 
 it('does not throw an exception when status checks are called after an API call', function (string $method): void {
     testDriver()->callCreate()->{$method}(); // Create API call
-    testDriver()->callVerifyNoModel()->{$method}(); // Verify API call
+    testDriver()->performVerification()->{$method}(); // Verify API call
 })->throwsNoExceptions()
     ->with([
         'successful',
@@ -237,8 +239,24 @@ it('does not store payment data in the database when the store method is not cal
     $this->assertDatabaseEmpty(Payment::class);
 });
 
+it('throws an exception when verifying without specifying callback', function (): void {
+    $driver = testDriver();
+
+    expect(fn (): TestDriver => $driver->verify(['payload']))
+        ->toThrow(CallbackMethodNotCalledException::class, 'You must call either "fromCallback()" or "noCallback()" before calling verify().');
+
+    expect($driver)
+        ->calledMethods()->toBe([]);
+});
+
+it('does not throw an exception when verifying after specifying callback', function (): void {
+    testDriver()->fromCallback([])->verify([]);
+
+    testDriver()->noCallback('123')->verify([]);
+})->throwsNoExceptions();
+
 it('just verifies the payment when the gateway payload is provided', function (): void {
-    $driver = testDriver()->verify(['payload']);
+    $driver = testDriver()->callCallback()->verify(['payload']);
 
     expect($driver)
         ->calledMethods()->toBe(['verify'])
@@ -248,7 +266,7 @@ it('just verifies the payment when the gateway payload is provided', function ()
 it('verifies the payment by fetching the gateway payload from the database when it is not provided', function (): void {
     testDriver()->storeTestPayment();
 
-    $driver = testDriver()->verify();
+    $driver = testDriver()->callCallback()->verify();
 
     expect($driver)
         ->calledMethods()->toBe(['verify'])
@@ -258,7 +276,7 @@ it('verifies the payment by fetching the gateway payload from the database when 
 it('throws an exception when trying to fetch the gateway payload from the database and the table does not exist', function (): void {
     Schema::drop('payments');
 
-    testDriver()->verify();
+    testDriver()->callCallback()->verify();
 })->throws(MissingVerificationPayloadException::class, 'Verification payload was not provided and the "payments" table does not exist.');
 
 it('throws an exception when trying to fetch the gateway payload from the database and payments table lacks the required columns', function (string $column): void {
@@ -267,7 +285,7 @@ it('throws an exception when trying to fetch the gateway payload from the databa
         $table->dropColumn($column);
     });
 
-    testDriver()->verify();
+    testDriver()->callCallback()->verify();
 })->throws(MissingVerificationPayloadException::class, 'Verification payload was not provided and the "payments" table does not exist.')
     ->with([
         'transaction_id',
@@ -279,7 +297,7 @@ it('throws an exception when trying to fetch the gateway payload from the databa
 
     $model->update($toUpdate);
 
-    testDriver()->verify();
+    testDriver()->callCallback()->verify();
 })->throws(MissingVerificationPayloadException::class, 'Verification payload was not provided and no stored payment record was found.')
     ->with([
         'invalid transaction ID' => [['transaction_id' => '111']],
@@ -290,7 +308,7 @@ it('updates the successful payment in the database when the gateway payload is n
     setTestNow('2025-12-10 18:30:10');
     testDriver()->storeTestPayment();
 
-    $driver = testDriver()->asSuccessful('verify');
+    $driver = testDriver()->callCallback()->asSuccessful('verify');
 
     setTestNow('2025-12-10 18:30:20');
     $driver->verify();
@@ -313,7 +331,7 @@ it('updates the failed payment in the database when the gateway payload is not p
     setTestNow('2025-12-10 18:30:10');
     testDriver()->storeTestPayment();
 
-    $driver = testDriver()->asFailed('verify');
+    $driver = testDriver()->callCallback()->asFailed('verify');
 
     setTestNow('2025-12-10 18:30:20');
     $driver->verify();
@@ -362,14 +380,13 @@ it('stores a failed payment status when the gateway throws an invalid callback d
 it('just throws the invalid callback data exception if it was not stored internally', function (): void {
     $driver = testDriver()->throwing(new InvalidCallbackDataException('Gateway exception error message'));
 
-    expect(fn (): TestDriver => $driver->fromCallback(['key' => 'value'])->verify(['payload']))
-        ->toThrow(InvalidCallbackDataException::class, 'Gateway exception error message');
-});
+    $driver->fromCallback(['key' => 'value'])->verify(['payload']);
+})->throws(InvalidCallbackDataException::class, 'Gateway exception error message');
 
 it('returns the payment model after verification when it was stored internally', function (): void {
     testDriver()->storeTestPayment();
 
-    $driver = testDriver()->verify();
+    $driver = testDriver()->callCallback()->verify();
 
     expect($driver)
         ->getModel()->toBeInstanceOf(Payment::class)
@@ -377,7 +394,7 @@ it('returns the payment model after verification when it was stored internally',
 });
 
 it('returns `null` as the payment model after verification when it was not stored internally', function (): void {
-    $driver = testDriver()->verify(['payload']);
+    $driver = testDriver()->callCallback()->verify(['payload']);
 
     expect($driver)
         ->getModel()->toBeNull();
@@ -388,7 +405,7 @@ it('throws an exception when trying to verify an already verified and stored int
 
     $model->update(['verified_at' => '2025-12-10 18:30:10']);
 
-    $driver = testDriver();
+    $driver = testDriver()->callCallback();
 
     expect(fn (): TestDriver => $driver->verify())
         ->toThrow(
@@ -406,7 +423,7 @@ it('throws an exception when trying to verify an already verified and stored int
 });
 
 it('just settles the payment if it was not stored internally', function (): void {
-    $driver = testDriver()->callVerifyNoModel();
+    $driver = testDriver()->performVerification();
 
     $driver->settle();
 
@@ -422,7 +439,7 @@ it('settles the payment and updates it in the database if it was stored internal
     $driver = testDriver()->asSuccessful('verify')->asFailed('settle');
 
     setTestNow('2025-12-10 18:30:20');
-    $driver->verify();
+    $driver->callCallback()->verify();
 
     setTestNow('2025-12-10 18:30:30');
     $driver->settle();
@@ -444,7 +461,7 @@ it('settles the payment and updates it in the database if it was stored internal
 });
 
 it('updates the payment in the database after calling the settle API', function (): void {
-    $driver = testDriver()->storeTestPayment()->verify();
+    $driver = testDriver()->storeTestPayment()->performVerification();
 
     $driver->throwing(new Exception()); // Stop execution at the API call
 
@@ -470,7 +487,7 @@ it('throws an exception if settle is called on an object that was not verified',
 });
 
 it('just reverses the payment if it was not stored internally', function (): void {
-    $driver = testDriver()->callVerifyNoModel();
+    $driver = testDriver()->performVerification();
 
     $driver->reverse();
 
@@ -486,7 +503,7 @@ it('reverses the payment and updates it in the database if it was stored interna
     $driver = testDriver()->asSuccessful('verify')->asFailed('reverse');
 
     setTestNow('2025-12-10 18:30:20');
-    $driver->verify();
+    $driver->callCallback()->verify();
 
     setTestNow('2025-12-10 18:30:30');
     $driver->reverse();
@@ -508,7 +525,7 @@ it('reverses the payment and updates it in the database if it was stored interna
 });
 
 it('updates the payment in the database after calling the reverse API', function (): void {
-    $driver = testDriver()->storeTestPayment()->verify();
+    $driver = testDriver()->storeTestPayment()->performVerification();
 
     $driver->throwing(new Exception()); // Stop execution at the API call
 
@@ -536,7 +553,7 @@ it('throws an exception if reverse is called on an object that was not verified'
 it('settles after successful verification when auto-settle is enabled', function (): void {
     $driver = testDriver()->asSuccessful('all');
 
-    $driver->autoSettle()->callVerifyNoModel();
+    $driver->autoSettle()->performVerification();
 
     expect($driver)
         ->calledMethods()->toBe(['verify', 'settle']);
@@ -545,7 +562,7 @@ it('settles after successful verification when auto-settle is enabled', function
 it('settles after successful verification when auto-settle is enabled and updates the stored payment', function (): void {
     testDriver()->storeTestPayment();
 
-    $driver = testDriver()->asSuccessful('all');
+    $driver = testDriver()->callCallback()->asSuccessful('all');
 
     $driver->autoSettle()->verify();
 
@@ -564,7 +581,7 @@ it('settles after successful verification when auto-settle is enabled and update
 it('does not settle when the payment is not successful', function (): void {
     $driver = testDriver()->asFailed('verify');
 
-    $driver->autoSettle()->callVerifyNoModel();
+    $driver->autoSettle()->performVerification();
 
     expect($driver)
         ->calledMethods()->toBe(['verify']);
@@ -573,7 +590,7 @@ it('does not settle when the payment is not successful', function (): void {
 it('does not settle when auto-settle is disabled', function (): void {
     $driver = testDriver()->asSuccessful('verify');
 
-    $driver->autoSettle(autoSettle: false)->callVerifyNoModel();
+    $driver->autoSettle(autoSettle: false)->performVerification();
 
     expect($driver)
         ->calledMethods()->toBe(['verify']);
@@ -583,7 +600,7 @@ it('keeps the verification state after auto-settle is performed', function (): v
     // Different statuses to unsure it's verify response
     $driver = testDriver()->asSuccessful('verify')->asFailed('settle');
 
-    $driver->autoSettle()->callVerifyNoModel();
+    $driver->autoSettle()->performVerification();
 
     expect($driver)
         ->successful()->toBeTrue()
@@ -594,7 +611,7 @@ it('keeps the verification state after auto-settle is performed', function (): v
 it('reverses after failed verification when auto-reverse is enabled', function (): void {
     $driver = testDriver()->asFailed('verify');
 
-    $driver->autoReverse()->callVerifyNoModel();
+    $driver->autoReverse()->performVerification();
 
     expect($driver)
         ->calledMethods()->toBe(['verify', 'reverse']);
@@ -603,7 +620,7 @@ it('reverses after failed verification when auto-reverse is enabled', function (
 it('reverses after failed verification when auto-reverse is enabled and updates the stored payment', function (): void {
     testDriver()->storeTestPayment();
 
-    $driver = testDriver()->asFailed('all');
+    $driver = testDriver()->callCallback()->asFailed('all');
 
     $driver->autoReverse()->verify();
 
@@ -622,7 +639,7 @@ it('reverses after failed verification when auto-reverse is enabled and updates 
 it('does not reverse when the payment is successful', function (): void {
     $driver = testDriver()->asSuccessful('verify');
 
-    $driver->autoReverse()->callVerifyNoModel();
+    $driver->autoReverse()->performVerification();
 
     expect($driver)
         ->calledMethods()->toBe(['verify']);
@@ -631,7 +648,7 @@ it('does not reverse when the payment is successful', function (): void {
 it('does not reverse when auto-reverse is disabled', function (): void {
     $driver = testDriver()->asFailed('verify');
 
-    $driver->autoReverse(autoReverse: false)->callVerifyNoModel();
+    $driver->autoReverse(autoReverse: false)->performVerification();
 
     expect($driver)
         ->calledMethods()->toBe(['verify']);
@@ -641,7 +658,7 @@ it('keeps the verification state after auto-reverse is performed', function (): 
     // Different statuses to unsure it's verify response
     $driver = testDriver()->asFailed('verify')->asSuccessful('reverse');
 
-    $driver->autoReverse()->callVerifyNoModel();
+    $driver->autoReverse()->performVerification();
 
     expect($driver)
         ->failed()->toBeTrue()
