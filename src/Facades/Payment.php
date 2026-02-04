@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AliYavari\IranPayment\Facades;
 
+use AliYavari\IranPayment\Drivers\FakeDriver;
 use AliYavari\IranPayment\PaymentManager;
 use Illuminate\Support\Facades\Facade;
 
@@ -21,6 +22,22 @@ use Illuminate\Support\Facades\Facade;
  */
 final class Payment extends Facade
 {
+    /**
+     * Fakes payment calls for testing purposes.
+     */
+    public static function fake(?string $gateway = null): FakeDriver
+    {
+        $paymentManager = self::getFacadeRoot();
+
+        $gateway ??= $paymentManager->getDefaultDriver();
+
+        $fakeDriver = self::$app->make(FakeDriver::class, ['gateway' => $gateway]);
+
+        $paymentManager->extend($gateway, fn () => $fakeDriver);
+
+        return $fakeDriver;
+    }
+
     /**
      * Get the registered name of the component.
      */
