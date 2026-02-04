@@ -6,6 +6,8 @@ namespace AliYavari\IranPayment;
 
 use AliYavari\IranPayment\Contracts\Payment;
 use AliYavari\IranPayment\Drivers\BehpardakhtDriver;
+use AliYavari\IranPayment\Drivers\FakeDriver;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Manager;
 use Override;
 
@@ -30,11 +32,8 @@ final class PaymentManager extends Manager
     {
         $driver ??= $this->getDefaultDriver();
 
-        /**
-         * Make sure we get a new payment instance each time by removing it from the manager cache.
-         */
-        if ($this->mustBeFresh($driver)) {
-            unset($this->drivers[$driver]);
+        if ($this->shouldBeImmutable($driver)) {
+            Arr::forget($this->drivers, $driver);
         }
 
         return parent::driver($driver);
@@ -53,10 +52,8 @@ final class PaymentManager extends Manager
         return $this->container->make(BehpardakhtDriver::class);
     }
 
-    private function mustBeFresh(string $driver): bool
+    private function shouldBeImmutable(string $driver): bool
     {
-        return (bool) $driver;
-        // return isset($this->drivers[$driver])
-        //     && ! $this->drivers[$driver] instanceof FakeDriver;
+        return ! Arr::get($this->drivers, $driver) instanceof FakeDriver;
     }
 }
