@@ -8,6 +8,7 @@ use AliYavari\IranPayment\Concerns\ManagesModel;
 use AliYavari\IranPayment\Contracts\Payment;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\ApiIsNotCalledException;
+use AliYavari\IranPayment\Exceptions\CallbackMethodNotCalledException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException;
 use AliYavari\IranPayment\Exceptions\PaymentAlreadyVerifiedException;
@@ -84,6 +85,11 @@ abstract class Driver implements Payment
     private mixed $verificationRawResponse;
 
     /**
+     * Determine whether a callback method has been called..
+     */
+    private bool $callbackCalled = false;
+
+    /**
      * Get the driver's callback URL from configuration
      */
     abstract protected function driverCallbackUrl(): string;
@@ -133,11 +139,16 @@ abstract class Driver implements Payment
     abstract protected function reversePayment(): void;
 
     /**
-     * Create new instance of gateway driver
+     * Preparation when verification is initiated from a gateway callback
      *
      * @param  array<string,mixed>  $callbackPayload
      */
-    abstract protected function newFromCallback(array $callbackPayload): static;
+    abstract protected function prepareFromCallback(array $callbackPayload): static;
+
+    /**
+     * Preparation when verification is initiated without a gateway callback.
+     */
+    abstract protected function prepareWithoutCallback(string $transactionId): static;
 
     /**
      * {@inheritdoc}
@@ -163,11 +174,6 @@ abstract class Driver implements Payment
      * {@inheritdoc}
      */
     abstract public function getCardNumber(): ?string;
-
-    /**
-     * {@inheritdoc}
-     */
-    abstract public function noCallback(string $transactionId): static;
 
     /**
      * {@inheritdoc}
@@ -269,9 +275,21 @@ abstract class Driver implements Payment
      */
     final public function fromCallback(array $callbackPayload): static
     {
+        $this->markCallbackAsCalled();
+
         $this->callbackPayload = $callbackPayload;
 
-        return $this->newFromCallback($callbackPayload);
+        return $this->prepareFromCallback($callbackPayload);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    final public function noCallback(string $transactionId): static
+    {
+        $this->markCallbackAsCalled();
+
+        return $this->prepareWithoutCallback($transactionId);
     }
 
     /**
@@ -279,6 +297,8 @@ abstract class Driver implements Payment
      */
     final public function verify(?array $gatewayPayload = null): static
     {
+        $this->ensureCallbackIsCalled();
+
         $this->setCalledApiMethod(__FUNCTION__);
 
         if (is_null($gatewayPayload)) {
@@ -449,6 +469,14 @@ abstract class Driver implements Payment
     }
 
     /**
+     * Mark the callback as called.
+     */
+    private function markCallbackAsCalled(): void
+    {
+        $this->callbackCalled = true;
+    }
+
+    /**
      * Get gateway payload from stored payment record
      *
      * @return array<string,mixed>
@@ -464,6 +492,18 @@ abstract class Driver implements Payment
         $this->ensurePaymentExists();
 
         return $this->payment->gateway_payload;
+    }
+
+    /**
+     * Throws an exception if no callback method has been called.
+     *
+     * @throws CallbackMethodNotCalledException
+     */
+    private function ensureCallbackIsCalled(): void
+    {
+        if (! $this->callbackCalled) {
+            throw new CallbackMethodNotCalledException('You must call either "fromCallback()" or "noCallback()" before calling verify().');
+        }
     }
 
     /**

@@ -108,11 +108,23 @@ final class TestDriver extends Driver
     /**
      * Test-only helper method
      *
-     * Calls verify method that indicates there is no internal DB record.
+     * Calls fromCallback method.
      */
-    public function callVerifyNoModel(): self
+    public function callCallback(): self
     {
-        $this->verify([]);
+        $this->fromCallback([]);
+
+        return $this;
+    }
+
+    /**
+     * Test-only helper method
+     *
+     * Calls the `verify` method after executing all required steps.
+     */
+    public function performVerification(): self
+    {
+        $this->callCallback()->verify([]);
 
         return $this;
     }
@@ -180,12 +192,12 @@ final class TestDriver extends Driver
         throw new Exception('Not implemented');
     }
 
-    public function noCallback(string $transactionId): static
+    protected function prepareWithoutCallback(string $transactionId): static
     {
         return $this;
     }
 
-    protected function newFromCallback(array $callbackData): static
+    protected function prepareFromCallback(array $callbackData): static
     {
         return $this;
     }

@@ -11,7 +11,6 @@ use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Facades\Soap;
-use Exception;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\URL;
@@ -156,7 +155,7 @@ final class BehpardakhtDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    public function noCallback(string $transactionId): static
+    protected function prepareWithoutCallback(string $transactionId): static
     {
         $this->transactionId = $transactionId;
 
@@ -168,7 +167,7 @@ final class BehpardakhtDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    protected function newFromCallback(array $callbackPayload): static
+    protected function prepareFromCallback(array $callbackPayload): static
     {
         $this->callbackPayload = collect($callbackPayload);
 

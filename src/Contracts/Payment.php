@@ -84,14 +84,14 @@ interface Payment
     public function getModel(): ?PaymentModel;
 
     /**
-     * Create a payment instance from gateway callback.
+     * Specify that verification should use gateway callback data.
      *
      * @param  array<string,mixed>  $callbackPayload
      */
     public function fromCallback(array $callbackPayload): static;
 
     /**
-     * Create a payment instance with no gateway callback.
+     * Specify that verification should proceed without gateway callback data.
      */
     public function noCallback(string $transactionId): static;
 
@@ -113,6 +113,7 @@ interface Payment
      * @throws \AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException
      * @throws \AliYavari\IranPayment\Exceptions\InvalidCallbackDataException
      * @throws \AliYavari\IranPayment\Exceptions\PaymentAlreadyVerifiedException
+     * @throws \AliYavari\IranPayment\Exceptions\CallbackMethodNotCalledException
      */
     public function verify(?array $gatewayPayload = null): static;
 
