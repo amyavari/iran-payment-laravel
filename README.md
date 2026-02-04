@@ -414,60 +414,84 @@ $payment = $paymentModel->toGatewayPayment();
 
 ## Testing
 
-For local development or automated tests, you can fake payment responses so no real transactions are made.  
-This allows you to test success, failure, and connection errors safely.
+For local development or automated tests, you can fake payment responses so no real transactions are made. This allows you to test success, failure, and connection errors safely.
+
+**Note:** All methods are chainable. Examples below show single calls for clarity.
+
+### Faking a Gateway
 
 ```php
 use AliYavari\IranPayment\Facades\Payment;
+use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 
-/**
- * Fake the default gateway to return successful response
- *
- * Default redirect data for testing:
- * ['url' => 'https://gateway.test', 'method' => 'POST', 'payload' => ['status' => 'successful'], 'headers' => []]
- */
-Payment::fake();
+// Default gateway
+$fake = Payment::fake();
 
-/**
- * Fake specific gateways to return successful responses
- *
- * Note: Use `default` as the gateway key to target the default gateway
- */
-Payment::fake([/* gateway keys */]);
+// Specific gateway
+$fake = Payment::fake($gateway);
+```
 
-/**
- * Equivalent to the above (explicit success definition)
- *
- * Optional: Custom redirect data using `AliYavari\IranPayment\Dtos\PaymentRedirectDto`
- */
-Payment::fake([...], Payment::successfulRequest(?PaymentRedirectDto $paymentRedirect = null));
+**Note:** For the `$gateway`, refer to the `gateway Key` column in the [List of Available Payment Gateways](#list-of-available-payment-gateways).
 
-/**
- * Fake gateways to return failed responses
- *
- * Optional: custom error message and error code
- */
-Payment::fake([...], Payment::failedRequest(string $errorMessage = 'Error Message', string|int $errorCode = 0));
+### Defining Fake Behavior for `create()`
 
-/**
- * Fake gateways to throw a ConnectionException
- */
-Payment::fake([...], Payment::failedConnection());
+```php
+$fake->successfulCreate($rawResponse = 'Creation raw response', $gatewayPayload = ['payload' => 'test value'], ?PaymentRedirectDto $redirectData = null);
 
-/**
- * Define different behaviors per gateway
- */
-Payment::fake([
-    'gateway_one' => Payment::successfulRequest(),
-    'gateway_two' => Payment::failedRequest(),
-    'gateway_three' => Payment::failedConnection(),
-]);
+$fake->failedCreate($rawResponse = 'Creation raw response', $errorCode = 0, $errorMessage = 'Creation failed');
+
+$fake->failedConnectionCreate($message = 'Creation connection failed');
 ```
 
 **Notes:**
 
-- Defining both _global behavior_ and _per-gateway behaviors_ together is not allowed in a single call. Use one strategy per `fake()` call.
-- If you define multiple behaviors for the same gateway, the last one will override the previous definitions.
+- If `$gatewayPayload` is null, a gateway‑specific default payload (correct keys, dummy values) is used.
+- If `$redirectData` is null, this default is returned:
+
+```php
+'url'     => 'https://gateway.test',
+'method'  => 'POST',
+'payload' => ['status' => 'successful'],
+'headers' => ['X-IranPayment-Fake' => 'true'],
+```
+
+### Defining Fake Behavior for `verify()`
+
+```php
+$fake->successfulVerify($rawResponse = 'Verification raw response', $refNumber = '123456789', $cardNumber = '1234-****-****-1234');
+
+$fake->failedVerify($rawResponse = 'Verification raw response', $errorCode = 0, $errorMessage = 'Verification failed');
+
+$fake->failedConnectionVerify($message = 'Verification connection failed');
+```
+
+**Note:** The fake gateway does not validate gateway payloads or callback data. You can only simulate an invalid callback exception by explicitly forcing it:
+
+```php
+$fake->invalidCallback($message = 'Invalid callback data');
+```
+
+### Defining Fake Behavior for `settle()`
+
+```php
+$fake->successfulSettle($rawResponse = 'Settlement raw response');
+
+$fake->failedSettle($rawResponse = 'Settlement raw response', $errorCode = 0, $errorMessage = 'Settlement failed');
+
+$fake->failedConnectionSettle($message = 'Settlement connection failed');
+```
+
+### Defining Fake Behavior for `reverse()`
+
+```php
+$fake->successfulReverse($rawResponse = 'Reversal raw response');
+
+$fake->failedReverse($rawResponse = 'Reversal raw response', $errorCode = 0, $errorMessage = 'Reversal failed');
+
+$fake->failedConnectionReverse($message = 'Reverse connection failed');
+```
+
+**Note:** If you set behavior for the same gateway and method multiple times, only the last definition will take effect.
 
 ## Contributing
 

@@ -28,6 +28,11 @@ abstract class Driver implements Payment
     use ManagesModel;
 
     /**
+     * Explicit gateway key defined by the concrete driver, if needed.
+     */
+    protected ?string $gateway = null;
+
+    /**
      * Runtime user-defined callback URL.
      */
     private ?string $runtimeCallbackUrl = null;
@@ -249,7 +254,8 @@ abstract class Driver implements Payment
      */
     final public function getGateway(): string
     {
-        return (string) Str::of(class_basename($this))->before('Driver')->snake();
+        return $this->gateway
+            ?? (string) Str::of(class_basename($this))->before('Driver')->snake();
     }
 
     /**

@@ -18,7 +18,6 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
-pest()->only();
 /**
  * To keep test cases simple and readable, the concrete `TestDriver` provides
  * several helper methods:
