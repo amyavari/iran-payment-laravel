@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
+use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Enums\PaymentStatus;
 use AliYavari\IranPayment\Exceptions\ApiIsNotCalledException;
-use AliYavari\IranPayment\Exceptions\CallbackMethodNotCalledException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
+use AliYavari\IranPayment\Exceptions\InvalidCallOrderException;
 use AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException;
 use AliYavari\IranPayment\Exceptions\PaymentAlreadyVerifiedException;
-use AliYavari\IranPayment\Exceptions\PaymentNotVerifiedException;
 use AliYavari\IranPayment\Models\Payment;
 use AliYavari\IranPayment\Tests\Fixtures\TestDriver;
 use AliYavari\IranPayment\Tests\Fixtures\TestModel;
@@ -238,11 +238,88 @@ it('does not store payment data in the database when the store method is not cal
     $this->assertDatabaseEmpty(Payment::class);
 });
 
+it('returns `null` as gateway payload on failed payment creation', function (): void {
+    $driver = testDriver()->asFailed('create')->callCreate();
+
+    expect($driver)
+        ->getGatewayPayload()->toBeNull();
+});
+
+it('returns the gateway payload on successful payment creation', function (): void {
+    $driver = testDriver()->asSuccessful('create')->callCreate();
+
+    expect($driver)
+        ->getGatewayPayload()->toBe(['payload' => 'value']); // Set by TestDriver
+});
+
+it('throws an exception when get payment payload is called before create API call', function (): void {
+    $driver = testDriver();
+
+    expect(fn (): ?array => $driver->getGatewayPayload())
+        ->toThrow(InvalidCallOrderException::class, 'Cannot call "getGatewayPayload()" before calling one of the following methods: "create".');
+});
+
+it('returns `null` as payment redirect data on failed payment creation', function (): void {
+    $driver = testDriver()->asFailed('create')->callCreate();
+
+    expect($driver)
+        ->getRedirectData()->toBeNull();
+});
+
+it('returns the gateway redirect data on successful payment creation', function (): void {
+    $driver = testDriver()->asSuccessful('create')->callCreate();
+
+    expect($driver)
+        ->getRedirectData()->toBeInstanceOf(PaymentRedirectDto::class);
+});
+
+it('throws an exception when get payment redirect data is called before create API call', function (): void {
+    $driver = testDriver();
+
+    expect(fn (): ?PaymentRedirectDto => $driver->getRedirectData())
+        ->toThrow(InvalidCallOrderException::class, 'Cannot call "getRedirectData()" before calling one of the following methods: "create".');
+});
+
+it('returns `null` as transaction ID on failed payment creation', function (): void {
+    $driver = testDriver()->asFailed('create')->callCreate();
+
+    expect($driver)
+        ->getTransactionId()->toBeNull();
+});
+
+it('returns the transaction ID on successful payment creation', function (): void {
+    $driver = testDriver()->asSuccessful('create')->callCreate();
+
+    expect($driver)
+        ->getTransactionId()->toBe('123456'); // Set by TestDriver
+});
+
+it('returns the transaction ID after specifying callback', function (): void {
+    // noCallback method
+    $driver = testDriver()->noCallback('');
+
+    expect($driver)
+        ->getTransactionId()->toBe('123456'); // Set by TestDriver
+
+    // fromCallback method
+    $driver = testDriver()->fromCallback([]);
+
+    expect($driver)
+        ->getTransactionId()->toBe('123456'); // Set by TestDriver
+});
+
+it('throws an exception when get transaction ID is called before create API call or specifying callback', function (): void {
+    $driver = testDriver();
+
+    expect(fn (): ?string => $driver->getTransactionId())
+        ->toThrow(InvalidCallOrderException::class, 'Cannot call "getTransactionId()" before calling one of the following methods: "create, fromCallback, noCallback".');
+});
+
 it('throws an exception when verifying without specifying callback', function (): void {
     $driver = testDriver();
 
     expect(fn (): TestDriver => $driver->verify(['payload']))
-        ->toThrow(CallbackMethodNotCalledException::class, 'You must call either "fromCallback()" or "noCallback()" before calling verify().');
+        ->toThrow(InvalidCallOrderException::class, 'Cannot call "verify()" before calling one of the following methods: "fromCallback, noCallback".');
 
     expect($driver)
         ->calledMethods()->toBe([]);
@@ -269,7 +346,7 @@ it('verifies the payment by fetching the gateway payload from the database when 
 
     expect($driver)
         ->calledMethods()->toBe(['verify'])
-        ->receivedParameters('storedPayload')->toBe($driver->getGatewayPayload());
+        ->receivedParameters('storedPayload')->toBe(['payload' => 'value']); // Set by TestDriver
 });
 
 it('throws an exception when trying to fetch the gateway payload from the database and the table does not exist', function (): void {
@@ -370,7 +447,7 @@ it('stores a failed payment status when the gateway throws an invalid callback d
             'create_20251210183010' => 'create raw response', // Set by TestDriver
             'verify_20251210183020' => [
                 'callback' => ['key' => 'value'],
-                'payload' => $driver->getGatewayPayload(),
+                'payload' => ['payload' => 'value'], // Set by TestDriver
             ],
         ]),
     ]);
@@ -419,6 +496,48 @@ it('throws an exception when trying to verify an already verified and stored int
         'transaction_id' => $model->transaction_id,
         'verified_at' => '2025-12-10 18:30:10', // Nothing is changed
     ]);
+});
+
+it('returns `null` as card number on failed payment verification', function (): void {
+    $driver = testDriver()->asFailed('verify')->performVerification();
+
+    expect($driver)
+        ->getCardNumber()->toBeNull();
+});
+
+it('returns the card number on successful payment verification', function (): void {
+    $driver = testDriver()->asSuccessful('verify')->performVerification();
+
+    expect($driver)
+        ->getCardNumber()->toBe('1234-***-4567'); // Set by TestDriver
+});
+
+it('throws an exception when get card number is called before verify API call', function (): void {
+    $driver = testDriver()->callCallback();
+
+    expect(fn (): ?string => $driver->getCardNumber())
+        ->toThrow(InvalidCallOrderException::class, 'Cannot call "getCardNumber()" before calling one of the following methods: "verify".');
+});
+
+it('returns `null` as reference number on failed payment verification', function (): void {
+    $driver = testDriver()->asFailed('verify')->performVerification();
+
+    expect($driver)
+        ->getRefNumber()->toBeNull();
+});
+
+it('returns the reference number on successful payment verification', function (): void {
+    $driver = testDriver()->asSuccessful('verify')->performVerification();
+
+    expect($driver)
+        ->getRefNumber()->toBe('123456'); // Set by TestDriver
+});
+
+it('throws an exception when get reference number is called before verify API call', function (): void {
+    $driver = testDriver()->callCallback();
+
+    expect(fn (): ?string => $driver->getRefNumber())
+        ->toThrow(InvalidCallOrderException::class, 'Cannot call "getRefNumber()" before calling one of the following methods: "verify".');
 });
 
 it('just settles the payment if it was not stored internally', function (): void {
@@ -479,7 +598,7 @@ it('throws an exception if settle is called on an object that was not verified',
     $driver = testDriver();
 
     expect(fn (): TestDriver => $driver->settle())
-        ->toThrow(PaymentNotVerifiedException::class, 'You must verify the payment before running settle method.');
+        ->toThrow(InvalidCallOrderException::class, 'Cannot call "settle()" before calling one of the following methods: "verify".');
 
     expect($driver)
         ->calledMethods()->toBe([]); // Nothing is called
@@ -543,7 +662,7 @@ it('throws an exception if reverse is called on an object that was not verified'
     $driver = testDriver();
 
     expect(fn (): TestDriver => $driver->reverse())
-        ->toThrow(PaymentNotVerifiedException::class, 'You must verify the payment before running reverse method.');
+        ->toThrow(InvalidCallOrderException::class, 'Cannot call "reverse()" before calling one of the following methods: "verify".');
 
     expect($driver)
         ->calledMethods()->toBe([]); // Nothing is called

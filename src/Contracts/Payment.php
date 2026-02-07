@@ -47,12 +47,16 @@ interface Payment
     /**
      * Get the raw response from the gateway API.
      *
+     * @return string|array<mixed>
+     *
      * @throws \AliYavari\IranPayment\Exceptions\ApiIsNotCalledException
      */
-    public function getRawResponse(): mixed;
+    public function getRawResponse(): string|array;
 
     /**
      * Get the payment transaction ID.
+     *
+     * @throws \AliYavari\IranPayment\Exceptions\InvalidCallOrderException
      */
     public function getTransactionId(): ?string;
 
@@ -65,11 +69,15 @@ interface Payment
      * Get the gateway payload required for payment verification.
      *
      * @return array<string,mixed>|null
+     *
+     * @throws \AliYavari\IranPayment\Exceptions\InvalidCallOrderException
      */
     public function getGatewayPayload(): ?array;
 
     /**
      * Get the data required to redirect the user to the payment page.
+     *
+     * @throws \AliYavari\IranPayment\Exceptions\InvalidCallOrderException
      */
     public function getRedirectData(): ?PaymentRedirectDto;
 
@@ -97,11 +105,15 @@ interface Payment
 
     /**
      * Get the reference number assigned to the transaction by the bank.
+     *
+     * @throws \AliYavari\IranPayment\Exceptions\InvalidCallOrderException
      */
     public function getRefNumber(): ?string;
 
     /**
      * Get user's card number used to pay.
+     *
+     * @throws \AliYavari\IranPayment\Exceptions\InvalidCallOrderException
      */
     public function getCardNumber(): ?string;
 
@@ -113,21 +125,21 @@ interface Payment
      * @throws \AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException
      * @throws \AliYavari\IranPayment\Exceptions\InvalidCallbackDataException
      * @throws \AliYavari\IranPayment\Exceptions\PaymentAlreadyVerifiedException
-     * @throws \AliYavari\IranPayment\Exceptions\CallbackMethodNotCalledException
+     * @throws \AliYavari\IranPayment\Exceptions\InvalidCallOrderException
      */
     public function verify(?array $gatewayPayload = null): static;
 
     /**
      * Settle the payment
      *
-     * @throws \AliYavari\IranPayment\Exceptions\PaymentNotVerifiedException
+     * @throws \AliYavari\IranPayment\Exceptions\InvalidCallOrderException
      */
     public function settle(): static;
 
     /**
      * Reverse the payment
      *
-     * @throws \AliYavari\IranPayment\Exceptions\PaymentNotVerifiedException
+     * @throws \AliYavari\IranPayment\Exceptions\InvalidCallOrderException
      */
     public function reverse(): static;
 

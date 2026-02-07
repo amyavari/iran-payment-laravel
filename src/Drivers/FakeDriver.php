@@ -291,7 +291,7 @@ final class FakeDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    public function getTransactionId(): string
+    protected function getDriverTransactionId(): string
     {
         return $this->transactionId;
     }
@@ -299,7 +299,7 @@ final class FakeDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    public function getGatewayPayload(): array
+    protected function getDriverPayload(): array
     {
         return $this->gatewayPayload;
     }
@@ -307,7 +307,7 @@ final class FakeDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    public function getRedirectData(): PaymentRedirectDto
+    protected function getDriverRedirectData(): PaymentRedirectDto
     {
         return $this->redirectData;
     }
@@ -315,7 +315,7 @@ final class FakeDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    public function getRefNumber(): string
+    protected function getDriverRefNumber(): string
     {
         return $this->refNumber;
     }
@@ -323,7 +323,7 @@ final class FakeDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    public function getCardNumber(): string
+    protected function getDriverCardNumber(): string
     {
         return $this->cardNumber;
     }
@@ -347,7 +347,7 @@ final class FakeDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    protected function getGatewayStatusCode(): string
+    protected function getDriverStatusCode(): string
     {
         return $this->errorCode;
     }
@@ -355,7 +355,7 @@ final class FakeDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    protected function getGatewayStatusMessage(): string
+    protected function getDriverStatusMessage(): string
     {
         return $this->errorMessage;
     }
@@ -371,7 +371,7 @@ final class FakeDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    protected function getGatewayRawResponse(): mixed
+    protected function getDriverRawResponse(): string|array
     {
         return $this->rawResponse;
     }

@@ -8,11 +8,10 @@ use AliYavari\IranPayment\Concerns\ManagesModel;
 use AliYavari\IranPayment\Contracts\Payment;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\ApiIsNotCalledException;
-use AliYavari\IranPayment\Exceptions\CallbackMethodNotCalledException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
+use AliYavari\IranPayment\Exceptions\InvalidCallOrderException;
 use AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException;
 use AliYavari\IranPayment\Exceptions\PaymentAlreadyVerifiedException;
-use AliYavari\IranPayment\Exceptions\PaymentNotVerifiedException;
 use AliYavari\IranPayment\Models\Payment as PaymentModel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -105,14 +104,14 @@ abstract class Driver implements Payment
     abstract protected function createPayment(string $callbackUrl, int $amount, ?string $description = null, string|int|null $phone = null): void;
 
     /**
-     * Get the payment gateway response status code.
+     * Get the status code of the API call made by the driver.
      */
-    abstract protected function getGatewayStatusCode(): string;
+    abstract protected function getDriverStatusCode(): string;
 
     /**
-     * Get the payment gateway response status message.
+     * Get the status message of the API call made by the driver.
      */
-    abstract protected function getGatewayStatusMessage(): string;
+    abstract protected function getDriverStatusMessage(): string;
 
     /**
      * Check whether the API request was successful.
@@ -120,9 +119,11 @@ abstract class Driver implements Payment
     abstract protected function isSuccessful(): bool;
 
     /**
-     * Get the raw response from the gateway API.
+     * Get the raw response of the API call made by the driver.
+     *
+     * @return string|array<mixed>
      */
-    abstract protected function getGatewayRawResponse(): mixed;
+    abstract protected function getDriverRawResponse(): string|array;
 
     /**
      * Verify the payment via the driver
@@ -156,29 +157,31 @@ abstract class Driver implements Payment
     abstract protected function prepareWithoutCallback(string $transactionId): static;
 
     /**
-     * {@inheritdoc}
+     * Get the payment transaction ID from the driver.
      */
-    abstract public function getTransactionId(): ?string;
+    abstract protected function getDriverTransactionId(): string;
 
     /**
-     * {@inheritdoc}
+     * Get the driver payload required for payment verification.
+     *
+     * @return array<string,mixed>
      */
-    abstract public function getGatewayPayload(): ?array;
+    abstract protected function getDriverPayload(): array;
 
     /**
-     * {@inheritdoc}
+     * Get the driver data required to redirect the user to the payment page.
      */
-    abstract public function getRedirectData(): ?PaymentRedirectDto;
+    abstract protected function getDriverRedirectData(): PaymentRedirectDto;
 
     /**
-     * {@inheritdoc}
+     * Get the payment reference number from the driver.
      */
-    abstract public function getRefNumber(): ?string;
+    abstract protected function getDriverRefNumber(): string;
 
     /**
-     * {@inheritdoc}
+     * Get the user's card number used for payment from the driver.
      */
-    abstract public function getCardNumber(): ?string;
+    abstract protected function getDriverCardNumber(): string;
 
     /**
      * {@inheritdoc}
@@ -234,19 +237,19 @@ abstract class Driver implements Payment
     {
         return $this->verificationErrorMessage
             ?? $this->whenFailed(
-                fn (): string => sprintf('کد %s- %s', $this->getGatewayStatusCode(), $this->getGatewayStatusMessage())
+                fn (): string => sprintf('کد %s- %s', $this->getDriverStatusCode(), $this->getDriverStatusMessage())
             );
     }
 
     /**
      * {@inheritdoc}
      */
-    final public function getRawResponse(): mixed
+    final public function getRawResponse(): string|array
     {
         $this->ensureApiIsCalled();
 
         return $this->verificationRawResponse
-            ?? $this->getGatewayRawResponse();
+            ?? $this->getDriverRawResponse();
     }
 
     /**
@@ -279,6 +282,40 @@ abstract class Driver implements Payment
     /**
      * {@inheritdoc}
      */
+    final public function getGatewayPayload(): ?array
+    {
+        $this->ensureCreationIsCalledFor(__FUNCTION__);
+
+        return $this->whenSuccessful(fn (): array => $this->getDriverPayload());
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    final public function getRedirectData(): ?PaymentRedirectDto
+    {
+        $this->ensureCreationIsCalledFor(__FUNCTION__);
+
+        return $this->whenSuccessful(fn (): PaymentRedirectDto => $this->getDriverRedirectData());
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    final public function getTransactionId(): ?string
+    {
+        $this->ensureCreationOrCallbackAreCalledFor(__FUNCTION__);
+
+        if ($this->callbackCalled) {
+            return $this->getDriverTransactionId();
+        }
+
+        return $this->whenSuccessful(fn (): string => $this->getDriverTransactionId());
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     final public function fromCallback(array $callbackPayload): static
     {
         $this->markCallbackAsCalled();
@@ -303,7 +340,7 @@ abstract class Driver implements Payment
      */
     final public function verify(?array $gatewayPayload = null): static
     {
-        $this->ensureCallbackIsCalled();
+        $this->ensureCallbackIsCalledFor(__FUNCTION__);
 
         $this->setCalledApiMethod(__FUNCTION__);
 
@@ -337,9 +374,29 @@ abstract class Driver implements Payment
     /**
      * {@inheritdoc}
      */
+    final public function getCardNumber(): ?string
+    {
+        $this->ensureVerificationIsCalledFor(__FUNCTION__);
+
+        return $this->whenSuccessful(fn (): string => $this->getDriverCardNumber());
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    final public function getRefNumber(): ?string
+    {
+        $this->ensureVerificationIsCalledFor(__FUNCTION__);
+
+        return $this->whenSuccessful(fn (): string => $this->getDriverRefNumber());
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     final public function settle(): static
     {
-        $this->ensurePaymentIsVerifiedFor(__FUNCTION__);
+        $this->ensureVerificationIsCalledFor(__FUNCTION__);
 
         $this->settlePayment();
 
@@ -353,7 +410,7 @@ abstract class Driver implements Payment
      */
     final public function reverse(): static
     {
-        $this->ensurePaymentIsVerifiedFor(__FUNCTION__);
+        $this->ensureVerificationIsCalledFor(__FUNCTION__);
 
         $this->reversePayment();
 
@@ -383,11 +440,19 @@ abstract class Driver implements Payment
     }
 
     /**
+     * Determine if the sandbox environment should be used.
+     */
+    protected function useSandbox(): bool
+    {
+        return config()->boolean('iran-payment.use_sandbox');
+    }
+
+    /**
      * Executes the callback when the API call is successful.
      *
      * @return mixed|null
      */
-    protected function whenSuccessful(callable $callback): mixed
+    private function whenSuccessful(callable $callback): mixed
     {
         if (! $this->successful()) {
             return null;
@@ -401,21 +466,13 @@ abstract class Driver implements Payment
      *
      * @return mixed|null
      */
-    protected function whenFailed(callable $callback): mixed
+    private function whenFailed(callable $callback): mixed
     {
         if ($this->successful()) {
             return null;
         }
 
         return call_user_func($callback);
-    }
-
-    /**
-     * Determine if the sandbox environment should be used.
-     */
-    protected function useSandbox(): bool
-    {
-        return config()->boolean('iran-payment.use_sandbox');
     }
 
     /**
@@ -452,6 +509,14 @@ abstract class Driver implements Payment
     private function setCalledApiMethod(string $method): void
     {
         $this->calledApiMethod = $method;
+    }
+
+    /**
+     * Determine whether specific API method is called.
+     */
+    private function isCalledApiMethod(string $method): bool
+    {
+        return $this->calledApiMethod === $method;
     }
 
     /**
@@ -501,14 +566,38 @@ abstract class Driver implements Payment
     }
 
     /**
+     * Throws an exception if `create` API method has not been called.
+     *
+     * @throws InvalidCallOrderException
+     */
+    private function ensureCreationIsCalledFor(string $method): void
+    {
+        if (! $this->isCalledApiMethod('create')) {
+            throw InvalidCallOrderException::make($method, ['create']);
+        }
+    }
+
+    /**
+     * Throws an exception if `create` API method or callback methods have not been called.
+     *
+     * @throws InvalidCallOrderException
+     */
+    private function ensureCreationOrCallbackAreCalledFor(string $method): void
+    {
+        if (! $this->isCalledApiMethod('create') && ! $this->callbackCalled) {
+            throw InvalidCallOrderException::make($method, ['create', 'fromCallback', 'noCallback']);
+        }
+    }
+
+    /**
      * Throws an exception if no callback method has been called.
      *
-     * @throws CallbackMethodNotCalledException
+     * @throws InvalidCallOrderException
      */
-    private function ensureCallbackIsCalled(): void
+    private function ensureCallbackIsCalledFor(string $method): void
     {
         if (! $this->callbackCalled) {
-            throw new CallbackMethodNotCalledException('You must call either "fromCallback()" or "noCallback()" before calling verify().');
+            throw InvalidCallOrderException::make($method, ['fromCallback', 'noCallback']);
         }
     }
 
@@ -537,14 +626,12 @@ abstract class Driver implements Payment
     /**
      * Throws an exception if `verify` API method has not been called.
      *
-     * @throws PaymentNotVerifiedException
+     * @throws InvalidCallOrderException
      */
-    private function ensurePaymentIsVerifiedFor(string $method): void
+    private function ensureVerificationIsCalledFor(string $method): void
     {
-        if ($this->calledApiMethod !== 'verify') {
-            throw new PaymentNotVerifiedException(
-                sprintf('You must verify the payment before running %s method.', $method)
-            );
+        if (! $this->isCalledApiMethod('verify')) {
+            throw InvalidCallOrderException::make($method, ['verify']);
         }
     }
 

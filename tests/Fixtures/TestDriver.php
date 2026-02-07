@@ -8,6 +8,7 @@ use AliYavari\IranPayment\Abstracts\Driver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use Exception;
 use Illuminate\Support\Arr;
+use LogicException;
 
 /**
  * @internal
@@ -29,6 +30,8 @@ final class TestDriver extends Driver
     private string $errorMessage = '';
 
     private Exception $exception;
+
+    private bool $callbackCalled = false;
 
     /**
      * Test-only helper method
@@ -167,42 +170,58 @@ final class TestDriver extends Driver
         return $this->calledMethods;
     }
 
-    public function getTransactionId(): string
+    protected function getDriverRefNumber(): string
     {
+        $this->throwExceptionIfFailed();
+
         return '123456';
     }
 
-    public function getGatewayPayload(): array
+    protected function getDriverCardNumber(): string
     {
+        $this->throwExceptionIfFailed();
+
+        return '1234-***-4567';
+    }
+
+    protected function getDriverTransactionId(): string
+    {
+        if (! $this->callbackCalled) {
+            $this->throwExceptionIfFailed();
+        }
+
+        return '123456';
+    }
+
+    protected function getDriverRedirectData(): PaymentRedirectDto
+    {
+        $this->throwExceptionIfFailed();
+
+        return new PaymentRedirectDto('url', 'method', ['payload'], ['headers']);
+    }
+
+    protected function getDriverPayload(): array
+    {
+        $this->throwExceptionIfFailed();
+
         return ['payload' => 'value'];
-    }
-
-    public function getRedirectData(): ?PaymentRedirectDto
-    {
-        throw new Exception('Not implemented');
-    }
-
-    public function getCardNumber(): ?string
-    {
-        throw new Exception('Not implemented');
-    }
-
-    public function getRefNumber(): ?string
-    {
-        throw new Exception('Not implemented');
     }
 
     protected function prepareWithoutCallback(string $transactionId): static
     {
+        $this->markCallbackAsCalled();
+
         return $this;
     }
 
     protected function prepareFromCallback(array $callbackData): static
     {
+        $this->markCallbackAsCalled();
+
         return $this;
     }
 
-    protected function getGatewayRawResponse(): mixed
+    protected function getDriverRawResponse(): string
     {
         return Arr::last($this->calledMethods).' raw response';
     }
@@ -221,7 +240,7 @@ final class TestDriver extends Driver
 
     protected function createPayment(string $callbackUrl, int $amount, ?string $description = null, string|int|null $phone = null): void
     {
-        $this->throwExceptionIfNeeded();
+        $this->throwExceptionIfConfigured();
 
         $this->storeMethodCall('create', [
             'callbackUrl' => $callbackUrl,
@@ -233,7 +252,7 @@ final class TestDriver extends Driver
 
     protected function verifyPayment(array $storedPayload): void
     {
-        $this->throwExceptionIfNeeded();
+        $this->throwExceptionIfConfigured();
 
         $this->storeMethodCall('verify', [
             'storedPayload' => $storedPayload,
@@ -242,24 +261,24 @@ final class TestDriver extends Driver
 
     protected function settlePayment(): void
     {
-        $this->throwExceptionIfNeeded();
+        $this->throwExceptionIfConfigured();
 
         $this->storeMethodCall('settle', []);
     }
 
     protected function reversePayment(): void
     {
-        $this->throwExceptionIfNeeded();
+        $this->throwExceptionIfConfigured();
 
         $this->storeMethodCall('reverse', []);
     }
 
-    protected function getGatewayStatusCode(): string
+    protected function getDriverStatusCode(): string
     {
         return (string) $this->errorCode;
     }
 
-    protected function getGatewayStatusMessage(): string
+    protected function getDriverStatusMessage(): string
     {
         return $this->errorMessage;
     }
@@ -267,11 +286,31 @@ final class TestDriver extends Driver
     /**
      * Test-only helper method.
      */
-    private function throwExceptionIfNeeded(): void
+    private function throwExceptionIfConfigured(): void
     {
         if (isset($this->exception)) {
             throw $this->exception;
         }
+    }
+
+    /**
+     * Test-only helper method.
+     *
+     * Ensures the driver method is not called on a failed response.
+     */
+    private function throwExceptionIfFailed(): void
+    {
+        if (! $this->isSuccessful) {
+            throw new LogicException('TestDriver: This method should not be called.');
+        }
+    }
+
+    /**
+     * Test-only helper method.
+     */
+    private function markCallbackAsCalled(): void
+    {
+        $this->callbackCalled = true;
     }
 
     /**
