@@ -97,27 +97,7 @@ final class BehpardakhtDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    public function getTransactionId(): ?string
-    {
-        return $this->transactionId;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getGatewayPayload(): ?array
-    {
-        return $this->whenSuccessful(fn (): array => [
-            'orderId' => $this->transactionId,
-            'amount' => $this->amount,
-            'refId' => $this->refId,
-        ]);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getRedirectData(): ?PaymentRedirectDto
+    protected function getDriverRedirectData(): PaymentRedirectDto
     {
         $payload = collect([
             'RefId' => $this->refId,
@@ -131,25 +111,43 @@ final class BehpardakhtDriver extends Driver
             'Referer' => URL::current(),
         ];
 
-        return $this->whenSuccessful(fn (): PaymentRedirectDto => new PaymentRedirectDto($this->getGaymentRedirectUrl(), 'POST', $payload, $headers));
+        return new PaymentRedirectDto($this->getGaymentRedirectUrl(), 'POST', $payload, $headers);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function getRefNumber(): ?string
+    protected function getDriverRefNumber(): string
     {
-        $refNumber = $this->callbackPayload->get('SaleReferenceId');
-
-        return is_null($refNumber) ? null : (string) $refNumber;
+        return (string) $this->callbackPayload->get('SaleReferenceId', '');
     }
 
     /**
      * {@inheritdoc}
      */
-    public function getCardNumber(): ?string
+    protected function getDriverCardNumber(): string
     {
-        return $this->callbackPayload->get('CardHolderInfo');
+        return $this->callbackPayload->get('CardHolderInfo', '');
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function getDriverTransactionId(): string
+    {
+        return $this->transactionId;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function getDriverPayload(): array
+    {
+        return [
+            'orderId' => $this->transactionId,
+            'amount' => $this->amount,
+            'refId' => $this->refId,
+        ];
     }
 
     /**
@@ -193,7 +191,7 @@ final class BehpardakhtDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    protected function getGatewayRawResponse(): mixed
+    protected function getDriverRawResponse(): string|array
     {
         return $this->rawResponse;
     }
@@ -251,7 +249,7 @@ final class BehpardakhtDriver extends Driver
     /**
      *  {@inheritdoc}
      */
-    protected function getGatewayStatusCode(): string
+    protected function getDriverStatusCode(): string
     {
         return $this->apiStatusCode;
     }
@@ -259,7 +257,7 @@ final class BehpardakhtDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    protected function getGatewayStatusMessage(): string
+    protected function getDriverStatusMessage(): string
     {
         if ($this->isNoCallback()) {
             return $this->noCallbackMessage($this->apiStatusCode);

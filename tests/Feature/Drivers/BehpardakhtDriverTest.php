@@ -26,13 +26,6 @@ it('generates and returns transaction ID on payment creation', function (): void
         ->getTransactionId()->toBeString()->toBeNumeric()->toHaveLength(15);
 });
 
-it('returns `null` transaction ID when payment is not created', function (): void {
-    $payment = driver();
-
-    expect($payment)
-        ->getTransactionId()->toBeNull();
-});
-
 it('calls payment creation API with minimum passed data and config callback URL', function (): void {
     setTestNowIran('2025-12-10 18:30:10');
 
@@ -114,15 +107,6 @@ it('returns gateway payload needed to verify payment on successful payment creat
         ]);
 });
 
-it('returns `null` as gateway payload on failed payment creation', function (): void {
-    fakeSoap(response: '11'); // Sample failed API response
-
-    $payment = driver()->create(1_000);
-
-    expect($payment)
-        ->getGatewayPayload()->toBeNull();
-});
-
 it('returns gateway redirect data on successful payment creation with full passed data', function (): void {
     fakeSoap(response: '0,AF82041a2Bf6989c7fF9'); // Sample successful API response
 
@@ -164,15 +148,6 @@ it('returns gateway redirect data on successful payment creation with minimum pa
         ]);
 });
 
-it('returns `null` as gateway redirect data on failed payment creation', function (): void {
-    fakeSoap(response: '11'); // Sample failed API response
-
-    $payment = driver()->create(1_000);
-
-    expect($payment)
-        ->getRedirectData()->toBeNull();
-});
-
 it('communicates with sandbox environment for payment creation when configured', function (): void {
     Config::set('iran-payment.use_sandbox', true);
 
@@ -194,24 +169,24 @@ it('creates payment instance from callback data', function (): void {
         ->getTransactionId()->toBe('123456789012345');
 });
 
-it('returns card number and reference id from successful callback', function (): void {
+it('returns card number and reference ID from successful callback', function (): void {
     $callbackPayload = callbackFactory()->successful()->all();
 
-    $payment = driver()->fromCallback($callbackPayload);
+    $payment = driver()->fromCallback($callbackPayload)->verify(gatewayPayload());
 
     expect($payment)
         ->getRefNumber()->toBe('227926981246')
         ->getCardNumber()->toBe('1234-*-*-1234');
 });
 
-it('returns null card number and reference id when not provided in callback', function (): void {
+it('returns empty string as card number and reference ID when not provided in the callback', function (): void {
     $callbackPayload = callbackFactory()->successful()->except(['SaleReferenceId', 'CardHolderInfo'])->all();
 
-    $payment = driver()->fromCallback($callbackPayload);
+    $payment = driver()->fromCallback($callbackPayload)->verify(gatewayPayload());
 
     expect($payment)
-        ->getRefNumber()->toBeNull()
-        ->getCardNumber()->toBeNull();
+        ->getRefNumber()->toBe('')
+        ->getCardNumber()->toBe('');
 });
 
 it('throws exception when callback lacks required keys', function (string $key): void {
