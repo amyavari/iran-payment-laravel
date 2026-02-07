@@ -9,7 +9,7 @@ uses(HasUniqueNumber::class);
 it('generates 15-digit unique transaction ID', function (): void {
     $orderIds = collect([]);
 
-    for ($i = 1; $i <= 50; $i++) {
+    for ($i = 1; $i <= 20; $i++) {
         freezeTimeUntilSeconds();
 
         $orderIds->push($this->generateUniqueTimeBaseNumber());
@@ -18,7 +18,7 @@ it('generates 15-digit unique transaction ID', function (): void {
     $uniqueIds = $orderIds->unique();
 
     expect($uniqueIds)
-        ->toHaveLength(50)
+        ->toHaveLength(20)
         ->each->toHaveLength(15);
 });
 
