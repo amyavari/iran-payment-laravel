@@ -264,7 +264,7 @@ $payment->getTransactionId();    // string|null
 To redirect user to the gateway’s payment page, use the data provided by the following method:
 
 ```php
-$redirectData = $payment->getRedirectData();
+$redirectData = $payment->getRedirectData(); // `null` if payment creation failed
 
 // Redirect URL
 $redirectData->url;         // string
@@ -344,10 +344,10 @@ $payment
 If the payment is successful, the following methods are available to retrieve additional payment details:
 
 ```php
-// Get the reference number assigned to the transaction by the bank.
+// Get the reference number assigned to the transaction by the bank. (`null` if payment verification failed)
 $payment->getRefNumber();   // string|null
 
-// Get user's card number used to pay.
+// Get user's card number used to pay. (`null` if payment verification failed)
 $payment->getCardNumber();  // string|null
 ```
 
