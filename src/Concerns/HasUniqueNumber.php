@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AliYavari\IranPayment\Concerns;
 
+use Carbon\Carbon;
 use Illuminate\Support\Str;
 
 /**
@@ -20,12 +21,16 @@ trait HasUniqueNumber
     {
         $randomNumber = random_int(1_000, 9_999);
 
-        $currentTimeInMillisecond = now()->getTimestampMs();
+        /**
+         * Logic: Use a custom Epoch (starting from Jan 1, 2025) to reduce
+         * the timestamp's digit count (from 13 to 11 digits). Safe until ~2029
+         */
+        $epoch = Carbon::make('2025-01-01 00:00:00.000')->getTimestampMs();
+        $now = now()->getTimestampMs();
 
-        // The first `17` of timestamp doesn't add anything unique.
-        // So, we remove it to have more space for random digits.
-        return (string) Str::of((string) $currentTimeInMillisecond)
-            ->after('17')
+        $millisecondsSinceEpoch = $now - $epoch;
+
+        return (string) Str::of((string) $millisecondsSinceEpoch)
             ->append((string) $randomNumber);
     }
 }
