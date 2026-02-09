@@ -68,4 +68,4 @@ jobs:
         run: php ./vendor/bin/testbench migrate:fresh
 
       - name: Run unit test
-        run: composer test:unit -- --ci --do-not-cache-result
+        run: composer test:unit -- --ci
