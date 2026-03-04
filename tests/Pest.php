@@ -5,6 +5,8 @@ declare(strict_types=1);
 use AliYavari\IranPayment\Tests\TestCase;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
 
 /*
 |--------------------------------------------------------------------------
@@ -59,4 +61,28 @@ function setTestNowIran(string $dateTime = '2025-12-10 18:30:10'): void
 function setTestNow(string $dateTime = '2025-12-10 18:30:10'): void
 {
     Carbon::setTestNow($dateTime);
+}
+
+/**
+ * Fake HTTP request.
+ */
+function fakeHttp(array $responses, bool $isSinglePattern = true): void
+{
+    if ($isSinglePattern) {
+        $responses = [
+            '*' => $responses,
+        ];
+    }
+
+    Http::fake($responses);
+}
+
+/**
+ * Get the latest recorded HTTP request instance.
+ */
+function getRecordedHttpRequest(): Request
+{
+    [$request, $response] = Http::recorded()->last();
+
+    return $request;
 }
