@@ -6,6 +6,7 @@ namespace AliYavari\IranPayment;
 
 use AliYavari\IranPayment\Drivers\BehpardakhtDriver;
 use AliYavari\IranPayment\Drivers\SepDriver;
+use AliYavari\IranPayment\Drivers\ZarinpalDriver;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Str;
 use Spatie\LaravelPackageTools\Commands\InstallCommand;
@@ -42,6 +43,11 @@ final class IranPaymentServiceProvider extends PackageServiceProvider
         $this->app->bind(
             SepDriver::class,
             fn (): SepDriver => new SepDriver(...$this->configWithCamelCaseKeys('iran-payment.gateways.sep'))
+        );
+
+        $this->app->bind(
+            ZarinpalDriver::class,
+            fn (): ZarinpalDriver => new ZarinpalDriver(...$this->configWithCamelCaseKeys('iran-payment.gateways.zarinpal'))
         );
     }
 

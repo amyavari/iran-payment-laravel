@@ -63,5 +63,11 @@ return [
             'callback_url' => env('SEP_CALLBACK_URL', ''),
             'terminal_id' => env('SEP_TERMINAL_ID', ''),
         ],
+
+        // https://www.zarinpal.com/
+        'zarinpal' => [
+            'callback_url' => env('ZARINPAL_CALLBACK_URL', ''),
+            'merchant_id' => env('ZARINPAL_MERCHANT_ID', ''),
+        ],
     ],
 ];
