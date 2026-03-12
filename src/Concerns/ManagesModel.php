@@ -6,7 +6,7 @@ namespace AliYavari\IranPayment\Concerns;
 
 use AliYavari\IranPayment\Enums\PaymentStatus;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
-use AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException;
+use AliYavari\IranPayment\Exceptions\MissingGatewayPayloadException;
 use AliYavari\IranPayment\Models\Payment;
 use Illuminate\Support\Facades\Schema;
 
@@ -56,24 +56,24 @@ trait ManagesModel
     /**
      * Throws an exception if payments table doesn't exist
      *
-     * @throws MissingVerificationPayloadException
+     * @throws MissingGatewayPayloadException
      */
     private function ensureTableExists(): void
     {
         if (! Schema::hasColumns('payments', ['owned_by_iran_payment', 'transaction_id'])) {
-            throw new MissingVerificationPayloadException('Verification payload was not provided and the "payments" table does not exist.');
+            throw new MissingGatewayPayloadException('Gateway payload was not provided and the "payments" table does not exist.');
         }
     }
 
     /**
      * Throws an exception if payment record is not found
      *
-     * @throws MissingVerificationPayloadException
+     * @throws MissingGatewayPayloadException
      */
     private function ensurePaymentExists(): void
     {
         if (! $this->payment) {
-            throw new MissingVerificationPayloadException('Verification payload was not provided and no stored payment record was found.');
+            throw new MissingGatewayPayloadException('Gateway payload was not provided and no stored payment record was found.');
         }
     }
 

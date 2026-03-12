@@ -5,7 +5,7 @@ declare(strict_types=1);
 use AliYavari\IranPayment\Contracts\Payment as PaymentInterface;
 use AliYavari\IranPayment\Drivers\FakeDriver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
-use AliYavari\IranPayment\Exceptions\DriverBehaviorNotDefinedException;
+use AliYavari\IranPayment\Exceptions\GatewayBehaviorNotDefinedException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Facades\Payment;
 use Illuminate\Support\Facades\Config;
@@ -39,8 +39,9 @@ it('returns a fake instance for a specified gateway', function (): void {
 it('throws an exception when the create behavior is not defined', function (): void {
     fakeTestGateway();
 
-    testGateway()->create(10);
-})->throws(DriverBehaviorNotDefinedException::class, 'No behavior has been defined for the "create" method on the fake driver "test_gateway".');
+    expect(fn (): PaymentInterface => testGateway()->create(10))
+        ->toThrow(GatewayBehaviorNotDefinedException::class, 'No behavior has been defined for the "create" method on the fake driver "test_gateway".');
+});
 
 it('fakes a successful create API response using default data', function (): void {
     fakeTestGateway()->successfulCreate();
@@ -95,10 +96,7 @@ it('throws a connection exception on the create API', function (string $gateway,
     Payment::fake($gateway)->failedConnectionCreate();
 
     expect(fn () => Payment::gateway($gateway)->create(10))
-        ->toThrow(
-            $connectionType,
-            'Creation connection failed'
-        );
+        ->toThrow($connectionType, 'Creation connection failed');
 })->with('gateway_connections');
 
 it('creates payment instance with no callback data', function (): void {
@@ -122,14 +120,16 @@ it('creates payment instance with callback data', function (): void {
 it('throws invalid callback exception', function (): void {
     fakeTestGateway()->invalidCallback();
 
-    testGateway(runVerification: true);
-})->throws(InvalidCallbackDataException::class, 'Invalid callback data');
+    expect(fn (): PaymentInterface => testGateway(runVerification: true))
+        ->toThrow(InvalidCallbackDataException::class, 'Invalid callback data');
+});
 
 it('throws an exception when the verify behavior is not defined', function (): void {
     fakeTestGateway();
 
-    testGateway(runVerification: true);
-})->throws(DriverBehaviorNotDefinedException::class, 'No behavior has been defined for the "verify" method on the fake driver "test_gateway".');
+    expect(fn (): PaymentInterface => testGateway(runVerification: true))
+        ->toThrow(GatewayBehaviorNotDefinedException::class, 'No behavior has been defined for the "verify" method on the fake driver "test_gateway".');
+});
 
 it('fakes a successful verify API response', function (): void {
     fakeTestGateway()->successfulVerify();
@@ -161,17 +161,17 @@ it('throws a connection exception on the verify API', function (string $gateway,
     $payment = Payment::gateway($gateway)->fromCallback([]);
 
     expect(fn () => $payment->verify([]))
-        ->toThrow(
-            $connectionType,
-            'Verification connection failed'
-        );
+        ->toThrow($connectionType, 'Verification connection failed');
 })->with('gateway_connections');
 
 it('throws an exception when the settle behavior is not defined', function (): void {
     fakeTestGateway()->successfulVerify();
 
-    testGateway(runVerification: true)->settle();
-})->throws(DriverBehaviorNotDefinedException::class, 'No behavior has been defined for the "settle" method on the fake driver "test_gateway".');
+    $payment = testGateway(runVerification: true);
+
+    expect(fn (): PaymentInterface => $payment->settle())
+        ->toThrow(GatewayBehaviorNotDefinedException::class, 'No behavior has been defined for the "settle" method on the fake driver "test_gateway".');
+});
 
 it('fakes a successful settle API response', function (): void {
     fakeTestGateway()->successfulVerify()->successfulSettle();
@@ -201,17 +201,17 @@ it('throws a connection exception on the settle API', function (string $gateway,
     $payment = Payment::gateway($gateway)->fromCallback([])->verify([]);
 
     expect(fn () => $payment->settle())
-        ->toThrow(
-            $connectionType,
-            'Settlement connection failed'
-        );
+        ->toThrow($connectionType, 'Settlement connection failed');
 })->with('gateway_connections');
 
 it('throws an exception when the reverse behavior is not defined', function (): void {
     fakeTestGateway()->successfulVerify();
 
-    testGateway(runVerification: true)->reverse();
-})->throws(DriverBehaviorNotDefinedException::class, 'No behavior has been defined for the "reverse" method on the fake driver "test_gateway".');
+    $payment = testGateway(runVerification: true);
+
+    expect(fn (): PaymentInterface => $payment->reverse())
+        ->toThrow(GatewayBehaviorNotDefinedException::class, 'No behavior has been defined for the "reverse" method on the fake driver "test_gateway".');
+});
 
 it('fakes a successful reverse API response', function (): void {
     fakeTestGateway()->successfulVerify()->successfulReverse();
@@ -241,10 +241,7 @@ it('throws a connection exception on the reverse API', function (string $gateway
     $payment = Payment::gateway($gateway)->fromCallback([])->verify([]);
 
     expect(fn () => $payment->reverse())
-        ->toThrow(
-            $connectionType,
-            'Reversal connection failed'
-        );
+        ->toThrow($connectionType, 'Reversal connection failed');
 })->with('gateway_connections');
 
 // ------------

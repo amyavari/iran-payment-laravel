@@ -7,7 +7,7 @@ use AliYavari\IranPayment\Enums\PaymentStatus;
 use AliYavari\IranPayment\Exceptions\ApiIsNotCalledException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\InvalidCallOrderException;
-use AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException;
+use AliYavari\IranPayment\Exceptions\MissingGatewayPayloadException;
 use AliYavari\IranPayment\Exceptions\PaymentAlreadyVerifiedException;
 use AliYavari\IranPayment\Models\Payment;
 use AliYavari\IranPayment\Tests\Fixtures\TestDriver;
@@ -120,14 +120,14 @@ it('converts currency to Rial if the app currency is Toman', function (string $c
 ]);
 
 it('throws an exception when status checks are called before any API call', function (string $method): void {
-    testDriver()->{$method}();
-})->throws(ApiIsNotCalledException::class, 'You must call an API method before checking its status.')
-    ->with([
-        'successful',
-        'failed',
-        'error',
-        'getRawResponse',
-    ]);
+    expect(fn () => testDriver()->{$method}())
+        ->toThrow(ApiIsNotCalledException::class, 'You must call an API method before checking its status.');
+})->with([
+    'successful',
+    'failed',
+    'error',
+    'getRawResponse',
+]);
 
 it('does not throw an exception when status checks are called after an API call', function (string $method): void {
     testDriver()->callCreate()->{$method}(); // Create API call
@@ -352,8 +352,11 @@ it('verifies the payment by fetching the gateway payload from the database when 
 it('throws an exception when trying to fetch the gateway payload from the database and the table does not exist', function (): void {
     Schema::drop('payments');
 
-    testDriver()->callCallback()->verify();
-})->throws(MissingVerificationPayloadException::class, 'Verification payload was not provided and the "payments" table does not exist.');
+    $driver = testDriver()->callCallback();
+
+    expect(fn (): TestDriver => $driver->verify())
+        ->toThrow(MissingGatewayPayloadException::class, 'Gateway payload was not provided and the "payments" table does not exist.');
+});
 
 it('throws an exception when trying to fetch the gateway payload from the database and payments table lacks the required columns', function (string $column): void {
     Schema::table('payments', function (Blueprint $table) use ($column): void {
@@ -361,24 +364,28 @@ it('throws an exception when trying to fetch the gateway payload from the databa
         $table->dropColumn($column);
     });
 
-    testDriver()->callCallback()->verify();
-})->throws(MissingVerificationPayloadException::class, 'Verification payload was not provided and the "payments" table does not exist.')
-    ->with([
-        'transaction_id',
-        'owned_by_iran_payment',
-    ]);
+    $driver = testDriver()->callCallback();
+
+    expect(fn (): TestDriver => $driver->verify())
+        ->toThrow(MissingGatewayPayloadException::class, 'Gateway payload was not provided and the "payments" table does not exist.');
+})->with([
+    'transaction_id',
+    'owned_by_iran_payment',
+]);
 
 it('throws an exception when trying to fetch the gateway payload from the database and the record does not exist in the database', function (array $toUpdate): void {
     $model = testDriver()->storeTestPayment()->getModel();
 
     $model->update($toUpdate);
 
-    testDriver()->callCallback()->verify();
-})->throws(MissingVerificationPayloadException::class, 'Verification payload was not provided and no stored payment record was found.')
-    ->with([
-        'invalid transaction ID' => [['transaction_id' => '111']],
-        'not package-owned' => [['owned_by_iran_payment' => false]],
-    ]);
+    $driver = testDriver()->callCallback();
+
+    expect(fn (): TestDriver => $driver->verify())
+        ->toThrow(MissingGatewayPayloadException::class, 'Gateway payload was not provided and no stored payment record was found.');
+})->with([
+    'invalid transaction ID' => [['transaction_id' => '111']],
+    'not package-owned' => [['owned_by_iran_payment' => false]],
+]);
 
 it('updates the successful payment in the database when the gateway payload is not provided', function (): void {
     setTestNow('2025-12-10 18:30:10');
@@ -456,8 +463,9 @@ it('stores a failed payment status when the gateway throws an invalid callback d
 it('just throws the invalid callback data exception if it was not stored internally', function (): void {
     $driver = testDriver()->throwing(new InvalidCallbackDataException('Gateway exception error message'));
 
-    $driver->fromCallback(['key' => 'value'])->verify(['payload']);
-})->throws(InvalidCallbackDataException::class, 'Gateway exception error message');
+    expect(fn (): TestDriver => $driver->fromCallback(['key' => 'value'])->verify(['payload']))
+        ->toThrow(InvalidCallbackDataException::class, 'Gateway exception error message');
+});
 
 it('returns the payment model after verification when it was stored internally', function (): void {
     testDriver()->storeTestPayment();

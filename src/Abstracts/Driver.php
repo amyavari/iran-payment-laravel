@@ -11,7 +11,7 @@ use AliYavari\IranPayment\Exceptions\ApiIsNotCalledException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\InvalidCallOrderException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
-use AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException;
+use AliYavari\IranPayment\Exceptions\MissingGatewayPayloadException;
 use AliYavari\IranPayment\Exceptions\PaymentAlreadyVerifiedException;
 use AliYavari\IranPayment\Models\Payment as PaymentModel;
 use Illuminate\Database\Eloquent\Model;
@@ -557,7 +557,7 @@ abstract class Driver implements Payment
     private function ensureApiIsCalled(): void
     {
         if (! $this->calledApiMethod) {
-            throw new ApiIsNotCalledException('You must call an API method before checking its status.');
+            throw ApiIsNotCalledException::make();
         }
     }
 
@@ -598,7 +598,7 @@ abstract class Driver implements Payment
      *
      * @return array<string,mixed>
      *
-     * @throws MissingVerificationPayloadException
+     * @throws MissingGatewayPayloadException
      */
     private function getStoredPayload(): array
     {
@@ -655,9 +655,7 @@ abstract class Driver implements Payment
     private function ensurePaymentIsNotVerified(): void
     {
         if ($this->isVerified()) {
-            throw new PaymentAlreadyVerifiedException(
-                sprintf('Payment with transaction ID "%s" has already been verified.', $this->getTransactionId())
-            );
+            throw PaymentAlreadyVerifiedException::make($this->getTransactionId());
         }
     }
 

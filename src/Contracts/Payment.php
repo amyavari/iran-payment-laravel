@@ -122,7 +122,7 @@ interface Payment
      *
      * @param  array<string,mixed>|null  $gatewayPayload
      *
-     * @throws \AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException
+     * @throws \AliYavari\IranPayment\Exceptions\MissingGatewayPayloadException
      * @throws \AliYavari\IranPayment\Exceptions\InvalidCallbackDataException
      * @throws \AliYavari\IranPayment\Exceptions\PaymentAlreadyVerifiedException
      * @throws \AliYavari\IranPayment\Exceptions\InvalidCallOrderException

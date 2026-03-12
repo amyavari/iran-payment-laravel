@@ -8,7 +8,7 @@ use AliYavari\IranPayment\Abstracts\Driver;
 use AliYavari\IranPayment\Concerns\HasUniqueNumber;
 use AliYavari\IranPayment\Dtos\DriverBehaviorDto;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
-use AliYavari\IranPayment\Exceptions\DriverBehaviorNotDefinedException;
+use AliYavari\IranPayment\Exceptions\GatewayBehaviorNotDefinedException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
@@ -472,14 +472,12 @@ final class FakeDriver extends Driver
     /**
      * Throws an exception when fake behavior does not exist for the given method.
      *
-     * @throws DriverBehaviorNotDefinedException
+     * @throws GatewayBehaviorNotDefinedException
      */
     private function ensureBehaviorIsDefined(string $method): void
     {
         if (! Arr::has($this->behaviors, $method)) {
-            throw new DriverBehaviorNotDefinedException(
-                sprintf('No behavior has been defined for the "%s" method on the fake driver "%s".', $method, $this->gateway)
-            );
+            throw GatewayBehaviorNotDefinedException::make($this->getGateway(), $method);
         }
     }
 

@@ -19,5 +19,6 @@ it('calls a WSDL service correctly', function (): void {
 it('prevents real requests', function (): void {
     Soap::preventStrayRequests(prevent: true);
 
-    Soap::to('http://wsdl');
-})->throws(StrayRequestException::class, 'Attempted request to "http://wsdl" without a matching fake.');
+    expect(fn () => Soap::to('http://wsdl'))
+        ->toThrow(StrayRequestException::class, 'Attempted request to "http://wsdl" without a matching fake.');
+});
