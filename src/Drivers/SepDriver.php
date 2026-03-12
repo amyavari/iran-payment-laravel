@@ -8,8 +8,6 @@ use AliYavari\IranPayment\Abstracts\Driver;
 use AliYavari\IranPayment\Concerns\HasUniqueNumber;
 use AliYavari\IranPayment\Concerns\NoCallbackDefaults;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
-use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
-use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Exceptions\SandboxNotSupportedException;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Collection;
@@ -77,13 +75,6 @@ final class SepDriver extends Driver
      * Token used to redirect the user to the payment page.
      */
     private string $token;
-
-    /**
-     * Callback data sent by the gateway after the user completes the payment.
-     *
-     * @var Collection<string,mixed>
-     */
-    private Collection $callbackPayload;
 
     public function __construct(
         private readonly string $terminalId,
@@ -176,7 +167,12 @@ final class SepDriver extends Driver
             return;
         }
 
-        $this->ensureCallbackDataMatchesPayload($storedPayload);
+        $keyMapper = [
+            'ResNum' => 'resNum',
+            'Amount' => 'amount',
+        ];
+
+        $this->ensureCallbackDataMatchesPayload($storedPayload, $keyMapper);
 
         $this->execute(self::GATEWAY_FOLLOW_UP_BASE_URL, $this->followUpPayload(), 'VerifyTransaction');
 
@@ -220,27 +216,19 @@ final class SepDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    protected function prepareFromCallback(array $callbackPayload): static
+    protected function prepareFromCallback(): void
     {
-        $this->callbackPayload = collect($callbackPayload);
-
-        $this->ensureCallbackDataHasKeys(['State', 'Status', 'ResNum']);
-
         $this->transactionId = (string) $this->callbackPayload->get('ResNum');
-
-        return $this;
     }
 
     /**
      * {@inheritdoc}
      */
-    protected function prepareWithoutCallback(string $transactionId): static
+    protected function prepareWithoutCallback(string $transactionId): void
     {
         $this->transactionId = $transactionId;
 
         $this->enableNoCallback();
-
-        return $this;
     }
 
     /**
@@ -288,6 +276,14 @@ final class SepDriver extends Driver
     protected function getDriverCardNumber(): string
     {
         return $this->callbackPayload->get('SecurePan', '');
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function getRequiredCallbackKeys(): array
+    {
+        return ['State', 'Status', 'ResNum'];
     }
 
     /**
@@ -368,43 +364,6 @@ final class SepDriver extends Driver
 
             default => 'کد پاسخ نامشخص'
         };
-    }
-
-    /**
-     * Throws an exception if callback data doesn't have all of the given keys.
-     *
-     * @param  array<string>  $keys
-     *
-     * @throws MissingCallbackDataException
-     */
-    private function ensureCallbackDataHasKeys(array $keys): void
-    {
-        foreach ($keys as $key) {
-            if (! $this->callbackPayload->has($key)) {
-                throw MissingCallbackDataException::make($this->getGateway(), $keys, $key);
-            }
-        }
-    }
-
-    /**
-     * Throws an exception if callback data doesn't match with the stored gateway payload.
-     *
-     * @param  array<string,mixed>  $storedPayload
-     *
-     * @throws InvalidCallbackDataException
-     */
-    private function ensureCallbackDataMatchesPayload(array $storedPayload): void
-    {
-        $keyMapper = [
-            'ResNum' => 'resNum',
-            'Amount' => 'amount',
-        ];
-
-        foreach ($keyMapper as $callbackKey => $storedKey) {
-            if ((string) $this->callbackPayload->get($callbackKey) !== (string) Arr::get($storedPayload, $storedKey)) {
-                throw InvalidCallbackDataException::make($callbackKey, $storedKey);
-            }
-        }
     }
 
     /**

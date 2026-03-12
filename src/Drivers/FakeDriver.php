@@ -407,19 +407,25 @@ final class FakeDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    protected function prepareFromCallback(array $callbackPayload): static
+    protected function prepareFromCallback(): void
     {
-        return $this;
+        //
     }
 
     /**
      * {@inheritdoc}
      */
-    protected function prepareWithoutCallback(string $transactionId): static
+    protected function prepareWithoutCallback(string $transactionId): void
     {
         $this->transactionId = $transactionId;
+    }
 
-        return $this;
+    /**
+     * {@inheritdoc}
+     */
+    protected function getRequiredCallbackKeys(): array
+    {
+        return [];
     }
 
     /**

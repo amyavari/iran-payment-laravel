@@ -10,10 +10,12 @@ use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\ApiIsNotCalledException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\InvalidCallOrderException;
+use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingVerificationPayloadException;
 use AliYavari\IranPayment\Exceptions\PaymentAlreadyVerifiedException;
 use AliYavari\IranPayment\Models\Payment as PaymentModel;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -30,6 +32,13 @@ abstract class Driver implements Payment
      * Explicit gateway key defined by the concrete driver, if needed.
      */
     protected ?string $gateway = null;
+
+    /**
+     * Callback data sent by the gateway after the user completes the payment.
+     *
+     * @var Collection<string,mixed>
+     */
+    protected Collection $callbackPayload;
 
     /**
      * Runtime user-defined callback URL.
@@ -55,13 +64,6 @@ abstract class Driver implements Payment
      * The Eloquent model this payment belongs to.
      */
     private Model $payable;
-
-    /**
-     * Callback data sent by the gateway after the user completes the payment.
-     *
-     * @var array<string,mixed>
-     */
-    private array $callbackPayload;
 
     /**
      * Determine whether the payment should be auto-settled.
@@ -146,15 +148,13 @@ abstract class Driver implements Payment
 
     /**
      * Preparation when verification is initiated from a gateway callback
-     *
-     * @param  array<string,mixed>  $callbackPayload
      */
-    abstract protected function prepareFromCallback(array $callbackPayload): static;
+    abstract protected function prepareFromCallback(): void;
 
     /**
      * Preparation when verification is initiated without a gateway callback.
      */
-    abstract protected function prepareWithoutCallback(string $transactionId): static;
+    abstract protected function prepareWithoutCallback(string $transactionId): void;
 
     /**
      * Get the payment transaction ID from the driver.
@@ -182,6 +182,13 @@ abstract class Driver implements Payment
      * Get the user's card number used for payment from the driver.
      */
     abstract protected function getDriverCardNumber(): string;
+
+    /**
+     * Returns an array of keys that must be present in the callback data.
+     *
+     * @return array<string>
+     */
+    abstract protected function getRequiredCallbackKeys(): array;
 
     /**
      * {@inheritdoc}
@@ -320,9 +327,13 @@ abstract class Driver implements Payment
     {
         $this->markCallbackAsCalled();
 
-        $this->callbackPayload = $callbackPayload;
+        $this->callbackPayload = collect($callbackPayload);
 
-        return $this->prepareFromCallback($callbackPayload);
+        $this->ensureCallbackDataHasKeys();
+
+        $this->prepareFromCallback();
+
+        return $this;
     }
 
     /**
@@ -332,7 +343,9 @@ abstract class Driver implements Payment
     {
         $this->markCallbackAsCalled();
 
-        return $this->prepareWithoutCallback($transactionId);
+        $this->prepareWithoutCallback($transactionId);
+
+        return $this;
     }
 
     /**
@@ -448,6 +461,23 @@ abstract class Driver implements Payment
     }
 
     /**
+     * Throws an exception if callback data doesn't match with the stored gateway payload.
+     *
+     * @param  array<string,mixed>  $storedPayload
+     * @param  array<string,string>  $keyMapper  Map callback payload keys to stored payload keys. [$callbackKey => $storedKey]
+     *
+     * @throws InvalidCallbackDataException
+     */
+    protected function ensureCallbackDataMatchesPayload(array $storedPayload, array $keyMapper): void
+    {
+        foreach ($keyMapper as $callbackKey => $storedKey) {
+            if ((string) $this->callbackPayload->get($callbackKey) !== (string) Arr::get($storedPayload, $storedKey)) {
+                throw InvalidCallbackDataException::make($callbackKey, $storedKey);
+            }
+        }
+    }
+
+    /**
      * Executes the callback when the API call is successful.
      *
      * @return mixed|null
@@ -545,6 +575,22 @@ abstract class Driver implements Payment
     private function markCallbackAsCalled(): void
     {
         $this->callbackCalled = true;
+    }
+
+    /**
+     * Throws an exception if callback data doesn't have all of the given keys.
+     *
+     * @throws MissingCallbackDataException
+     */
+    private function ensureCallbackDataHasKeys(): void
+    {
+        $requiredKeys = $this->getRequiredCallbackKeys();
+
+        foreach ($requiredKeys as $key) {
+            if (! $this->callbackPayload->has($key)) {
+                throw MissingCallbackDataException::make($this->getGateway(), $requiredKeys, $key);
+            }
+        }
     }
 
     /**
