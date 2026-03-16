@@ -7,8 +7,6 @@ namespace AliYavari\IranPayment\Tests\Feature\Http\Requests\IdPayRequestTest; //
 use AliYavari\IranPayment\Http\Requests\IdPayRequest;
 use Illuminate\Support\Facades\Route;
 
-pest()->only();
-
 /**
  * This test file only tests some domain important validation rules.
  */

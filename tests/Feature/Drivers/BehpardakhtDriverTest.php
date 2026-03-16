@@ -291,51 +291,6 @@ it('communicates with sandbox environment for payment verification when configur
     Soap::assertWsdl('https://pgw.dev.bpmellat.ir/pgwchannel/services/pgw?wsdl');
 });
 
-it('settles the payment', function (): void {
-    verifiedPayment()->settle();
-
-    Soap::assertWsdl('https://bpm.shaparak.ir/pgwchannel/services/pgw?wsdl');
-    Soap::assertMethodCalled('bpSettleRequest');
-
-    expect(Soap::getArguments(0))
-        ->terminalId->toBe(1234)
-        ->userName->toBe('username')
-        ->userPassword->toBe('password')
-        ->orderId->toBe(123456789012345)
-        ->saleOrderId->toBe(123456789012345)
-        ->saleReferenceId->toBe(227926981246);
-});
-
-it('returns successful response on successful payment settlement', function (): void {
-    fakeSoap(response: '0'); // Sample successful API response
-
-    $payment = verifiedPayment()->settle();
-
-    expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
-        ->getRawResponse()->toBe('0');
-});
-
-it('returns failed response on failed payment settlement', function (): void {
-    fakeSoap(response: '11'); // Sample failed API response
-
-    $payment = verifiedPayment()->settle();
-
-    expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toBe('کد 11- شماره کارت نامعتبر است')
-        ->getRawResponse()->toBe('11');
-});
-
-it('communicates with sandbox environment for payment settlement when configured', function (): void {
-    Config::set('iran-payment.use_sandbox', true);
-
-    verifiedPayment()->settle();
-
-    Soap::assertWsdl('https://pgw.dev.bpmellat.ir/pgwchannel/services/pgw?wsdl');
-});
-
 it('reverses the payment', function (): void {
     verifiedPayment()->reverse();
 
@@ -397,19 +352,6 @@ it('returns failed verification with no callback data', function (): void {
     expect($payment)
         ->successful()->toBeFalse()
         ->error()->toBe('کد 1001- درگاه از وریفای بدون callback پشتیبانی نمی کند.')
-        ->getRawResponse()->toBe('No API is called.');
-
-    Soap::assertNothingIsCalled();
-});
-
-it('returns failed settlement with no callback data', function (): void {
-    $payment = driver()->noCallback('123')->verify(gatewayPayload());
-
-    $payment->settle();
-
-    expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toBe('کد 1002- درگاه از تسویه بدون callback پشتیبانی نمی کند.')
         ->getRawResponse()->toBe('No API is called.');
 
     Soap::assertNothingIsCalled();

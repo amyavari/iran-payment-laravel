@@ -209,20 +209,6 @@ final class BehpardakhtDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    protected function settlePayment(): void
-    {
-        if ($this->isNoCallback()) {
-            $this->setPaymentStatusForNoCallback('settle');
-
-            return;
-        }
-
-        $this->execute('bpSettleRequest', $this->followUpPayload());
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     protected function reversePayment(): void
     {
         if ($this->isNoCallback()) {
@@ -478,7 +464,7 @@ final class BehpardakhtDriver extends Driver
 
     /**
      * Returns the payload used for follow‑up payment operations
-     * such as verification, settlement, and reversal.
+     * such as verification, and reversal.
      *
      * @return array<string,mixed>
      */

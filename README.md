@@ -32,7 +32,7 @@ To view the Persian documentation, please refer to [README_FA.md](./docs/README_
 | IDPay             | آی دی پی          | [idpay.ir]        | `id_pay`      | Unreleased |
 
 > [!CAUTION]
-> Gateways have different rules for pending verifications and settlements. Please check [gateways_note_en.md](./docs/gateways_note_en.md).
+> Gateways have different rules for pending verifications and reversals. Please check [gateways_note_en.md](./docs/gateways_note_en.md).
 
 ## Table of Contents
 
@@ -47,7 +47,7 @@ To view the Persian documentation, please refer to [README_FA.md](./docs/README_
     - [Manual Store](#manual-store)
   - [Redirect User to Payment Page](#redirect-user-to-payment-page)
   - [Verification](#verification)
-    - [Verify, Settle and Refund](#verify-settle-and-refund)
+    - [Verify and Reverse](#verify-and-reverse)
     - [Successful Payment Details](#successful-payment-details)
     - [Form Request Classes](#form-request-classes)
     - [Verification Without Callback](#verification-without-callback)
@@ -164,7 +164,7 @@ $payment->getRawResponse(); // string|array
 
 #### Automatic Store
 
-The package can automatically store payments and keep them in sync during later API calls such as verification, settlement, or reversal.
+The package can automatically store payments and keep them in sync during later API calls such as verification, or reversal.
 
 If you prefer full control, [Manual Store](#manual-store) approach.
 
@@ -187,7 +187,7 @@ Payment::{other configurations}->store(Model $payable)->create(...);
 
 ##### Accessing the Stored Payment
 
-After a payment is created, and during any subsequent API calls such as `verify()`, `settle()`, or `reverse()`, you can access the underlying payment model:
+After a payment is created, and during any subsequent API calls such as `verify()`, or `reverse()`, you can access the underlying payment model:
 
 ```php
 $payment->getModel();      // \AliYavari\IranPayment\Models\Payment
@@ -284,13 +284,13 @@ $redirectData->toArray();   // array
 
 ### Verification
 
-#### Verify, Settle and Refund
+#### Verify and Reverse
 
 After the user is redirected back to your application from the gateway, you can verify the payment using these methods:
 
 **Notes:**
 
-- After calling `verify()`, `settle()`, or `reverse()`, you can use the methods in [Checking API Call Status](#checking-api-call-status) to check the result of the API call.
+- After calling `verify()`, or `reverse()`, you can use the methods in [Checking API Call Status](#checking-api-call-status) to check the result of the API call.
 - If the payment was stored in the database using this package, these methods will automatically update the payment record. To access the underlying payment model, see [Automatic Store](#automatic-store)
 
 ```php
@@ -317,18 +317,14 @@ $payment->getTransactionId();
 $payment->verify(array $gatewayPayload);
 ```
 
-To settle or reverse the payment:
+To reverse the payment:
 
 ```php
-// Settle the payment (call if verification is successful)
-$payment->settle();
-
 // Reverse or refund the payment (call if verification fails)
 $payment->reverse();
 
-// Let the package handle settle or reverse automatically when needed
+// Let the package handle reverse automatically when needed
 $payment
-  ->autoSettle(bool $autoSettle = true)
   ->autoReverse(bool $autoReverse = true)
   ->verify(...); // Manual or automatic storage
 ```
@@ -337,7 +333,7 @@ $payment
 
 - To get `$callbackPayload`, this package provides basic `FormRequest` classes to validate callback data.
   These classes are located in `AliYavari\IranPayment\Requests\<Gateway>Request`. See [Form Request classes](#form-request-classes)
-- If auto-settle and/or auto-reverse is enabled, the [Checking API Call Status](#checking-api-call-status) applies to **verification**.
+- If auto-reverse is enabled, the [Checking API Call Status](#checking-api-call-status) applies to **verification**.
 
 #### Successful Payment Details
 
@@ -469,16 +465,6 @@ $fake->failedConnectionVerify($message = 'Verification connection failed');
 
 ```php
 $fake->invalidCallback($message = 'Invalid callback data');
-```
-
-### Defining Fake Behavior for `settle()`
-
-```php
-$fake->successfulSettle($rawResponse = 'Settlement raw response');
-
-$fake->failedSettle($rawResponse = 'Settlement raw response', $errorCode = 0, $errorMessage = 'Settlement failed');
-
-$fake->failedConnectionSettle($message = 'Settlement connection failed');
 ```
 
 ### Defining Fake Behavior for `reverse()`

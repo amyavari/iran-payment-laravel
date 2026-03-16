@@ -20,14 +20,9 @@ trait NoCallbackDefaults
     private const No_CALLBACK_VERIFY_STATUS_CODE = '1001';
 
     /**
-     * Status code for settle in no-callback mode
-     */
-    private const No_CALLBACK_SETTLE_STATUS_CODE = '1002';
-
-    /**
      * Status code for reverse in no-callback mode
      */
-    private const No_CALLBACK_REVERSE_STATUS_CODE = '1003';
+    private const No_CALLBACK_REVERSE_STATUS_CODE = '1002';
 
     /**
      * Indicates callback data is not provided
@@ -57,7 +52,6 @@ trait NoCallbackDefaults
     {
         return match ($method) {
             'verify' => self::No_CALLBACK_VERIFY_STATUS_CODE,
-            'settle' => self::No_CALLBACK_SETTLE_STATUS_CODE,
             'reverse' => self::No_CALLBACK_REVERSE_STATUS_CODE,
 
             default => throw new LogicException('Wrong method name.'),
@@ -87,7 +81,6 @@ trait NoCallbackDefaults
     {
         return match ($statusCode) {
             self::No_CALLBACK_VERIFY_STATUS_CODE => 'درگاه از وریفای بدون callback پشتیبانی نمی کند.',
-            self::No_CALLBACK_SETTLE_STATUS_CODE => 'درگاه از تسویه بدون callback پشتیبانی نمی کند.',
             self::No_CALLBACK_REVERSE_STATUS_CODE => 'تراکنش به صورت خودکار برگشت داده می شود.',
 
             default => throw new LogicException('Wrong status code.'),

@@ -34,11 +34,6 @@ final class FakeDriver extends Driver
     private const string VERIFY = 'verify';
 
     /**
-     * Settle operation key.
-     */
-    private const string SETTLE = 'settle';
-
-    /**
      * Reverse operation key.
      */
     private const string REVERSE = 'reverse';
@@ -209,46 +204,6 @@ final class FakeDriver extends Driver
     }
 
     /**
-     * Set successful behavior for the settle API call.
-     *
-     * @param  string|array<string,mixed>  $rawResponse
-     */
-    public function successfulSettle(string|array $rawResponse = 'Settlement raw response'): self
-    {
-        $behavior = new DriverBehaviorDto(successful: true, rawResponse: $rawResponse);
-
-        $this->setBehaviorFor(self::SETTLE, $behavior);
-
-        return $this;
-    }
-
-    /**
-     * Set failed behavior for the settle API call.
-     *
-     * @param  string|array<string,mixed>  $rawResponse
-     */
-    public function failedSettle(string|array $rawResponse = 'Settlement raw response', string|int $errorCode = 0, string $errorMessage = 'Settlement failed'): self
-    {
-        $behavior = new DriverBehaviorDto(successful: false, errorCode: (string) $errorCode, errorMessage: $errorMessage, rawResponse: $rawResponse);
-
-        $this->setBehaviorFor(self::SETTLE, $behavior);
-
-        return $this;
-    }
-
-    /**
-     * Set connection failure exception for the settle API call.
-     */
-    public function failedConnectionSettle(string $message = 'Settlement connection failed'): self
-    {
-        $behavior = new DriverBehaviorDto(exceptionMessage: $message);
-
-        $this->setBehaviorFor(self::SETTLE, $behavior);
-
-        return $this;
-    }
-
-    /**
      * Set successful behavior for the reverse API call.
      *
      * @param  string|array<string,mixed>  $rawResponse
@@ -386,14 +341,6 @@ final class FakeDriver extends Driver
         }
 
         $this->applyBehaviorFor(self::VERIFY);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function settlePayment(): void
-    {
-        $this->applyBehaviorFor(self::SETTLE);
     }
 
     /**

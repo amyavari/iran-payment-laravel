@@ -164,46 +164,6 @@ it('throws a connection exception on the verify API', function (string $gateway,
         ->toThrow($connectionType, 'Verification connection failed');
 })->with('gateway_connections');
 
-it('throws an exception when the settle behavior is not defined', function (): void {
-    fakeTestGateway()->successfulVerify();
-
-    $payment = testGateway(runVerification: true);
-
-    expect(fn (): PaymentInterface => $payment->settle())
-        ->toThrow(GatewayBehaviorNotDefinedException::class, 'No behavior has been defined for the "settle" method on the fake driver "test_gateway".');
-});
-
-it('fakes a successful settle API response', function (): void {
-    fakeTestGateway()->successfulVerify()->successfulSettle();
-
-    $payment = testGateway(runVerification: true)->settle();
-
-    expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
-        ->getRawResponse()->toBe('Settlement raw response');
-});
-
-it('fakes a failed settle API response', function (): void {
-    fakeTestGateway()->successfulVerify()->failedSettle();
-
-    $payment = testGateway(runVerification: true)->settle();
-
-    expect($payment)
-        ->failed()->toBeTrue()
-        ->error()->toBe('کد 0- Settlement failed')
-        ->getRawResponse()->toBe('Settlement raw response');
-});
-
-it('throws a connection exception on the settle API', function (string $gateway, string $connectionType): void {
-    Payment::fake($gateway)->successfulVerify()->failedConnectionSettle();
-
-    $payment = Payment::gateway($gateway)->fromCallback([])->verify([]);
-
-    expect(fn () => $payment->settle())
-        ->toThrow($connectionType, 'Settlement connection failed');
-})->with('gateway_connections');
-
 it('throws an exception when the reverse behavior is not defined', function (): void {
     fakeTestGateway()->successfulVerify();
 

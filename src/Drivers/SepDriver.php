@@ -186,20 +186,6 @@ final class SepDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    protected function settlePayment(): void
-    {
-        if ($this->isNoCallback()) {
-            $this->setPaymentStatusForNoCallback('settle');
-
-            return;
-        }
-
-        $this->setSuccessfulStatusForSettlement();
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     protected function reversePayment(): void
     {
         if ($this->isNoCallback()) {
@@ -433,15 +419,6 @@ final class SepDriver extends Driver
             $this->apiStatusCode = '1010';
             $this->apiStatusMessage = 'مبلغ پرداخت شده نامعتبر است';
         }
-    }
-
-    /**
-     * Set the settlement payment status to successful.
-     */
-    private function setSuccessfulStatusForSettlement(): void
-    {
-        $this->apiIsSuccessful = true;
-        $this->rawResponse = 'No API is called. IPG only has auto settlement.';
     }
 
     /**
