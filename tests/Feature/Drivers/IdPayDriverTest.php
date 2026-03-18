@@ -19,7 +19,7 @@ beforeEach(function (): void {
 });
 
 it('generates and returns transaction ID on payment creation', function (): void {
-    fakeHttpWithStatus(successfulCreationResponse(), 201);
+    fakeHttp(successfulCreationResponse(), 201);
 
     $payment = driver()->create(1_000);
 
@@ -28,7 +28,7 @@ it('generates and returns transaction ID on payment creation', function (): void
 });
 
 it('calls payment creation API with minimum passed data and config callback URL', function (): void {
-    fakeHttpWithStatus(successfulCreationResponse(), 201);
+    fakeHttp(successfulCreationResponse(), 201);
 
     $payment = driver()->create(1_000);
 
@@ -44,24 +44,25 @@ it('calls payment creation API with minimum passed data and config callback URL'
     expect($request->data())
         ->order_id->toBe($payment->getTransactionId())
         ->amount->toBe('1000')
-        ->callback_url->toBe('http://callback.test')
+        ->callback_url->toBe('http://callback.test') // Config's callback URL
         ->not->toHaveKeys(['phone', 'desc']);
 });
 
 it('calls payment creation API with full passed data', function (): void {
-    fakeHttpWithStatus(successfulCreationResponse(), 201);
+    fakeHttp(successfulCreationResponse(), 201);
 
     driver()->create(1_000, 'Description', '09123456789');
 
     $request = getRecordedHttpRequest();
 
+    // Only what differs from the previous test
     expect($request->data())
         ->desc->toBe('Description')
         ->phone->toBe('09123456789');
 });
 
 it('converts phone number to gateway format if needed', function (string|int $phone): void {
-    fakeHttpWithStatus(successfulCreationResponse(), 201);
+    fakeHttp(successfulCreationResponse(), 201);
 
     driver()->create(1_000, phone: $phone);
 
@@ -79,13 +80,7 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 ]);
 
 it('returns successful response on successful payment creation', function (): void {
-    // Sample successful API response
-    $response = [
-        'id' => 'd2e353189823079e1e4181772cff5292',
-        'link' => 'https://idpay.ir/p/ws-sandbox/d2e353189823079e1e4181772cff5292',
-    ];
-
-    fakeHttpWithStatus($response, 201);
+    fakeHttp($response = successfulCreationResponse(), 201);
 
     $payment = driver()->create(1_000);
 
@@ -96,48 +91,46 @@ it('returns successful response on successful payment creation', function (): vo
 });
 
 it('returns failed response on failed payment creation', function (): void {
-    $response = failedResponse();
-
-    fakeHttpWithStatus($response, 406);
+    fakeHttp($response = failedResponse(), 406);
 
     $payment = driver()->create(1_000);
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 32- شماره سفارش `order_id` نباید خالی باشد.')
+        ->error()->toBe('کد 32- شماره سفارش `order_id` نباید خالی باشد.') // From fake failed response
         ->getRawResponse()->toBe($response);
 });
 
 it('returns gateway payload needed to verify payment on successful payment creation', function (): void {
-    fakeHttpWithStatus(successfulCreationResponse(), 201);
+    fakeHttp(successfulCreationResponse(), 201);
 
     $payment = driver()->create(1_000);
 
     expect($payment)
         ->getGatewayPayload()->toBe([
             'order_id' => $payment->getTransactionId(),
-            'id' => 'd2e353189823079e1e4181772cff5292',
+            'id' => 'd2e353189823079e1e4181772cff5292', // From fake creation response
             'amount' => '1000',
         ]);
 });
 
 it('returns gateway redirect data on successful payment creation', function (): void {
-    fakeHttpWithStatus(successfulCreationResponse(), 201);
+    fakeHttp(successfulCreationResponse(), 201);
 
     $payment = driver()->create(1_000);
 
     expect($payment->getRedirectData())
         ->toBeInstanceOf(PaymentRedirectDto::class)
-        ->url->toBe('https://idpay.ir/p/ws-sandbox/d2e353189823079e1e4181772cff5292') // Full URL is returned by the gateway creation API.
+        ->url->toBe('https://idpay.ir/p/ws-sandbox/d2e353189823079e1e4181772cff5292') // From fake creation response
         ->method->toBe('GET')
         ->payload->toBe([])
         ->headers->toBe([]);
 });
 
 it('communicates with sandbox environment for payment creation when configured', function (): void {
-    Config::set('iran-payment.use_sandbox', true);
+    fakeHttp(successfulCreationResponse(), 201);
 
-    fakeHttpWithStatus(successfulCreationResponse(), 201);
+    Config::set('iran-payment.use_sandbox', true);
 
     driver()->create(1_000);
 
@@ -172,7 +165,7 @@ it('throws exception when callback lacks required keys', function (string $key):
 ]);
 
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
-    fakeHttpWithStatus(successfulVerificationResponse(), 200);
+    fakeHttp();
 
     $callbackPayload = callbackFactory()->successful()->all();
 
@@ -193,7 +186,7 @@ it('throws exception when stored payload and successful callback data do not mat
 ]);
 
 it('does not verify payment when callback status is not successful', function (): void {
-    fakeHttpWithStatus(successfulVerificationResponse(), 200);
+    fakeHttp();
 
     $callbackPayload = callbackFactory()->failed()->all();
 
@@ -203,20 +196,16 @@ it('does not verify payment when callback status is not successful', function ()
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1- پرداخت انجام نشده است')
+        ->error()->toBe('کد 1- پرداخت انجام نشده است') // The error code is set by fake failed callback.
         ->getRawResponse()->toBe($callbackPayload);
 
     Http::assertNothingSent();
 });
 
 it('verifies payment when callback is successful and matches stored payload', function (): void {
-    fakeHttpWithStatus(successfulVerificationResponse(), 200);
+    fakeHttp(successfulVerificationResponse(), 200);
 
-    $callbackPayload = callbackFactory()->successful()->all();
-
-    driver()
-        ->fromCallback($callbackPayload)
-        ->verify(gatewayPayload());
+    driverFromSuccessfulCallback()->verify(gatewayPayload());
 
     $request = getRecordedHttpRequest();
 
@@ -228,14 +217,12 @@ it('verifies payment when callback is successful and matches stored payload', fu
         ->hasHeader('X-API-KEY', 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')->toBeTrue();
 
     expect($request->data())
-        ->id->toBe('d2e353189823079e1e4181772cff5292')
-        ->order_id->toBe('123456789012345');
+        ->id->toBe('d2e353189823079e1e4181772cff5292') // From fake payload
+        ->order_id->toBe('123456789012345'); // From fake callback
 });
 
 it('returns successful response on successful payment verification', function (): void {
-    $response = successfulVerificationResponse();
-
-    fakeHttpWithStatus($response, 200);
+    fakeHttp($response = successfulVerificationResponse(), 200);
 
     $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
 
@@ -247,11 +234,10 @@ it('returns successful response on successful payment verification', function ()
 
 it('returns successful response on subsequence successful payment verification', function (string $status): void {
     $response = successfulVerificationResponse();
-
-    // In the subsequence successful verifications it returns 101 and 200 instead of 100
+    // In the subsequence successful verifications it returns `101` and `200` instead of `100`
     Arr::set($response, 'status', $status);
 
-    fakeHttpWithStatus($response, 200);
+    fakeHttp($response, 200);
 
     $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
 
@@ -268,7 +254,7 @@ it('returns failed response on successful payment verification with invalid amou
     $response = successfulVerificationResponse();
     Arr::set($response, 'amount', '2000');
 
-    fakeHttp($response);
+    fakeHttp($response, 200);
 
     $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
 
@@ -279,24 +265,21 @@ it('returns failed response on successful payment verification with invalid amou
 });
 
 it('returns failed response on payment verification when HTTP status is not successful', function (): void {
-    $response = failedResponse();
-
-    fakeHttpWithStatus($response, 406);
+    fakeHttp($response = failedResponse(), 406);
 
     $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 32- شماره سفارش `order_id` نباید خالی باشد.')
+        ->error()->toBe('کد 32- شماره سفارش `order_id` نباید خالی باشد.') // From fake failed response
         ->getRawResponse()->toBe($response);
 });
 
-it('returns failed response on failed payment verification when verification status is not successful', function (): void {
+it('returns failed response on payment verification when verification status is not successful', function (): void {
     $response = successfulVerificationResponse();
-
     Arr::set($response, 'status', '1');
 
-    fakeHttpWithStatus($response, 200);
+    fakeHttp($response, 200);
 
     $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
 
@@ -307,9 +290,9 @@ it('returns failed response on failed payment verification when verification sta
 });
 
 it('communicates with sandbox environment for payment verification when configured', function (): void {
-    Config::set('iran-payment.use_sandbox', true);
+    fakeHttp(successfulVerificationResponse(), 200);
 
-    fakeHttpWithStatus(successfulVerificationResponse(), 200);
+    Config::set('iran-payment.use_sandbox', true);
 
     driverFromSuccessfulCallback()->verify(gatewayPayload());
 
@@ -320,17 +303,17 @@ it('communicates with sandbox environment for payment verification when configur
 });
 
 it('returns card number and reference ID from successful verification', function (): void {
-    fakeHttpWithStatus(successfulVerificationResponse(), 200);
+    fakeHttp(successfulVerificationResponse(), 200);
 
     $payment = verifiedPayment();
 
     expect($payment)
-        ->getRefNumber()->toBe('888001')
-        ->getCardNumber()->toBe('123456******1234');
+        ->getRefNumber()->toBe('888001') // From fake verification response
+        ->getCardNumber()->toBe('123456******1234'); // From fake verification response
 });
 
 it('returns failed response on the payment reversal', function (): void {
-    fakeHttpWithStatus(successfulVerificationResponse(), 200);
+    fakeHttp(successfulVerificationResponse(), 200);
 
     $payment = verifiedPayment()->reverse();
 
@@ -351,7 +334,7 @@ it('creates payment instance with no callback data', function (): void {
 });
 
 it('verifies normally with no callback data', function (): void {
-    fakeHttpWithStatus(successfulVerificationResponse(), 200);
+    fakeHttp(successfulVerificationResponse(), 200);
 
     $payment = driver()->noCallback('123456789012345');
 
@@ -361,7 +344,7 @@ it('verifies normally with no callback data', function (): void {
 });
 
 it('returns failed response on the payment reversal with no callback data', function (): void {
-    fakeHttpWithStatus(successfulVerificationResponse(), 200);
+    fakeHttp(successfulVerificationResponse(), 200);
 
     $payment = verifiedPayment()->reverse();
 
@@ -386,13 +369,6 @@ function setDriverConfigs(): void
 function driver(): IdPayDriver
 {
     return Payment::gateway('id_pay');
-}
-
-function fakeHttpWithStatus(array $response, int $status): void
-{
-    fakeHttp([
-        '*' => Http::response($response, $status),
-    ], isSinglePattern: false);
 }
 
 function successfulCreationResponse(): array
