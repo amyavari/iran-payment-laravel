@@ -194,7 +194,6 @@ it('stores payment data in the database when payment creation is successful and 
         'ref_number' => null,
         'card_number' => null,
         'verified_at' => null,
-        'settled_at' => null,
         'reversed_at' => null,
         'raw_responses' => json_encode([
             'create_20251210183010' => 'create raw response', // Set by TestDriver
@@ -401,7 +400,6 @@ it('updates the successful payment in the database when the gateway payload is n
         'status' => PaymentStatus::Successful,
         'error' => null,
         'verified_at' => '2025-12-10 18:30:20',
-        'settled_at' => null,
         'reversed_at' => null,
         'raw_responses' => json_encode([
             'create_20251210183010' => 'create raw response', // Set by TestDriver
@@ -424,7 +422,6 @@ it('updates the failed payment in the database when the gateway payload is not p
         'status' => PaymentStatus::Failed,
         'error' => $driver->error(),
         'verified_at' => '2025-12-10 18:30:20',
-        'settled_at' => null,
         'reversed_at' => null,
         'raw_responses' => json_encode([
             'create_20251210183010' => 'create raw response', // Set by TestDriver
@@ -448,7 +445,6 @@ it('stores a failed payment status when the gateway throws an invalid callback d
         'status' => PaymentStatus::Failed,
         'error' => 'Gateway exception error message',
         'verified_at' => '2025-12-10 18:30:20',
-        'settled_at' => null,
         'reversed_at' => null,
         'raw_responses' => json_encode([
             'create_20251210183010' => 'create raw response', // Set by TestDriver
@@ -548,70 +544,6 @@ it('throws an exception when get reference number is called before verify API ca
         ->toThrow(InvalidCallOrderException::class, 'Cannot call "getRefNumber()" before calling one of the following methods: "verify".');
 });
 
-it('just settles the payment if it was not stored internally', function (): void {
-    $driver = testDriver()->performVerification();
-
-    $driver->settle();
-
-    expect($driver)
-        ->calledMethods()->toBe(['verify', 'settle']);
-});
-
-it('settles the payment and updates it in the database if it was stored internally', function (): void {
-    setTestNow('2025-12-10 18:30:10');
-    testDriver()->storeTestPayment();
-
-    // Different statuses to ensure no unintended changes occur.
-    $driver = testDriver()->asSuccessful('verify')->asFailed('settle');
-
-    setTestNow('2025-12-10 18:30:20');
-    $driver->callCallback()->verify();
-
-    setTestNow('2025-12-10 18:30:30');
-    $driver->settle();
-
-    $this->assertDatabaseHas(Payment::class, [
-        'transaction_id' => $driver->getTransactionId(),
-        'status' => PaymentStatus::Successful,
-        'error' => null,
-        'settled_at' => '2025-12-10 18:30:30',
-        'raw_responses' => json_encode([
-            'create_20251210183010' => 'create raw response', // Set by TestDriver
-            'verify_20251210183020' => 'verify raw response', // Set by TestDriver
-            'settle_20251210183030' => 'settle raw response', // Set by TestDriver
-        ]),
-    ]);
-
-    expect($driver)
-        ->calledMethods()->toBe(['verify', 'settle']);
-});
-
-it('updates the payment in the database after calling the settle API', function (): void {
-    $driver = testDriver()->storeTestPayment()->performVerification();
-
-    $driver->throwing(new Exception()); // Stop execution at the API call
-
-    try {
-        $driver->settle();
-    } catch (Exception) {
-    }
-
-    $this->assertDatabaseHas(Payment::class, [
-        'transaction_id' => $driver->getTransactionId(),
-        'settled_at' => null, // Not updated
-    ]);
-});
-
-it('throws an exception if settle is called on an object that was not verified', function (): void {
-    $driver = testDriver();
-
-    expect(fn (): TestDriver => $driver->settle())
-        ->toThrow(InvalidCallOrderException::class, 'Cannot call "settle()" before calling one of the following methods: "verify".');
-
-    expect($driver)
-        ->calledMethods()->toBe([]); // Nothing is called
-});
-
 it('just reverses the payment if it was not stored internally', function (): void {
     $driver = testDriver()->performVerification();
 
@@ -674,64 +606,6 @@ it('throws an exception if reverse is called on an object that was not verified'
 
     expect($driver)
         ->calledMethods()->toBe([]); // Nothing is called
-});
-
-it('settles after successful verification when auto-settle is enabled', function (): void {
-    $driver = testDriver()->asSuccessful('all');
-
-    $driver->autoSettle()->performVerification();
-
-    expect($driver)
-        ->calledMethods()->toBe(['verify', 'settle']);
-});
-
-it('settles after successful verification when auto-settle is enabled and updates the stored payment', function (): void {
-    testDriver()->storeTestPayment();
-
-    $driver = testDriver()->callCallback()->asSuccessful('all');
-
-    $driver->autoSettle()->verify();
-
-    expect($driver)
-        ->calledMethods()->toBe(['verify', 'settle']);
-
-    // Ensure `settle` is called only after verification is stored.
-    $operationSequence = collect($driver->getModel()->raw_responses)
-        ->keys()
-        ->map(fn ($value): string => Str::before($value, '_'))
-        ->all();
-
-    expect($operationSequence)->toBe(['create', 'verify', 'settle']);
-});
-
-it('does not settle when the payment is not successful', function (): void {
-    $driver = testDriver()->asFailed('verify');
-
-    $driver->autoSettle()->performVerification();
-
-    expect($driver)
-        ->calledMethods()->toBe(['verify']);
-});
-
-it('does not settle when auto-settle is disabled', function (): void {
-    $driver = testDriver()->asSuccessful('verify');
-
-    $driver->autoSettle(autoSettle: false)->performVerification();
-
-    expect($driver)
-        ->calledMethods()->toBe(['verify']);
-});
-
-it('keeps the verification state after auto-settle is performed', function (): void {
-    // Different statuses to unsure it's verify response
-    $driver = testDriver()->asSuccessful('verify')->asFailed('settle');
-
-    $driver->autoSettle()->performVerification();
-
-    expect($driver)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
-        ->getRawResponse()->toBe('verify raw response'); // Set by TestDriver
 });
 
 it('reverses after failed verification when auto-reverse is enabled', function (): void {

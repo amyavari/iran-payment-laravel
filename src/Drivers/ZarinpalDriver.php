@@ -191,15 +191,6 @@ final class ZarinpalDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    protected function settlePayment(): void
-    {
-        $this->apiStatusCode = 100;
-        $this->rawResponse = 'No API is called. IPG only has auto settlement.';
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     protected function reversePayment(): void
     {
         $data = [

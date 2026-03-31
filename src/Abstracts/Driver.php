@@ -66,27 +66,22 @@ abstract class Driver implements Payment
     private Model $payable;
 
     /**
-     * Determine whether the payment should be auto-settled.
-     */
-    private bool $autoSettle = false;
-
-    /**
      * Determine whether the payment should be auto-reversed.
      */
     private bool $autoReverse = false;
 
     /**
-     * The verification success status used for auto-settle and auto-reverse.
+     * The verification success status used for auto-reverse.
      */
     private bool $verificationSuccessfulStatus;
 
     /**
-     * The verification error message used for auto-settle and auto-reverse.
+     * The verification error message used for auto-reverse.
      */
     private mixed $verificationErrorMessage;
 
     /**
-     * The verification raw response used for auto-settle and auto-reverse.
+     * The verification raw response used for auto-reverse.
      */
     private mixed $verificationRawResponse;
 
@@ -135,11 +130,6 @@ abstract class Driver implements Payment
      * @throws InvalidCallbackDataException
      */
     abstract protected function verifyPayment(array $storedPayload): void;
-
-    /**
-     * Settle the payment via the driver
-     */
-    abstract protected function settlePayment(): void;
 
     /**
      * Reverse the payment via the driver
@@ -373,10 +363,6 @@ abstract class Driver implements Payment
 
         $this->updatePaymentAfterVerification();
 
-        if ($this->successful()) {
-            $this->settleIfAutoEnabled();
-        }
-
         if ($this->failed()) {
             $this->reverseIfAutoEnabled();
         }
@@ -407,20 +393,6 @@ abstract class Driver implements Payment
     /**
      * {@inheritdoc}
      */
-    final public function settle(): static
-    {
-        $this->ensureVerificationIsCalledFor(__FUNCTION__);
-
-        $this->settlePayment();
-
-        $this->updatePaymentAfterSettlement();
-
-        return $this;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     final public function reverse(): static
     {
         $this->ensureVerificationIsCalledFor(__FUNCTION__);
@@ -428,16 +400,6 @@ abstract class Driver implements Payment
         $this->reversePayment();
 
         $this->updatePaymentAfterReversal();
-
-        return $this;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    final public function autoSettle(bool $autoSettle = true): static
-    {
-        $this->autoSettle = $autoSettle;
 
         return $this;
     }
@@ -676,16 +638,6 @@ abstract class Driver implements Payment
     {
         if (! $this->isCalledApiMethod('verify')) {
             throw InvalidCallOrderException::make($method, ['verify']);
-        }
-    }
-
-    /**
-     * Settle the payment automatically when is enabled.
-     */
-    private function settleIfAutoEnabled(): void
-    {
-        if ($this->autoSettle) {
-            $this->preserveVerificationState(fn (): static => $this->settle());
         }
     }
 

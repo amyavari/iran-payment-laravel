@@ -119,16 +119,6 @@ trait ManagesModel
     }
 
     /**
-     * Update the payment record after settlement.
-     */
-    private function updatePaymentAfterSettlement(): void
-    {
-        $this->updatePaymentIfExists('settle', [
-            'settled_at' => now(),
-        ]);
-    }
-
-    /**
      * Update the payment record after reversal.
      */
     private function updatePaymentAfterReversal(): void

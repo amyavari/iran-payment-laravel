@@ -314,21 +314,6 @@ it('throws an exception for payment verification when configured to use sandbox'
         ->toThrow(SandboxNotSupportedException::class, 'Sep gateway does not support the sandbox environment.');
 });
 
-it('returns successful response on the payment settlement', function (): void {
-    fakeHttp([
-        '*/VerifyTransaction' => successfulFollowUpResponse(),
-    ], isSinglePattern: false);
-
-    $payment = verifiedPayment()->settle();
-
-    expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
-        ->getRawResponse()->toBe('No API is called. IPG only has auto settlement.');
-
-    Http::assertSentCount(1); // Only verification is sent.
-});
-
 it('reverses the payment', function (): void {
     fakeHttp(successfulFollowUpResponse());
 
@@ -413,21 +398,6 @@ it('returns failed verification with no callback data', function (): void {
     expect($payment)
         ->successful()->toBeFalse()
         ->error()->toBe('کد 1001- درگاه از وریفای بدون callback پشتیبانی نمی کند.')
-        ->getRawResponse()->toBe('No API is called.');
-
-    Http::assertNothingSent();
-});
-
-it('returns failed settlement with no callback data', function (): void {
-    fakeHttp([]);
-
-    $payment = driver()->noCallback('123')->verify(gatewayPayload());
-
-    $payment->settle();
-
-    expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toBe('کد 1002- درگاه از تسویه بدون callback پشتیبانی نمی کند.')
         ->getRawResponse()->toBe('No API is called.');
 
     Http::assertNothingSent();

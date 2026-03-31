@@ -255,13 +255,6 @@ final class TestDriver extends Driver
         ]);
     }
 
-    protected function settlePayment(): void
-    {
-        $this->throwExceptionIfConfigured();
-
-        $this->storeMethodCall('settle', []);
-    }
-
     protected function reversePayment(): void
     {
         $this->throwExceptionIfConfigured();

@@ -302,21 +302,6 @@ it('returns card number and reference ID from successful verification', function
         ->getCardNumber()->toBe('502229******5995');
 });
 
-it('returns successful response on the payment settlement', function (): void {
-    fakeHttp([
-        '*/verify.json' => successfulVerificationResponse(),
-    ], isSinglePattern: false);
-
-    $payment = verifiedPayment()->settle();
-
-    expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
-        ->getRawResponse()->toBe('No API is called. IPG only has auto settlement.');
-
-    Http::assertSentCount(1); // Only verification is sent.
-});
-
 it('reverses the payment', function (): void {
     fakeHttp([
         '*/verify.json' => Http::response(successfulVerificationResponse()),
@@ -401,21 +386,6 @@ it('verifies normally with no callback data', function (): void {
     $payment->verify(gatewayPayload());
 
     Http::assertSentCount(1);
-});
-
-it('returns successful response on the payment settlement with no callback data', function (): void {
-    fakeHttp([
-        '*/verify.json' => successfulVerificationResponse(),
-    ], isSinglePattern: false);
-
-    $payment = verifiedPayment()->settle();
-
-    expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
-        ->getRawResponse()->toBe('No API is called. IPG only has auto settlement.');
-
-    Http::assertSentCount(1); // Only verification is sent.
 });
 
 it('reverses normally with no callback data', function (): void {

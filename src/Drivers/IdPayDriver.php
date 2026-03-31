@@ -174,15 +174,6 @@ final class IdPayDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    protected function settlePayment(): void
-    {
-        $this->apiIsSuccessful = true;
-        $this->rawResponse = 'No API is called. IPG only has auto settlement.';
-    }
-
-    /**
-     * {@inheritdoc}
-     */
     protected function reversePayment(): void
     {
         $this->apiIsSuccessful = false;

@@ -27,7 +27,6 @@ use Override;
  * @property-read string|null $ref_number
  * @property-read string|null $card_number
  * @property-read \Illuminate\Support\Carbon|null $verified_at
- * @property-read \Illuminate\Support\Carbon|null $settled_at
  * @property-read \Illuminate\Support\Carbon|null $reversed_at
  * @property-read bool $owned_by_iran_payment
  */
@@ -101,7 +100,6 @@ final class Payment extends Model
             'ref_number' => 'string',
             'card_number' => 'string',
             'verified_at' => 'datetime',
-            'settled_at' => 'datetime',
             'reversed_at' => 'datetime',
             'owned_by_iran_payment' => 'bool',
         ];

@@ -130,23 +130,11 @@ interface Payment
     public function verify(?array $gatewayPayload = null): static;
 
     /**
-     * Settle the payment
-     *
-     * @throws \AliYavari\IranPayment\Exceptions\InvalidCallOrderException
-     */
-    public function settle(): static;
-
-    /**
      * Reverse the payment
      *
      * @throws \AliYavari\IranPayment\Exceptions\InvalidCallOrderException
      */
     public function reverse(): static;
-
-    /**
-     * Enable automatic settlement after verification if the payment is successful.
-     */
-    public function autoSettle(bool $autoSettle = true): static;
 
     /**
      * Enable automatic reversal after verification if the payment fails.
