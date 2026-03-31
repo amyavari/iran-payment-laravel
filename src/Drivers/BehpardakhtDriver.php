@@ -385,11 +385,11 @@ final class BehpardakhtDriver extends Driver
     private function toDriverPhone(string $phone): string
     {
         return (string) Str::of($phone)
-            ->whenStartsWith('09', fn (Stringable $phone) => $phone->replaceFirst('0', '98'))
-            ->whenStartsWith('+98', fn (Stringable $phone) => $phone->replaceFirst('+98', '98'))
-            ->whenStartsWith('9809', fn (Stringable $phone) => $phone->replaceFirst('9809', '989'))
+            ->chopStart('+')
+            ->replaceStart('09', '989')
+            ->replaceStart('9809', '989')
             ->when(
-                fn (Stringable $phone): bool => $phone->startsWith('9') && ! $phone->startsWith('98'),
+                fn (Stringable $phone): bool => ! $phone->startsWith('98'),
                 fn (Stringable $phone) => $phone->prepend('98')
             );
     }
