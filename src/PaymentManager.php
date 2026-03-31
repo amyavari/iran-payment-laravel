@@ -8,6 +8,7 @@ use AliYavari\IranPayment\Contracts\Payment;
 use AliYavari\IranPayment\Drivers\BehpardakhtDriver;
 use AliYavari\IranPayment\Drivers\FakeDriver;
 use AliYavari\IranPayment\Drivers\SepDriver;
+use AliYavari\IranPayment\Drivers\ZarinpalDriver;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Manager;
 use Override;
@@ -56,6 +57,11 @@ final class PaymentManager extends Manager
     protected function createSepDriver(): SepDriver
     {
         return $this->container->make(SepDriver::class);
+    }
+
+    protected function createZarinpalDriver(): ZarinpalDriver
+    {
+        return $this->container->make(ZarinpalDriver::class);
     }
 
     private function shouldBeImmutable(string $driver): bool

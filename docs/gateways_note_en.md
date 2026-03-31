@@ -15,3 +15,8 @@
 - You must verify the payment within **30 minutes** after a successful gateway payment; otherwise, the gateway will **automatically reverse** it.
 - A verified payment can be **reversed within 50 minutes**.
 - This gateway does not support verification without a callback, so related methods will return a **failed payment response**.
+
+# Zarinpal
+
+- This gateway sends the callback as a `GET` request.
+- A successful payment can be **reversed within 30 minutes**.
