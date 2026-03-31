@@ -15,8 +15,6 @@ To view the Persian documentation, please refer to [README_FA.md](./docs/README_
 
 برای مشاهده راهنمای فارسی، لطفاً به فایل [README_FA.md](./docs/README_FA.md) مراجعه کنید.
 
-**THIS PACKAGE IS UNDER DEVELOPMENT, PLEASE DO NOT USE IT YET**
-
 ## Requirements
 
 - PHP version `8.3` or higher
@@ -24,12 +22,12 @@ To view the Persian documentation, please refer to [README_FA.md](./docs/README_
 
 ## List of Available Payment Gateways
 
-| Gateway Name (EN) | Gateway Name (FA) | Gateway Website   | Gateway Key   | Version    |
-| ----------------- | ----------------- | ----------------- | ------------- | ---------- |
-| Behpardakht       | به پرداخت ملت     | [behpardakht.com] | `behpardakht` | Unreleased |
-| Sep               | سامان کیش (سپ)    | [sep.ir]          | `sep`         | Unreleased |
-| Zarinpal          | زرین پال          | [zarinpal.com]    | `zarinpal`    | Unreleased |
-| IDPay             | آی دی پی          | [idpay.ir]        | `id_pay`      | Unreleased |
+| Gateway Name (EN) | Gateway Name (FA) | Gateway Website   | Gateway Key   | Version |
+| ----------------- | ----------------- | ----------------- | ------------- | ------- |
+| Behpardakht       | به پرداخت ملت     | [behpardakht.com] | `behpardakht` | 1.0.0   |
+| Sep               | سامان کیش (سپ)    | [sep.ir]          | `sep`         | 1.0.0   |
+| Zarinpal          | زرین پال          | [zarinpal.com]    | `zarinpal`    | 1.0.0   |
+| IDPay             | آی دی پی          | [idpay.ir]        | `id_pay`      | 1.0.0   |
 
 > [!CAUTION]
 > Gateways have different rules for pending verifications and reversals. Please check [gateways_note_en.md](./docs/gateways_note_en.md).
