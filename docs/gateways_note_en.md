@@ -20,3 +20,9 @@
 
 - This gateway sends the callback as a `GET` request.
 - A successful payment can be **reversed within 30 minutes**.
+
+# IDPay
+
+- In your admin panel, you can choose to receive callback via `POST` or `GET`.
+- You must verify the payment within **10 minutes** after a successful gateway payment; otherwise, the gateway will **automatically reverse** it.
+- A verified payment **can not be reversed**, so related method will return a **failed payment reversal**.

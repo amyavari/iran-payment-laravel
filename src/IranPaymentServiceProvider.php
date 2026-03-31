@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment;
 
 use AliYavari\IranPayment\Drivers\BehpardakhtDriver;
+use AliYavari\IranPayment\Drivers\IdPayDriver;
 use AliYavari\IranPayment\Drivers\SepDriver;
 use AliYavari\IranPayment\Drivers\ZarinpalDriver;
 use Illuminate\Foundation\Application;
@@ -48,6 +49,11 @@ final class IranPaymentServiceProvider extends PackageServiceProvider
         $this->app->bind(
             ZarinpalDriver::class,
             fn (): ZarinpalDriver => new ZarinpalDriver(...$this->configWithCamelCaseKeys('iran-payment.gateways.zarinpal'))
+        );
+
+        $this->app->bind(
+            IdPayDriver::class,
+            fn (): IdPayDriver => new IdPayDriver(...$this->configWithCamelCaseKeys('iran-payment.gateways.id_pay'))
         );
     }
 

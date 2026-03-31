@@ -7,6 +7,7 @@ namespace AliYavari\IranPayment;
 use AliYavari\IranPayment\Contracts\Payment;
 use AliYavari\IranPayment\Drivers\BehpardakhtDriver;
 use AliYavari\IranPayment\Drivers\FakeDriver;
+use AliYavari\IranPayment\Drivers\IdPayDriver;
 use AliYavari\IranPayment\Drivers\SepDriver;
 use AliYavari\IranPayment\Drivers\ZarinpalDriver;
 use Illuminate\Support\Arr;
@@ -62,6 +63,11 @@ final class PaymentManager extends Manager
     protected function createZarinpalDriver(): ZarinpalDriver
     {
         return $this->container->make(ZarinpalDriver::class);
+    }
+
+    protected function createIdPayDriver(): IdPayDriver
+    {
+        return $this->container->make(IdPayDriver::class);
     }
 
     private function shouldBeImmutable(string $driver): bool

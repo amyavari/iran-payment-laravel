@@ -29,7 +29,7 @@ To view the Persian documentation, please refer to [README_FA.md](./docs/README_
 | Behpardakht       | به پرداخت ملت     | [behpardakht.com] | `behpardakht` | Unreleased |
 | Sep               | سامان کیش (سپ)    | [sep.ir]          | `sep`         | Unreleased |
 | Zarinpal          | زرین پال          | [zarinpal.com]    | `zarinpal`    | Unreleased |
-| IDPay             | آی دی پی          | [idpay.ir]        | `idpay`       | Unreleased |
+| IDPay             | آی دی پی          | [idpay.ir]        | `id_pay`      | Unreleased |
 
 > [!CAUTION]
 > Gateways have different rules for pending verifications and settlements. Please check [gateways_note_en.md](./docs/gateways_note_en.md).

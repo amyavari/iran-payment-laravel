@@ -69,5 +69,11 @@ return [
             'callback_url' => env('ZARINPAL_CALLBACK_URL', ''),
             'merchant_id' => env('ZARINPAL_MERCHANT_ID', ''),
         ],
+
+        // https://idpay.ir/
+        'id_pay' => [
+            'callback_url' => env('ID_PAY_CALLBACK_URL', ''),
+            'api_key' => env('ID_PAY_API_KEY', ''),
+        ],
     ],
 ];
