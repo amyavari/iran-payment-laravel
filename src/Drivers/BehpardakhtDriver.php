@@ -8,10 +8,7 @@ use AliYavari\IranPayment\Abstracts\Driver;
 use AliYavari\IranPayment\Concerns\HasUniqueNumber;
 use AliYavari\IranPayment\Concerns\NoCallbackDefaults;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
-use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
-use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Facades\Soap;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -80,13 +77,6 @@ final class BehpardakhtDriver extends Driver
      */
     private array $metadata;
 
-    /**
-     * Callback data sent by the gateway after the user completes the payment.
-     *
-     * @var Collection<string,mixed>
-     */
-    private Collection $callbackPayload;
-
     public function __construct(
         private readonly string $terminalId,
         private readonly string $username,
@@ -153,27 +143,19 @@ final class BehpardakhtDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    protected function prepareWithoutCallback(string $transactionId): static
+    protected function prepareWithoutCallback(string $transactionId): void
     {
         $this->transactionId = $transactionId;
 
         $this->enableNoCallback();
-
-        return $this;
     }
 
     /**
      * {@inheritdoc}
      */
-    protected function prepareFromCallback(array $callbackPayload): static
+    protected function prepareFromCallback(): void
     {
-        $this->callbackPayload = collect($callbackPayload);
-
-        $this->ensureCallbackDataHasKeys(['RefId', 'ResCode', 'SaleOrderId']);
-
         $this->transactionId = (string) $this->callbackPayload->get('SaleOrderId');
-
-        return $this;
     }
 
     /**
@@ -213,7 +195,13 @@ final class BehpardakhtDriver extends Driver
             return;
         }
 
-        $this->ensureCallbackDataMatchesPayload($storedPayload);
+        $keyMapper = [
+            'RefId' => 'refId',
+            'SaleOrderId' => 'orderId',
+            'FinalAmount' => 'amount',
+        ];
+
+        $this->ensureCallbackDataMatchesPayload($storedPayload, $keyMapper);
 
         $this->execute('bpVerifyRequest', $this->followUpPayload());
     }
@@ -374,6 +362,14 @@ final class BehpardakhtDriver extends Driver
     }
 
     /**
+     * {@inheritdoc}
+     */
+    protected function getRequiredCallbackKeys(): array
+    {
+        return ['RefId', 'ResCode', 'SaleOrderId'];
+    }
+
+    /**
      * Generate unique order ID
      */
     private function generateOrderId(): int
@@ -454,22 +450,6 @@ final class BehpardakhtDriver extends Driver
     }
 
     /**
-     * Throws an exception if callback data doesn't have all of the given keys.
-     *
-     * @param  array<string>  $keys
-     *
-     * @throws MissingCallbackDataException
-     */
-    private function ensureCallbackDataHasKeys(array $keys): void
-    {
-        foreach ($keys as $key) {
-            if (! $this->callbackPayload->has($key)) {
-                throw MissingCallbackDataException::make($this->getGateway(), $keys, $key);
-            }
-        }
-    }
-
-    /**
      * Set the payment status when the gateway is called without callback data.
      */
     private function setPaymentStatusForNoCallback(string $method): void
@@ -494,28 +474,6 @@ final class BehpardakhtDriver extends Driver
     {
         $this->apiStatusCode = (string) $this->callbackPayload->get('ResCode');
         $this->rawResponse = $this->callbackPayload->all();
-    }
-
-    /**
-     * Throws an exception if callback data doesn't match with the stored gateway payload.
-     *
-     * @param  array<string,mixed>  $storedPayload
-     *
-     * @throws InvalidCallbackDataException
-     */
-    private function ensureCallbackDataMatchesPayload(array $storedPayload): void
-    {
-        $keyMapper = [
-            'RefId' => 'refId',
-            'SaleOrderId' => 'orderId',
-            'FinalAmount' => 'amount',
-        ];
-
-        foreach ($keyMapper as $callbackKey => $storedKey) {
-            if ((string) $this->callbackPayload->get($callbackKey) !== (string) Arr::get($storedPayload, $storedKey)) {
-                throw InvalidCallbackDataException::make($callbackKey, $storedKey);
-            }
-        }
     }
 
     /**

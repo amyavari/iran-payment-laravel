@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace AliYavari\IranPayment\Tests\Feature\Drivers\BehpardakhtDriverTest; // To avoid helper functions conflict.
+
 use AliYavari\IranPayment\Drivers\BehpardakhtDriver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;

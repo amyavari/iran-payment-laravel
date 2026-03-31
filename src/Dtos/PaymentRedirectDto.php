@@ -21,7 +21,7 @@ final readonly class PaymentRedirectDto implements Arrayable
         public string $url,
         public string $method,
         public array $payload,
-        public array $headers,
+        public array $headers = [],
     ) {}
 
     public function toArray(): array

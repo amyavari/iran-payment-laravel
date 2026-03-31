@@ -9,4 +9,4 @@ use LogicException;
 /**
  * @internal
  */
-final class DriverBehaviorNotDefinedException extends LogicException {}
+final class MissingGatewayPayloadException extends LogicException {}

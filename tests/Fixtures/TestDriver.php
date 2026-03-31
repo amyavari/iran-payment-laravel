@@ -207,18 +207,14 @@ final class TestDriver extends Driver
         return ['payload' => 'value'];
     }
 
-    protected function prepareWithoutCallback(string $transactionId): static
+    protected function prepareWithoutCallback(string $transactionId): void
     {
         $this->markCallbackAsCalled();
-
-        return $this;
     }
 
-    protected function prepareFromCallback(array $callbackData): static
+    protected function prepareFromCallback(): void
     {
         $this->markCallbackAsCalled();
-
-        return $this;
     }
 
     protected function getDriverRawResponse(): string
@@ -281,6 +277,11 @@ final class TestDriver extends Driver
     protected function getDriverStatusMessage(): string
     {
         return $this->errorMessage;
+    }
+
+    protected function getRequiredCallbackKeys(): array
+    {
+        return [];
     }
 
     /**

@@ -57,5 +57,11 @@ return [
             'username' => env('BEHPARDAKHT_USERNAME', ''),
             'password' => env('BEHPARDAKHT_PASSWORD', ''),
         ],
+
+        // https://www.sep.ir/
+        'sep' => [
+            'callback_url' => env('SEP_CALLBACK_URL', ''),
+            'terminal_id' => env('SEP_TERMINAL_ID', ''),
+        ],
     ],
 ];

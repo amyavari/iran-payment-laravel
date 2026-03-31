@@ -59,9 +59,7 @@ final class Soap implements SoapInterface
     private function throwIfStrayRequestsArePrevented(string $wsdl): void
     {
         if ($this->preventStrayRequests) {
-            throw new StrayRequestException(
-                sprintf('Attempted request to "%s" without a matching fake.', $wsdl)
-            );
+            throw StrayRequestException::make($wsdl);
         }
     }
 }

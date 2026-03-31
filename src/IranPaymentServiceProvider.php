@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment;
 
 use AliYavari\IranPayment\Drivers\BehpardakhtDriver;
+use AliYavari\IranPayment\Drivers\SepDriver;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Str;
 use Spatie\LaravelPackageTools\Commands\InstallCommand;
@@ -36,6 +37,11 @@ final class IranPaymentServiceProvider extends PackageServiceProvider
         $this->app->bind(
             BehpardakhtDriver::class,
             fn (): BehpardakhtDriver => new BehpardakhtDriver(...$this->configWithCamelCaseKeys('iran-payment.gateways.behpardakht'))
+        );
+
+        $this->app->bind(
+            SepDriver::class,
+            fn (): SepDriver => new SepDriver(...$this->configWithCamelCaseKeys('iran-payment.gateways.sep'))
         );
     }
 
