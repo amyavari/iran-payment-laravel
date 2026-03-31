@@ -253,7 +253,7 @@ final class SepDriver extends Driver
      */
     protected function getDriverRefNumber(): string
     {
-        return (string) $this->callbackPayload->get('RRN', '');
+        return Arr::get($this->rawResponse, 'TransactionDetail.RRN');
     }
 
     /**
@@ -261,7 +261,7 @@ final class SepDriver extends Driver
      */
     protected function getDriverCardNumber(): string
     {
-        return $this->callbackPayload->get('SecurePan', '');
+        return Arr::get($this->rawResponse, 'TransactionDetail.MaskedPan');
     }
 
     /**

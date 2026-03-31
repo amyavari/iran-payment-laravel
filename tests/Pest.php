@@ -64,17 +64,15 @@ function setTestNow(string $dateTime = '2025-12-10 18:30:10'): void
 }
 
 /**
- * Fake HTTP request.
+ * Fake HTTP requests.
  */
-function fakeHttp(array $responses, bool $isSinglePattern = true): void
+function fakeHttp(mixed $firstResponse = '', int $firstStatus = 200, mixed $secondResponse = null, int $secondStatus = 200): void
 {
-    if ($isSinglePattern) {
-        $responses = [
-            '*' => $responses,
-        ];
-    }
+    $fake = Http::fakeSequence('*')->push($firstResponse, $firstStatus);
 
-    Http::fake($responses);
+    if ($secondResponse) {
+        $fake->push($secondResponse, $secondStatus);
+    }
 }
 
 /**

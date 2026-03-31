@@ -46,9 +46,9 @@ final class Soap implements SoapInterface
     }
 
     /**
-     * Assert nothing is called
+     * Assert that no request was sent.
      */
-    public function assertNothingIsCalled(): void
+    public function assertNothingSent(): void
     {
         Assert::assertNull($this->wsdl);
     }

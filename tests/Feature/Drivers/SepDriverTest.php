@@ -45,7 +45,7 @@ it('calls payment creation API with minimum passed data and config callback URL'
         ->TerminalId->toBe('1234')
         ->Amount->toBe(1_000)
         ->ResNum->toBe($payment->getTransactionId())
-        ->RedirectUrl->toBe('http://callback.test')
+        ->RedirectUrl->toBe('http://callback.test') // config's callback URL
         ->not->toHaveKeys(['CellNumber']);
 });
 
@@ -56,6 +56,7 @@ it('calls payment creation API with full passed data', function (): void {
 
     $request = getRecordedHttpRequest();
 
+    // Only what differs from the previous test
     expect($request->data())
         ->CellNumber->toBe('9123456789');
 });
@@ -79,13 +80,7 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 ]);
 
 it('returns successful response on successful payment creation', function (): void {
-    // Sample successful API response
-    $response = [
-        'status' => 1,
-        'token' => '2c3c1fefac5a48geb9f9be7e445dd9b2',
-    ];
-
-    fakeHttp($response);
+    fakeHttp($response = successfulCreationResponse());
 
     $payment = driver()->create(1_000);
 
@@ -135,16 +130,20 @@ it('returns gateway redirect data on successful payment creation', function (): 
         ->url->toBe('https://sep.shaparak.ir/OnlinePG/SendToken')
         ->method->toBe('GET')
         ->payload->toBe([
-            'token' => '2c3c1fefac5a48geb9f9be7e445dd9b2',
+            'token' => '2c3c1fefac5a48geb9f9be7e445dd9b2', // From fake creation response
         ])
         ->headers->toBe([]);
 });
 
 it('throws an exception for payment creation when configured to use sandbox', function (): void {
+    fakeHttp();
+
     Config::set('iran-payment.use_sandbox', true);
 
     expect(fn (): SepDriver => driver()->create(1_000))
         ->toThrow(SandboxNotSupportedException::class, 'Sep gateway does not support the sandbox environment.');
+
+    Http::assertNothingSent();
 });
 
 it('creates payment instance from callback data', function (): void {
@@ -155,30 +154,6 @@ it('creates payment instance from callback data', function (): void {
     expect($payment)
         ->toBeInstanceOf(SepDriver::class)
         ->getTransactionId()->toBe('123456789012345');
-});
-
-it('returns card number and reference ID from successful callback', function (): void {
-    fakeHttp(successfulFollowUpResponse());
-
-    $callbackPayload = callbackFactory()->successful()->all();
-
-    $payment = driver()->fromCallback($callbackPayload)->verify(gatewayPayload());
-
-    expect($payment)
-        ->getRefNumber()->toBe('227926981246')
-        ->getCardNumber()->toBe('123456******1234');
-});
-
-it('returns empty string as card number and reference ID when not provided in the callback', function (): void {
-    fakeHttp(successfulFollowUpResponse());
-
-    $callbackPayload = callbackFactory()->successful()->except(['RRN', 'SecurePan'])->all();
-
-    $payment = driver()->fromCallback($callbackPayload)->verify(gatewayPayload());
-
-    expect($payment)
-        ->getRefNumber()->toBe('')
-        ->getCardNumber()->toBe('');
 });
 
 it('throws exception when callback lacks required keys', function (string $key): void {
@@ -197,7 +172,7 @@ it('throws exception when callback lacks required keys', function (string $key):
 ]);
 
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
-    fakeHttp([]);
+    fakeHttp();
 
     $callbackPayload = callbackFactory()->successful()->all();
 
@@ -219,7 +194,7 @@ it('throws exception when stored payload and successful callback data do not mat
 ]);
 
 it('does not verify payment when callback status is not successful', function (): void {
-    fakeHttp(successfulFollowUpResponse());
+    fakeHttp();
 
     $callbackPayload = callbackFactory()->failed()->all();
 
@@ -229,7 +204,7 @@ it('does not verify payment when callback status is not successful', function ()
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1- کاربر انصراف داده است') // The error code is set by failed() method.
+        ->error()->toBe('کد 1- کاربر انصراف داده است') // The error code is set by fake failed callback.
         ->getRawResponse()->toBe($callbackPayload);
 
     Http::assertNothingSent();
@@ -238,11 +213,7 @@ it('does not verify payment when callback status is not successful', function ()
 it('verifies payment when callback is successful and matches stored payload', function (): void {
     fakeHttp(successfulFollowUpResponse());
 
-    $callbackPayload = callbackFactory()->successful()->all();
-
-    driver()
-        ->fromCallback($callbackPayload)
-        ->verify(gatewayPayload());
+    driverFromSuccessfulCallback()->verify(gatewayPayload());
 
     $request = getRecordedHttpRequest();
 
@@ -253,13 +224,11 @@ it('verifies payment when callback is successful and matches stored payload', fu
 
     expect($request->data())
         ->TerminalNumber->toBe(1234)
-        ->RefNum->toBe('Aht+dgVAEUDZ++54+qyrGzncrgA1kySE+NbxBUcNfbJafVj3f5');
+        ->RefNum->toBe('Aht+dgVAEUDZ++54+qyrGzncrgA1kySE+NbxBUcNfbJafVj3f5'); // From fake callback
 });
 
 it('returns successful response on successful payment verification', function (): void {
-    $response = successfulFollowUpResponse();
-
-    fakeHttp($response);
+    fakeHttp($response = successfulFollowUpResponse());
 
     $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
 
@@ -270,10 +239,6 @@ it('returns successful response on successful payment verification', function ()
 });
 
 it('returns failed response on successful payment verification with invalid amount', function (): void {
-    /**
-     * The IPG documentation requires verifying that the paid amount matches the actual amount
-     * during the verification step.
-     */
     $response = successfulFollowUpResponse();
     Arr::set($response, 'TransactionDetail.OrginalAmount', 2_000);
 
@@ -306,16 +271,33 @@ it('returns failed response on failed payment verification', function (): void {
 });
 
 it('throws an exception for payment verification when configured to use sandbox', function (): void {
+    fakeHttp();
+
     Config::set('iran-payment.use_sandbox', true);
 
     $payment = driverFromSuccessfulCallback();
 
     expect(fn (): SepDriver => $payment->verify(gatewayPayload()))
         ->toThrow(SandboxNotSupportedException::class, 'Sep gateway does not support the sandbox environment.');
+
+    Http::assertNothingSent();
+});
+
+it('returns card number and reference ID from successful verification', function (): void {
+    fakeHttp(successfulFollowUpResponse());
+
+    $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
+
+    expect($payment)
+        ->getRefNumber()->toBe('227926981246') // From fake followup response
+        ->getCardNumber()->toBe('123456****1234'); // From fake followup response
 });
 
 it('reverses the payment', function (): void {
-    fakeHttp(successfulFollowUpResponse());
+    fakeHttp(
+        firstResponse: successfulFollowUpResponse(), // Verification
+        secondResponse: successfulFollowUpResponse(), // Reversal
+    );
 
     verifiedPayment()->reverse();
 
@@ -328,17 +310,14 @@ it('reverses the payment', function (): void {
 
     expect($request->data())
         ->TerminalNumber->toBe(1234)
-        ->RefNum->toBe('Aht+dgVAEUDZ++54+qyrGzncrgA1kySE+NbxBUcNfbJafVj3f5');
-
+        ->RefNum->toBe('Aht+dgVAEUDZ++54+qyrGzncrgA1kySE+NbxBUcNfbJafVj3f5'); // From fake callback
 });
 
 it('returns successful response on successful payment reversal', function (): void {
-    $response = successfulFollowUpResponse();
-
-    fakeHttp([
-        '*/VerifyTransaction' => successfulFollowUpResponse(),
-        '*/ReverseTransaction' => $response,
-    ], isSinglePattern: false);
+    fakeHttp(
+        firstResponse: successfulFollowUpResponse(), // Verification
+        secondResponse: $response = successfulFollowUpResponse(), // Reversal
+    );
 
     $payment = verifiedPayment()->reverse();
 
@@ -356,10 +335,10 @@ it('returns failed response on failed payment reversal', function (): void {
         'Success' => false,
     ];
 
-    fakeHttp([
-        '*/VerifyTransaction' => successfulFollowUpResponse(),
-        '*/ReverseTransaction' => $response,
-    ], isSinglePattern: false);
+    fakeHttp(
+        firstResponse: successfulFollowUpResponse(), // Verification
+        secondResponse: $response, // Reversal
+    );
 
     $payment = verifiedPayment()->reverse();
 
@@ -378,6 +357,8 @@ it('throws an exception for payment reversal when configured to use sandbox', fu
 
     expect(fn (): SepDriver => $payment->reverse())
         ->toThrow(SandboxNotSupportedException::class, 'Sep gateway does not support the sandbox environment.');
+
+    Http::assertSentCount(1); // Only verification, before set to sandbox
 });
 
 it('creates payment instance with no callback data', function (): void {
@@ -389,7 +370,7 @@ it('creates payment instance with no callback data', function (): void {
 });
 
 it('returns failed verification with no callback data', function (): void {
-    fakeHttp([]);
+    fakeHttp();
 
     $payment = driver()->noCallback('123');
 
@@ -404,7 +385,7 @@ it('returns failed verification with no callback data', function (): void {
 });
 
 it('returns successful reversal with no callback data', function (): void {
-    fakeHttp([]);
+    fakeHttp();
 
     $payment = driver()->noCallback('123')->verify(gatewayPayload());
 
@@ -483,13 +464,13 @@ function callbackFactory(): object
                 'MID' => '1234',
                 'State' => 'OK',
                 'Status' => 2,
-                'RRN' => 227926981246,
+                'RRN' => 123456789012,
                 'RefNum' => 'Aht+dgVAEUDZ++54+qyrGzncrgA1kySE+NbxBUcNfbJafVj3f5',
                 'ResNum' => '123456789012345',
                 'TerminalId' => '1234',
                 'TraceNo' => 123456,
                 'Amount' => 1_000,
-                'SecurePan' => '123456******1234',
+                'SecurePan' => '654321******4321',
                 'HashedCardNumber' => '1234ABsab',
             ]);
         }

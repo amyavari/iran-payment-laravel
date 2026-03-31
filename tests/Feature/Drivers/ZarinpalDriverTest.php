@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AliYavari\IranPayment\Tests\Feature\Drivers\ZarinpalDriverTest; // To avoid helper functions conflict.
+namespace AliYavari\IranPayment\Tests\Feature\Drivers\ZarinpalDriverTest;
 
 use AliYavari\IranPayment\Drivers\ZarinpalDriver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
@@ -35,7 +35,7 @@ it('calls payment creation API with minimum passed data and config callback URL'
         ->amount->toBe('1000')
         ->currency->toBe('IRR')
         ->description->toBe('')
-        ->callback_url->toBe('http://callback.test')
+        ->callback_url->toBe('http://callback.test') // config's callback URL
         ->not->toHaveKeys(['metadata']);
 });
 
@@ -46,6 +46,7 @@ it('calls payment creation API with full passed data', function (): void {
 
     $request = getRecordedHttpRequest();
 
+    // Only what differs from the previous test
     expect($request->data())
         ->description->toBe('Description')
         ->metadata->mobile->toBe('09123456789');
@@ -70,19 +71,7 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 ]);
 
 it('returns successful response on successful payment creation', function (): void {
-    // Sample successful API response
-    $response = [
-        'data' => [
-            'code' => 100,
-            'message' => 'Success',
-            'authority' => 'A0000000000000000000000000000wwOGYpd',
-            'fee_type' => 'Merchant',
-            'fee' => 100,
-        ],
-        'errors' => [],
-    ];
-
-    fakeHttp($response);
+    fakeHttp($response = successfulCreationResponse());
 
     $payment = driver()->create(1_000);
 
@@ -93,15 +82,13 @@ it('returns successful response on successful payment creation', function (): vo
 });
 
 it('returns failed response on failed payment creation', function (): void {
-    $response = failedResponse();
-
-    fakeHttp($response);
+    fakeHttp($response = failedResponse());
 
     $payment = driver()->create(1_000);
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد -10- ای پی یا مرچنت كد پذیرنده صحیح نیست')
+        ->error()->toBe('کد -10- ای پی یا مرچنت كد پذیرنده صحیح نیست') // From fake failed response
         ->getRawResponse()->toBe($response);
 });
 
@@ -111,7 +98,7 @@ it('returns authority in the gateway response as transaction ID', function (): v
     $payment = driver()->create(1_000);
 
     expect($payment)
-        ->getTransactionId()->toBe('A0000000000000000000000000000wwOGYpd');
+        ->getTransactionId()->toBe('A0000000000000000000000000000wwOGYpd'); // From fake creation response
 });
 
 it('returns gateway payload needed to verify payment on successful payment creation', function (): void {
@@ -121,7 +108,7 @@ it('returns gateway payload needed to verify payment on successful payment creat
 
     expect($payment)
         ->getGatewayPayload()->toBe([
-            'authority' => 'A0000000000000000000000000000wwOGYpd',
+            'authority' => 'A0000000000000000000000000000wwOGYpd', // From fake creation response
             'amount' => '1000',
         ]);
 });
@@ -133,16 +120,16 @@ it('returns gateway redirect data on successful payment creation', function (): 
 
     expect($payment->getRedirectData())
         ->toBeInstanceOf(PaymentRedirectDto::class)
-        ->url->toBe('https://payment.zarinpal.com/pg/StartPay/A0000000000000000000000000000wwOGYpd')
+        ->url->toBe('https://payment.zarinpal.com/pg/StartPay/A0000000000000000000000000000wwOGYpd') // From fake creation response
         ->method->toBe('GET')
-        ->payload->toBe([]) // authority is appended to the URL.
+        ->payload->toBe([])
         ->headers->toBe([]);
 });
 
 it('communicates with sandbox environment for payment creation when configured', function (): void {
-    Config::set('iran-payment.use_sandbox', true);
-
     fakeHttp(successfulCreationResponse());
+
+    Config::set('iran-payment.use_sandbox', true);
 
     $payment = driver()->create(1_000);
 
@@ -152,7 +139,7 @@ it('communicates with sandbox environment for payment creation when configured',
         ->url()->toBe('https://sandbox.zarinpal.com/pg/v4/payment/request.json');
 
     expect($payment)
-        ->getRedirectData()->url->toBe('https://sandbox.zarinpal.com/pg/StartPay/A0000000000000000000000000000wwOGYpd');
+        ->getRedirectData()->url->toBe('https://sandbox.zarinpal.com/pg/StartPay/A0000000000000000000000000000wwOGYpd'); // From fake creation response
 });
 
 it('creates payment instance from callback data', function (): void {
@@ -180,7 +167,7 @@ it('throws exception when callback lacks required keys', function (string $key):
 ]);
 
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
-    fakeHttp(successfulVerificationResponse());
+    fakeHttp();
 
     $callbackPayload = callbackFactory()->successful()->all();
 
@@ -201,7 +188,7 @@ it('throws exception when stored payload and successful callback data do not mat
 ]);
 
 it('does not verify payment when callback status is not successful', function (): void {
-    fakeHttp(successfulVerificationResponse());
+    fakeHttp();
 
     $callbackPayload = callbackFactory()->failed()->all();
 
@@ -211,7 +198,7 @@ it('does not verify payment when callback status is not successful', function ()
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد -51- پرداخت ناموفق')
+        ->error()->toBe('کد -51- پرداخت ناموفق') // The error code is set by fake failed callback.
         ->getRawResponse()->toBe($callbackPayload);
 
     Http::assertNothingSent();
@@ -220,11 +207,7 @@ it('does not verify payment when callback status is not successful', function ()
 it('verifies payment when callback is successful and matches stored payload', function (): void {
     fakeHttp(successfulVerificationResponse());
 
-    $callbackPayload = callbackFactory()->successful()->all();
-
-    driver()
-        ->fromCallback($callbackPayload)
-        ->verify(gatewayPayload());
+    driverFromSuccessfulCallback()->verify(gatewayPayload());
 
     $request = getRecordedHttpRequest();
 
@@ -235,14 +218,12 @@ it('verifies payment when callback is successful and matches stored payload', fu
 
     expect($request->data())
         ->merchant_id->toBe('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
-        ->amount->toBe('1000')
-        ->authority->toBe('A0000000000000000000000000000wwOGYpd');
+        ->amount->toBe('1000') // From fake payload
+        ->authority->toBe('A0000000000000000000000000000wwOGYpd'); // From fake callback
 });
 
 it('returns successful response on successful payment verification', function (): void {
-    $response = successfulVerificationResponse();
-
-    fakeHttp($response);
+    fakeHttp($response = successfulVerificationResponse());
 
     $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
 
@@ -254,7 +235,7 @@ it('returns successful response on successful payment verification', function ()
 
 it('returns successful response on subsequence successful payment verification', function (): void {
     $response = successfulVerificationResponse();
-    Arr::set($response, 'data.code', 101); // In the subsequence successful verifications it returns 101 instead of 100
+    Arr::set($response, 'data.code', 101); // In the subsequence successful verifications it returns `101` instead of `100`
 
     fakeHttp($response);
 
@@ -267,22 +248,20 @@ it('returns successful response on subsequence successful payment verification',
 });
 
 it('returns failed response on failed payment verification', function (): void {
-    $response = failedResponse();
-
-    fakeHttp($response);
+    fakeHttp($response = failedResponse());
 
     $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد -10- ای پی یا مرچنت كد پذیرنده صحیح نیست')
+        ->error()->toBe('کد -10- ای پی یا مرچنت كد پذیرنده صحیح نیست') // From fake failed response
         ->getRawResponse()->toBe($response);
 });
 
 it('communicates with sandbox environment for payment verification when configured', function (): void {
-    Config::set('iran-payment.use_sandbox', true);
-
     fakeHttp(successfulVerificationResponse());
+
+    Config::set('iran-payment.use_sandbox', true);
 
     driverFromSuccessfulCallback()->verify(gatewayPayload());
 
@@ -298,15 +277,15 @@ it('returns card number and reference ID from successful verification', function
     $payment = verifiedPayment();
 
     expect($payment)
-        ->getRefNumber()->toBe('201')
-        ->getCardNumber()->toBe('502229******5995');
+        ->getRefNumber()->toBe('201') // From fake verification response
+        ->getCardNumber()->toBe('502229******5995'); // From fake verification response
 });
 
 it('reverses the payment', function (): void {
-    fakeHttp([
-        '*/verify.json' => Http::response(successfulVerificationResponse()),
-        '*/reverse.json' => Http::response(successfulReversalResponse()),
-    ], isSinglePattern: false);
+    fakeHttp(
+        firstResponse: successfulVerificationResponse(),
+        secondResponse: successfulReversalResponse()
+    );
 
     verifiedPayment()->reverse();
 
@@ -319,16 +298,14 @@ it('reverses the payment', function (): void {
 
     expect($request->data())
         ->merchant_id->toBe('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
-        ->authority->toBe('A0000000000000000000000000000wwOGYpd');
+        ->authority->toBe('A0000000000000000000000000000wwOGYpd'); // From fake callback
 });
 
 it('returns successful response on successful payment reversal', function (): void {
-    $response = successfulReversalResponse();
-
-    fakeHttp([
-        '*/verify.json' => Http::response(successfulVerificationResponse()),
-        '*/reverse.json' => Http::response($response),
-    ], isSinglePattern: false);
+    fakeHttp(
+        firstResponse: successfulVerificationResponse(),
+        secondResponse: $response = successfulReversalResponse()
+    );
 
     $payment = verifiedPayment()->reverse();
 
@@ -339,28 +316,26 @@ it('returns successful response on successful payment reversal', function (): vo
 });
 
 it('returns failed response on failed payment reversal', function (): void {
-    $response = failedResponse();
-
-    fakeHttp([
-        '*/verify.json' => Http::response(successfulVerificationResponse()),
-        '*/reverse.json' => Http::response($response),
-    ], isSinglePattern: false);
+    fakeHttp(
+        firstResponse: successfulVerificationResponse(),
+        secondResponse: $response = failedResponse()
+    );
 
     $payment = verifiedPayment()->reverse();
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد -10- ای پی یا مرچنت كد پذیرنده صحیح نیست')
+        ->error()->toBe('کد -10- ای پی یا مرچنت كد پذیرنده صحیح نیست') // From fake failed response
         ->getRawResponse()->toBe($response);
 });
 
 it('communicates with sandbox environment for payment reversal when configured', function (): void {
-    Config::set('iran-payment.use_sandbox', true);
+    fakeHttp(
+        firstResponse: successfulVerificationResponse(),
+        secondResponse: successfulReversalResponse()
+    );
 
-    fakeHttp([
-        '*/verify.json' => Http::response(successfulVerificationResponse()),
-        '*/reverse.json' => Http::response(successfulReversalResponse()),
-    ], isSinglePattern: false);
+    Config::set('iran-payment.use_sandbox', true);
 
     verifiedPayment()->reverse();
 
@@ -389,10 +364,10 @@ it('verifies normally with no callback data', function (): void {
 });
 
 it('reverses normally with no callback data', function (): void {
-    fakeHttp([
-        '*/verify.json' => Http::response(successfulVerificationResponse()),
-        '*/reverse.json' => Http::response(successfulReversalResponse()),
-    ], isSinglePattern: false);
+    fakeHttp(
+        firstResponse: successfulVerificationResponse(),
+        secondResponse: successfulReversalResponse()
+    );
 
     verifiedPayment()->reverse();
 
