@@ -67,5 +67,10 @@ jobs:
       - name: migrate databases
         run: php ./vendor/bin/testbench migrate:fresh
 
-      - name: Run unit test
-        run: composer test:unit -- --ci
+      - name: Execute tests (Linux / macOS)
+        if: runner.os != 'Windows'
+        run: vendor/bin/pest --colors=always --coverage --ci --parallel
+
+      - name: Execute tests (Windows)
+        if: runner.os == 'Windows'
+        run: vendor/bin/pest --colors=always --coverage --ci # Sequential execution avoids the file lock race condition
