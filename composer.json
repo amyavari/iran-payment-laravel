@@ -20,13 +20,13 @@
     "require": {
         "php": "^8.3",
         "spatie/laravel-package-tools": "^1.92",
-        "illuminate/contracts": "^11.44|^12.23"
+        "illuminate/contracts": "^11.44|^12.23|^13.0"
     },
     "require-dev": {
         "dg/bypass-finals": "^1.9",
         "larastan/larastan": "^3.8",
         "laravel/pint": "^1.26",
-        "orchestra/testbench": "^9.13|^10.6",
+        "orchestra/testbench": "^9.13|^10.6|^11.0",
         "pestphp/pest": "^4.3.2",
         "pestphp/pest-plugin-type-coverage": "^4.0",
         "rector/rector": "^2.2"
