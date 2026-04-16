@@ -346,7 +346,9 @@ it('verifies normally with no callback data', function (): void {
 it('returns failed response on the payment reversal with no callback data', function (): void {
     fakeHttp(successfulVerificationResponse(), 200);
 
-    $payment = verifiedPayment()->reverse();
+    $payment = driver()->noCallback('123456789012345')->verify(gatewayPayload());
+
+    $payment->reverse();
 
     expect($payment)
         ->successful()->toBeFalse()

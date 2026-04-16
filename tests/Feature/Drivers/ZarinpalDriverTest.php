@@ -369,9 +369,11 @@ it('reverses normally with no callback data', function (): void {
         secondResponse: successfulReversalResponse()
     );
 
-    verifiedPayment()->reverse();
+    $payment = driver()->noCallback('A0000000000000000000000000000wwOGYpd')->verify(gatewayPayload());
 
-    Http::assertSentCount(2); // verification and reversal
+    $payment->reverse();
+
+    Http::assertSentCount(2); // Verification and reversal
 });
 
 // ------------
