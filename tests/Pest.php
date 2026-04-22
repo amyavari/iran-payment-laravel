@@ -6,7 +6,9 @@ use AliYavari\IranPayment\Tests\TestCase;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\Client\ResponseSequence;
 use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Assert;
 
 /*
 |--------------------------------------------------------------------------
@@ -66,13 +68,15 @@ function setTestNow(string $dateTime = '2025-12-10 18:30:10'): void
 /**
  * Fake HTTP requests.
  */
-function fakeHttp(mixed $firstResponse = '', int $firstStatus = 200, mixed $secondResponse = null, int $secondStatus = 200): void
+function fakeHttp(mixed $firstResponse = '', int $firstStatus = 200, mixed $secondResponse = null, int $secondStatus = 200): ResponseSequence
 {
     $fake = Http::fakeSequence('*')->push($firstResponse, $firstStatus);
 
     if ($secondResponse) {
         $fake->push($secondResponse, $secondStatus);
     }
+
+    return $fake;
 }
 
 /**
@@ -81,6 +85,8 @@ function fakeHttp(mixed $firstResponse = '', int $firstStatus = 200, mixed $seco
 function getRecordedHttpRequest(): Request
 {
     [$request, $response] = Http::recorded()->last();
+
+    Assert::assertNotNull($request, 'No request has been recorded.');
 
     return $request;
 }
