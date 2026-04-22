@@ -75,5 +75,14 @@ return [
             'callback_url' => env('ID_PAY_CALLBACK_URL', ''),
             'api_key' => env('ID_PAY_API_KEY', ''),
         ],
+
+        // https://pep.co.ir/
+        'pep' => [
+            'terminalNumber' => env('PEP_TERMINAL_NUMBER', ''),
+            'base_url' => env('PEP_BASE_URL', ''),
+            'username' => env('PEP_USERNAME', ''),
+            'password' => env('PEP_PASSWORD', ''),
+            'callback_url' => env('PEP_CALLBACK_URL', ''),
+        ],
     ],
 ];
