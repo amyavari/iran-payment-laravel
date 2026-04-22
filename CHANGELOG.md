@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Support for `Laravel 13`
+- Support for Laravel `13`
+- **Payment Electronic Pasargad (Pep)** gateway
 
 ## [1.0.0] - 2026-03-31
 
