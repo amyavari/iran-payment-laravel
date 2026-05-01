@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Tests\TestCase;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -89,4 +90,15 @@ function getRecordedHttpRequest(): Request
     Assert::assertNotNull($request, 'No request has been recorded.');
 
     return $request;
+}
+
+/**
+ * Mock unique number generator
+ */
+function mockUniqueNumberGenerator(string $number = '123456789012345'): void
+{
+    $uniqueNumber = Mockery::mock(UniqueNumberGenerator::class);
+    $uniqueNumber->shouldReceive('generate')->andReturn($number);
+
+    app()->instance(UniqueNumberGenerator::class, $uniqueNumber);
 }

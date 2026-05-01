@@ -17,7 +17,10 @@ it('it returns a new instance for the same gateway on each call', function (): v
 });
 
 it('it returns the same instance when using a fake driver', function (): void {
-    paymentManager()->extend('test_gateway', fn (): FakeDriver => new FakeDriver('test_gateway'));
+    paymentManager()->extend(
+        'test_gateway',
+        fn (): FakeDriver => app()->make(FakeDriver::class, ['gateway' => 'test_gateway'])
+    );
 
     $paymentOne = paymentManager()->gateway('test_gateway');
     $paymentTwo = paymentManager()->gateway('test_gateway');
