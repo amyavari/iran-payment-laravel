@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Drivers;
 
 use AliYavari\IranPayment\Abstracts\Driver;
-use AliYavari\IranPayment\Concerns\HasUniqueNumber;
 use AliYavari\IranPayment\Concerns\NoCallbackDefaults;
+use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Facades\Soap;
 use Illuminate\Support\Collection;
@@ -21,7 +21,7 @@ use Illuminate\Support\Stringable;
  */
 final class BehpardakhtDriver extends Driver
 {
-    use HasUniqueNumber, NoCallbackDefaults;
+    use NoCallbackDefaults;
 
     /**
      * WSDL URL of the payment gateway.
@@ -82,6 +82,7 @@ final class BehpardakhtDriver extends Driver
         private readonly string $username,
         private readonly string $password,
         private readonly string $callbackUrl,
+        private UniqueNumberGenerator $uniqueNumber,
     ) {}
 
     /**
@@ -360,7 +361,7 @@ final class BehpardakhtDriver extends Driver
      */
     private function generateOrderId(): int
     {
-        $this->transactionId = $this->generateUniqueTimeBaseNumber();
+        $this->transactionId = $this->uniqueNumber->generate();
 
         return (int) $this->transactionId;
     }

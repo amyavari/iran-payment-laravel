@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-use AliYavari\IranPayment\Concerns\HasUniqueNumber;
+use AliYavari\IranPayment\Services\TimeBasedUniqueNumberGenerator;
 
-uses(HasUniqueNumber::class);
-
-it('generates 15-digit unique transaction ID', function (): void {
+it('generates 15-digit unique number', function (): void {
     $orderIds = collect([]);
+
+    $uniqueNumber = new TimeBasedUniqueNumberGenerator();
 
     for ($i = 1; $i <= 50; $i++) {
         freezeTimeUntilSeconds();
 
-        $orderIds->push($this->generateUniqueTimeBaseNumber());
+        $orderIds->push($uniqueNumber->generate());
     }
 
     $uniqueIds = $orderIds->unique();

@@ -20,11 +20,12 @@ beforeEach(function (): void {
 
 it('generates and returns transaction ID on payment creation', function (): void {
     fakeHttp(successfulCreationResponse(), 201);
+    mockUniqueNumberGenerator('123456789012345');
 
     $payment = driver()->create(1_000);
 
     expect($payment)
-        ->getTransactionId()->toBeString()->toBeNumeric()->toHaveLength(15);
+        ->getTransactionId()->toBe('123456789012345');
 });
 
 it('calls payment creation API with minimum passed data and config callback URL', function (): void {
@@ -326,11 +327,11 @@ it('returns failed response on the payment reversal', function (): void {
 });
 
 it('creates payment instance with no callback data', function (): void {
-    $payment = driver()->noCallback(transactionId: '123456789012345');
+    $payment = driver()->noCallback(transactionId: '123456789');
 
     expect($payment)
         ->toBeInstanceOf(IdPayDriver::class)
-        ->getTransactionId()->toBe('123456789012345');
+        ->getTransactionId()->toBe('123456789');
 });
 
 it('verifies normally with no callback data', function (): void {

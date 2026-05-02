@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Drivers;
 
 use AliYavari\IranPayment\Abstracts\Driver;
-use AliYavari\IranPayment\Concerns\HasUniqueNumber;
+use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\DriverBehaviorDto;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\GatewayBehaviorNotDefinedException;
@@ -21,8 +21,6 @@ use SoapFault;
  */
 final class FakeDriver extends Driver
 {
-    use HasUniqueNumber;
-
     /**
      * Create operation key.
      */
@@ -97,8 +95,10 @@ final class FakeDriver extends Driver
      */
     private ?string $invalidCallbackMessage = null;
 
-    public function __construct(string $gateway)
-    {
+    public function __construct(
+        private readonly UniqueNumberGenerator $uniqueNumber,
+        string $gateway,
+    ) {
         $this->gateway = $gateway;
     }
 
@@ -118,7 +118,7 @@ final class FakeDriver extends Driver
 
         $this->redirectData = $redirectData ?? $this->getDefaultRedirectData();
 
-        $this->transactionId = $this->generateUniqueTimeBaseNumber();
+        $this->transactionId = $this->uniqueNumber->generate();
 
         return $this;
     }

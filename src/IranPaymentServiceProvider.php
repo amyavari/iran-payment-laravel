@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace AliYavari\IranPayment;
 
+use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Drivers\BehpardakhtDriver;
 use AliYavari\IranPayment\Drivers\IdPayDriver;
 use AliYavari\IranPayment\Drivers\PepDriver;
 use AliYavari\IranPayment\Drivers\SepDriver;
 use AliYavari\IranPayment\Drivers\ZarinpalDriver;
+use AliYavari\IranPayment\Services\TimeBasedUniqueNumberGenerator;
 use Illuminate\Foundation\Application;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Spatie\LaravelPackageTools\Commands\InstallCommand;
 use Spatie\LaravelPackageTools\Package;
@@ -35,41 +38,57 @@ final class IranPaymentServiceProvider extends PackageServiceProvider
 
     public function packageRegistered(): void
     {
+        $this->app->singleton(UniqueNumberGenerator::class, fn (): UniqueNumberGenerator => new TimeBasedUniqueNumberGenerator());
+
         $this->app->singleton(PaymentManager::class, fn (Application $app): PaymentManager => new PaymentManager($app));
 
         $this->app->bind(
             BehpardakhtDriver::class,
-            fn (): BehpardakhtDriver => new BehpardakhtDriver(...$this->configWithCamelCaseKeys('iran-payment.gateways.behpardakht'))
+            fn (): BehpardakhtDriver => new BehpardakhtDriver(...$this->buildArguments('behpardakht'))
         );
 
         $this->app->bind(
             SepDriver::class,
-            fn (): SepDriver => new SepDriver(...$this->configWithCamelCaseKeys('iran-payment.gateways.sep'))
+            fn (): SepDriver => new SepDriver(...$this->buildArguments('sep'))
         );
 
         $this->app->bind(
             ZarinpalDriver::class,
-            fn (): ZarinpalDriver => new ZarinpalDriver(...$this->configWithCamelCaseKeys('iran-payment.gateways.zarinpal'))
+            fn (): ZarinpalDriver => new ZarinpalDriver(...$this->buildArguments('zarinpal', withNumberGenerator: false))
         );
 
         $this->app->bind(
             IdPayDriver::class,
-            fn (): IdPayDriver => new IdPayDriver(...$this->configWithCamelCaseKeys('iran-payment.gateways.id_pay'))
+            fn (): IdPayDriver => new IdPayDriver(...$this->buildArguments('id_pay'))
         );
 
         $this->app->bind(
             PepDriver::class,
-            fn (): PepDriver => new PepDriver(...$this->configWithCamelCaseKeys('iran-payment.gateways.pep'))
+            fn (): PepDriver => new PepDriver(...$this->buildArguments('pep'))
         );
     }
 
     /**
      * @return array<string,mixed>
      */
-    private function configWithCamelCaseKeys(string $key): array
+    private function buildArguments(string $gateway, bool $withNumberGenerator = true): array
+    {
+        return $this->configWithCamelCaseKeys("iran-payment.gateways.{$gateway}")
+            ->when(
+                $withNumberGenerator,
+                fn (Collection $arguments): Collection => $arguments->merge([
+                    'uniqueNumber' => $this->app->make(UniqueNumberGenerator::class),
+                ])
+            )
+            ->all();
+    }
+
+    /**
+     * @return Collection<string,mixed>
+     */
+    private function configWithCamelCaseKeys(string $key): Collection
     {
         return collect(config()->array($key))
-            ->mapWithKeys(fn (mixed $value, string $key): array => [Str::camel($key) => $value])
-            ->all();
+            ->mapWithKeys(fn (mixed $value, string $key): array => [Str::camel($key) => $value]);
     }
 }

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Drivers;
 
 use AliYavari\IranPayment\Abstracts\Driver;
-use AliYavari\IranPayment\Concerns\HasUniqueNumber;
+use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\Client\Response;
@@ -21,8 +21,6 @@ use Pest\Support\Arr;
  */
 final class IdPayDriver extends Driver
 {
-    use HasUniqueNumber;
-
     /**
      * Base URL of the payment gateway.
      */
@@ -68,6 +66,7 @@ final class IdPayDriver extends Driver
     public function __construct(
         private readonly string $callbackUrl,
         private readonly string $apiKey,
+        private readonly UniqueNumberGenerator $uniqueNumber,
     ) {}
 
     /**
@@ -264,7 +263,7 @@ final class IdPayDriver extends Driver
      */
     private function generateOrderId(): string
     {
-        $this->transactionId = $this->generateUniqueTimeBaseNumber();
+        $this->transactionId = $this->uniqueNumber->generate();
 
         return $this->transactionId;
     }

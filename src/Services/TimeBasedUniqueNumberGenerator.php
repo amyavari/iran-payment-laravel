@@ -2,22 +2,21 @@
 
 declare(strict_types=1);
 
-namespace AliYavari\IranPayment\Concerns;
+namespace AliYavari\IranPayment\Services;
 
+use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 
 /**
  * @internal
- *
- * Has methods to generate unique time based numbers
  */
-trait HasUniqueNumber
+final class TimeBasedUniqueNumberGenerator implements UniqueNumberGenerator
 {
     /**
-     * Generate a random 15-digit, time-based transaction ID.
+     * Generate a random 15-digit, time-based number.
      */
-    protected function generateUniqueTimeBaseNumber(): string
+    public function generate(): string
     {
         $randomNumber = random_int(1_000, 9_999);
 

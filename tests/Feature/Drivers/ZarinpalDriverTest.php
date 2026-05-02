@@ -346,11 +346,11 @@ it('communicates with sandbox environment for payment reversal when configured',
 });
 
 it('creates payment instance with no callback data', function (): void {
-    $payment = driver()->noCallback(transactionId: 'A0000000000000000000000000000wwOGYpd');
+    $payment = driver()->noCallback(transactionId: 'A0000000000000000000000000000pdOGYww');
 
     expect($payment)
         ->toBeInstanceOf(ZarinpalDriver::class)
-        ->getTransactionId()->toBe('A0000000000000000000000000000wwOGYpd');
+        ->getTransactionId()->toBe('A0000000000000000000000000000pdOGYww');
 });
 
 it('verifies normally with no callback data', function (): void {

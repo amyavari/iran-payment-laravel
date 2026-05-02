@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Drivers;
 
 use AliYavari\IranPayment\Abstracts\Driver;
-use AliYavari\IranPayment\Concerns\HasUniqueNumber;
 use AliYavari\IranPayment\Concerns\NoCallbackDefaults;
+use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\SandboxNotSupportedException;
 use Illuminate\Contracts\Support\Arrayable;
@@ -22,7 +22,7 @@ use Pest\Support\Arr;
  */
 final class SepDriver extends Driver
 {
-    use HasUniqueNumber, NoCallbackDefaults;
+    use NoCallbackDefaults;
 
     /**
      * URL of the payment gateway to create a new payment.
@@ -79,6 +79,7 @@ final class SepDriver extends Driver
     public function __construct(
         private readonly string $terminalId,
         private readonly string $callbackUrl,
+        private UniqueNumberGenerator $uniqueNumber,
     ) {}
 
     /**
@@ -277,7 +278,7 @@ final class SepDriver extends Driver
      */
     private function generateResNum(): string
     {
-        $this->transactionId = $this->generateUniqueTimeBaseNumber();
+        $this->transactionId = $this->uniqueNumber->generate();
 
         return $this->transactionId;
     }

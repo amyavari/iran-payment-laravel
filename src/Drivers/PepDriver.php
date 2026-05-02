@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Drivers;
 
 use AliYavari\IranPayment\Abstracts\Driver;
-use AliYavari\IranPayment\Concerns\HasUniqueNumber;
+use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\SandboxNotSupportedException;
 use Illuminate\Contracts\Support\Arrayable;
@@ -23,8 +23,6 @@ use Illuminate\Support\Str;
  */
 final class PepDriver extends Driver
 {
-    use HasUniqueNumber;
-
     /**
      * Cache key used to store the gateway token.
      */
@@ -73,6 +71,7 @@ final class PepDriver extends Driver
         private readonly string $username,
         private readonly string $password,
         private readonly string $callbackUrl,
+        private readonly UniqueNumberGenerator $uniqueNumber,
     ) {}
 
     /**
@@ -470,7 +469,7 @@ final class PepDriver extends Driver
      */
     private function generateInvoice(): string
     {
-        $this->transactionId = $this->generateUniqueTimeBaseNumber();
+        $this->transactionId = $this->uniqueNumber->generate();
 
         return $this->transactionId;
     }
