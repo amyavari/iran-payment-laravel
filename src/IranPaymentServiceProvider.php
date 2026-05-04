@@ -8,6 +8,7 @@ use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Drivers\BehpardakhtDriver;
 use AliYavari\IranPayment\Drivers\IdPayDriver;
 use AliYavari\IranPayment\Drivers\PepDriver;
+use AliYavari\IranPayment\Drivers\SadadDriver;
 use AliYavari\IranPayment\Drivers\SepDriver;
 use AliYavari\IranPayment\Drivers\ZarinpalDriver;
 use AliYavari\IranPayment\Services\TimeBasedUniqueNumberGenerator;
@@ -65,6 +66,11 @@ final class IranPaymentServiceProvider extends PackageServiceProvider
         $this->app->bind(
             PepDriver::class,
             fn (): PepDriver => new PepDriver(...$this->buildArguments('pep'))
+        );
+
+        $this->app->bind(
+            SadadDriver::class,
+            fn (): SadadDriver => new SadadDriver(...$this->buildArguments('sadad'))
         );
     }
 

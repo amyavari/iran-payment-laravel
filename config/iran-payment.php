@@ -84,5 +84,13 @@ return [
             'password' => env('PEP_PASSWORD', ''),
             'callback_url' => env('PEP_CALLBACK_URL', ''),
         ],
+
+        // https://sadadpsp.ir/
+        'sadad' => [
+            'terminal_id' => env('SADAD_TERMINAL_ID', ''),
+            'merchant_id' => env('SADAD_MERCHANT_ID', ''),
+            'terminal_key' => env('SADAD_TERMINAL_KEY', ''),
+            'callback_url' => env('SADAD_CALLBACK_URL', ''),
+        ],
     ],
 ];
