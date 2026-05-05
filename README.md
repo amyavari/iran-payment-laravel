@@ -29,6 +29,7 @@ To view the Persian documentation, please refer to [README_FA.md](./docs/README_
 | Zarinpal          | زرین پال                  | [zarinpal.com]    | `zarinpal`    | 1.0.0      |
 | IDPay             | آی دی پی                  | [idpay.ir]        | `id_pay`      | 1.0.0      |
 | Pep               | پرداخت الکترونیک پاسارگاد | [pep.co.ir]       | `pep`         | Unreleased |
+| Sadad             | سداد                      | [sadadpsp.ir]     | `sadad`       | Unreleased |
 
 > [!CAUTION]
 > Gateways have different rules for pending verifications and reversals. Please check [gateways_note_en.md](./docs/gateways_note_en.md).
@@ -492,5 +493,7 @@ Thank you for considering contributing to the Iran Payment Laravel! The contribu
 [sep.ir]: https://sep.ir
 [zarinpal.com]: https://zarinpal.com
 [idpay.ir]: https://idpay.ir
+[pep.co.ir]: https://pep.co.ir/
+[sadadpsp.ir]: https://sadadpsp.ir/
 [Eloquent relationships: one-to-many polymorphic]: https://laravel.com/docs/12.x/eloquent-relationships#one-to-many-polymorphic-relations
 [Laravel's task scheduler]: https://laravel.com/docs/12.x/scheduling#scheduling-artisan-commands

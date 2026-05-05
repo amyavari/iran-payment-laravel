@@ -31,3 +31,9 @@
 - This gateway sends the callback as a `GET` request.
 - You must verify the payment within **10 minutes** after a successful gateway payment; otherwise, the gateway will **automatically reverse** it.
 - A verified payment can be **reversed within 25 minutes**.
+
+# Sadad
+
+- This gateway sends the callback as a `POST` request.
+- You must verify the payment within **15 minutes** after a successful gateway payment; otherwise, the gateway will **automatically reverse** it.
+- A verified payment **can not be reversed**, so related method will return a **failed payment reversal**.
