@@ -7,7 +7,7 @@ namespace AliYavari\IranPayment\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Form request for validating and sanitizing callback data from the Sep gateway.
+ * Form request for validating callback data from the Sep gateway.
  */
 final class SepRequest extends FormRequest
 {
@@ -26,21 +26,18 @@ final class SepRequest extends FormRequest
      */
     public function rules(): array
     {
-        /**
-         * Only to sanitize inputs.
-         */
         return [
-            'MID' => ['numeric'],
+            'MID' => ['nullable', 'numeric'],
             'State' => ['required', 'string'],
             'Status' => ['required', 'numeric'],
-            'RRN' => ['numeric'],
-            'RefNum' => ['string'],
+            'RRN' => ['nullable', 'numeric'],
+            'RefNum' => ['nullable', 'string'],
             'ResNum' => ['required', 'string'],
-            'TerminalId' => ['numeric'],
-            'TraceNo' => ['numeric'],
-            'Amount' => ['numeric'],
-            'SecurePan' => ['string'],
-            'HashedCardNumber' => ['string'],
+            'TerminalId' => ['nullable', 'numeric'],
+            'TraceNo' => ['nullable', 'numeric'],
+            'Amount' => ['nullable', 'numeric'],
+            'SecurePan' => ['nullable', 'string'],
+            'HashedCardNumber' => ['nullable', 'string'],
         ];
     }
 }
