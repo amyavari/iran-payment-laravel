@@ -388,6 +388,12 @@ use AliYavari\IranPayment\Http\Requests\ZarinpalRequest;
 
 // IDPay
 use AliYavari\IranPayment\Http\Requests\IdPayRequest;
+
+// Pep
+use AliYavari\IranPayment\Http\Requests\PepRequest;
+
+// Sadad
+use AliYavari\IranPayment\Http\Requests\SadadRequest;
 ```
 
 #### Verification Without Callback

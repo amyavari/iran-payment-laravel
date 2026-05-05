@@ -7,7 +7,7 @@ namespace AliYavari\IranPayment\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Form request for validating and sanitizing callback data from the Zarinpal gateway.
+ * Form request for validating callback data from the Zarinpal gateway.
  */
 final class ZarinpalRequest extends FormRequest
 {
@@ -26,9 +26,6 @@ final class ZarinpalRequest extends FormRequest
      */
     public function rules(): array
     {
-        /**
-         * Only to sanitize inputs.
-         */
         return [
             'Authority' => ['required', 'string'],
             'Status' => ['required', 'string'],

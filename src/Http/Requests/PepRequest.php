@@ -7,7 +7,7 @@ namespace AliYavari\IranPayment\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Form request for validating and sanitizing callback data from the Pep gateway.
+ * Form request for validating callback data from the Pep gateway.
  */
 final class PepRequest extends FormRequest
 {
@@ -26,14 +26,11 @@ final class PepRequest extends FormRequest
      */
     public function rules(): array
     {
-        /**
-         * Only to sanitize inputs.
-         */
         return [
             'invoiceId' => ['required', 'numeric'],
             'status' => ['required', 'string'],
-            'referenceNumber' => ['numeric'],
-            'trackId' => ['numeric'],
+            'referenceNumber' => ['nullable', 'numeric'],
+            'trackId' => ['nullable', 'numeric'],
         ];
     }
 }

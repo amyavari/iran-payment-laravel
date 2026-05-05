@@ -43,6 +43,22 @@ it('fails to validate if required data are not provided', function (): void {
         ->assertOnlyInvalid(['status', 'invoiceId']);
 });
 
+it('validates successfully if optional fields are null or empty', function (): void {
+    activateFakeRoute();
+
+    $validData = [
+        'invoiceId' => '123456789012345',
+        'status' => 'success',
+        'referenceNumber' => '',
+        'trackId' => '',
+    ];
+
+    $response = $this->get(Uri::of('/test')->withQuery($validData));
+
+    $response->assertOk()
+        ->assertJson($validData);
+})->only();
+
 // ------------
 // Helpers
 // ------------

@@ -49,6 +49,29 @@ it('fails to validate if required data are not provided', function (): void {
         ->assertOnlyInvalid(['State', 'Status', 'ResNum']);
 });
 
+it('validates successfully if optional fields are null or empty', function (): void {
+    activateFakeRoute();
+
+    $validData = [
+        'MID' => null,
+        'State' => 'OK',
+        'Status' => '2',
+        'RRN' => null,
+        'RefNum' => null,
+        'ResNum' => '123456789012345',
+        'TerminalId' => null,
+        'TraceNo' => null,
+        'Amount' => null,
+        'SecurePan' => null,
+        'HashedCardNumber' => null,
+    ];
+
+    $response = $this->post('/test', $validData);
+
+    $response->assertOk()
+        ->assertJson($validData);
+});
+
 // ------------
 // Helpers
 // ------------

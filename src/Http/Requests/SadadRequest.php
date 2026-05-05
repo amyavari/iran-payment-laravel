@@ -7,7 +7,7 @@ namespace AliYavari\IranPayment\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Form request for validating and sanitizing callback data from the Sadad gateway.
+ * Form request for validating callback data from the Sadad gateway.
  */
 final class SadadRequest extends FormRequest
 {
@@ -26,17 +26,14 @@ final class SadadRequest extends FormRequest
      */
     public function rules(): array
     {
-        /**
-         * Only to sanitize inputs.
-         */
         return [
             'ResCode' => ['required', 'numeric'],
             'OrderId' => ['required', 'numeric'],
-            'SwitchResCod' => ['numeric'],
-            'Token' => ['string'],
-            'HashedCardNo' => ['string'],
-            'PrimaryAccNo' => ['string'],
-            'CardHolderFullName' => ['string'],
+            'SwitchResCod' => ['nullable', 'numeric'],
+            'Token' => ['nullable', 'string'],
+            'HashedCardNo' => ['nullable', 'string'],
+            'PrimaryAccNo' => ['nullable', 'string'],
+            'CardHolderFullName' => ['nullable', 'string'],
         ];
     }
 }

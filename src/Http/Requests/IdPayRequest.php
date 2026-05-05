@@ -7,7 +7,7 @@ namespace AliYavari\IranPayment\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Form request for validating and sanitizing callback data from the IDPay gateway.
+ * Form request for validating callback data from the IDPay gateway.
  */
 final class IdPayRequest extends FormRequest
 {
@@ -26,9 +26,6 @@ final class IdPayRequest extends FormRequest
      */
     public function rules(): array
     {
-        /**
-         * Only to sanitize inputs.
-         */
         return [
             'status' => ['required', 'numeric'],
             'track_id' => ['required', 'numeric'],

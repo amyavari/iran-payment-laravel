@@ -7,7 +7,7 @@ namespace AliYavari\IranPayment\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Form request for validating and sanitizing callback data from the Behpardakht gateway.
+ * Form request for validating callback data from the Behpardakht gateway.
  */
 final class BehpardakhtRequest extends FormRequest
 {
@@ -26,17 +26,14 @@ final class BehpardakhtRequest extends FormRequest
      */
     public function rules(): array
     {
-        /**
-         * Only to sanitize inputs.
-         */
         return [
             'RefId' => ['required', 'string'],
             'ResCode' => ['required', 'numeric'],
             'SaleOrderId' => ['required', 'numeric'],
-            'SaleReferenceId' => ['numeric'],
-            'CardHolderInfo' => ['string'],
-            'CardHolderPan' => ['string'],
-            'FinalAmount' => ['numeric'],
+            'SaleReferenceId' => ['nullable', 'numeric'],
+            'CardHolderInfo' => ['nullable', 'string'],
+            'CardHolderPan' => ['nullable', 'string'],
+            'FinalAmount' => ['nullable', 'numeric'],
         ];
     }
 }
