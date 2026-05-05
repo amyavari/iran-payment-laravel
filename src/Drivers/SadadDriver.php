@@ -98,7 +98,7 @@ final class SadadDriver extends Driver
         $this->execute('Request/PaymentRequest', $data);
 
         if ($this->isSuccessful()) {
-            $this->extractToken();
+            $this->setToken();
         }
     }
 
@@ -358,7 +358,7 @@ final class SadadDriver extends Driver
             ->throwIfServerError()
             ->json();
 
-        $this->extractStatusCode();
+        $this->setApiStatusCode();
     }
 
     /**
@@ -374,17 +374,17 @@ final class SadadDriver extends Driver
     }
 
     /**
-     * Extract status code from API response.
+     * Parse the API response and set the status code.
      */
-    private function extractStatusCode(): void
+    private function setApiStatusCode(): void
     {
         $this->apiStatusCode = (int) Arr::get($this->rawResponse, 'ResCode');
     }
 
     /**
-     *  Extract token from gateway response.
+     * Set the token required to redirect the user to the payment page.
      */
-    private function extractToken(): void
+    private function setToken(): void
     {
         $this->token = Arr::get($this->rawResponse, 'Token');
     }

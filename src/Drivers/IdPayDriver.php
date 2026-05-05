@@ -95,7 +95,7 @@ final class IdPayDriver extends Driver
         $this->execute('payment', $data);
 
         if ($this->apiIsSuccessful) {
-            $this->id = Arr::get($this->rawResponse, 'id');
+            $this->setId();
         }
     }
 
@@ -282,7 +282,9 @@ final class IdPayDriver extends Driver
 
         $url = self::GATEWAY_BASE_URL."/{$method}";
 
-        $response = Http::withHeaders($headers)->post($url, $data)->throwIfServerError();
+        $response = Http::withHeaders($headers)
+            ->post($url, $data)
+            ->throwIfServerError();
 
         $this->parseResponse($response);
     }
@@ -292,9 +294,9 @@ final class IdPayDriver extends Driver
      */
     private function parseResponse(Response $response): void
     {
-        $this->rawResponse = $response->json();
-
         $this->apiIsSuccessful = $response->successful();
+
+        $this->rawResponse = $response->json();
 
         if (! $this->apiIsSuccessful) {
             $this->apiStatusCode = Arr::get($this->rawResponse, 'error_code');
@@ -311,6 +313,14 @@ final class IdPayDriver extends Driver
             ->chopStart('+')
             ->chopStart('98')
             ->replaceStart('9', '09');
+    }
+
+    /**
+     * Set the ID required to verify the payment.
+     */
+    private function setId(): void
+    {
+        $this->id = Arr::get($this->rawResponse, 'id');
     }
 
     /**

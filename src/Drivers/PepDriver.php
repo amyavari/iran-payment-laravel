@@ -104,7 +104,7 @@ final class PepDriver extends Driver
         $this->execute($this->toApiUrl('purchase'), $data);
 
         if ($this->successful()) {
-            $this->urlId = Arr::get($this->rawResponse, 'data.urlId');
+            $this->setUrlId();
         }
     }
 
@@ -508,15 +508,14 @@ final class PepDriver extends Driver
             return;
         }
 
-        $response = Http::baseUrl($this->toHttps($this->baseUrl))
+        $this->rawResponse = Http::baseUrl($this->toHttps($this->baseUrl))
             ->withToken($token)
             ->withHeader('Referer', URL::current())
             ->post($url, $data)
-            ->throwIfServerError();
+            ->throwIfServerError()
+            ->json();
 
-        $this->rawResponse = $response->json();
-
-        $this->apiStatusCode = (int) Arr::get($this->rawResponse, 'resultCode');
+        $this->setApiStatusCode();
     }
 
     /**
@@ -558,6 +557,22 @@ final class PepDriver extends Driver
             ->chopStart('http://')
             ->chopStart('https://')
             ->prepend('https://');
+    }
+
+    /**
+     * Parse the API response and set the status code.
+     */
+    private function setApiStatusCode(): void
+    {
+        $this->apiStatusCode = (int) Arr::get($this->rawResponse, 'resultCode');
+    }
+
+    /**
+     * Set the URL ID required to redirect the user to the payment page.
+     */
+    private function setUrlId(): void
+    {
+        $this->urlId = Arr::get($this->rawResponse, 'data.urlId');
     }
 
     /**

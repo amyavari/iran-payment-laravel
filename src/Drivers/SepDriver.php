@@ -366,9 +366,9 @@ final class SepDriver extends Driver
             $url .= "/{$method}";
         }
 
-        $response = Http::post($url, $data)->throwIfServerError();
-
-        $this->rawResponse = $response->json();
+        $this->rawResponse = Http::post($url, $data)
+            ->throwIfServerError()
+            ->json();
     }
 
     /**

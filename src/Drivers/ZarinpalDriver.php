@@ -87,7 +87,7 @@ final class ZarinpalDriver extends Driver
         $this->execute('request', $data);
 
         if ($this->isSuccessful()) {
-            $this->transactionId = Arr::get($this->rawResponse, 'data.authority');
+            $this->setTransactionId();
         }
     }
 
@@ -282,9 +282,9 @@ final class ZarinpalDriver extends Driver
     {
         $url = $this->getGatewayUrl($method);
 
-        $response = Http::post($url, $data)->throwIfServerError();
-
-        $this->rawResponse = $response->json();
+        $this->rawResponse = Http::post($url, $data)
+            ->throwIfServerError()
+            ->json();
 
         $this->setApiStatusCode();
     }
@@ -314,7 +314,7 @@ final class ZarinpalDriver extends Driver
     }
 
     /**
-     * Pars the API response and set the status code.
+     * Parse the API response and set the status code.
      */
     private function setApiStatusCode(): void
     {
@@ -333,6 +333,14 @@ final class ZarinpalDriver extends Driver
             ->chopStart('+')
             ->chopStart('98')
             ->replaceStart('9', '09');
+    }
+
+    /**
+     * Parse the creation API response and set the transaction ID.
+     */
+    private function setTransactionId(): void
+    {
+        $this->transactionId = Arr::get($this->rawResponse, 'data.authority');
     }
 
     /**

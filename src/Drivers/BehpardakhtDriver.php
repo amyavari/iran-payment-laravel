@@ -394,7 +394,7 @@ final class BehpardakhtDriver extends Driver
     }
 
     /**
-     * Pars the API response and set the status code.
+     * Parse the API response and set the status code.
      */
     private function setApiStatusCode(): void
     {
