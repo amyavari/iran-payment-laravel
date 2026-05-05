@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - **Payment Electronic Pasargad (Pep)** gateway
 - **Sadad** gateway
 
+### Fixed
+
+- Allow optional values to pass validation when empty or `null`
+
 ## [1.0.0] - 2026-03-31
 
 First stable release of the package, features:
