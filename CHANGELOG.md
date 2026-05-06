@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [1.1.0] - 2026-05-06
 
 ### Added
 
@@ -32,4 +32,5 @@ Supported Gateways:
 - Zarinpal
 - IDPay
 
+[1.1.0]: https://github.com/amyavari/iran-sms-laravel/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/amyavari/iran-sms-laravel/compare/v0.1.0...v1.0.0

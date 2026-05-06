@@ -18,18 +18,18 @@ To view the Persian documentation, please refer to [README_FA.md](./docs/README_
 ## Requirements
 
 - PHP version `8.3` or higher
-- Laravel `^11.44`, or `^12.23`
+- Laravel `^11.44`, `^12.23`, or `^13.0`
 
 ## List of Available Payment Gateways
 
-| Gateway Name (EN) | Gateway Name (FA)         | Gateway Website   | Gateway Key   | Version    |
-| ----------------- | ------------------------- | ----------------- | ------------- | ---------- |
-| Behpardakht       | به پرداخت ملت             | [behpardakht.com] | `behpardakht` | 1.0.0      |
-| Sep               | سامان کیش (سپ)            | [sep.ir]          | `sep`         | 1.0.0      |
-| Zarinpal          | زرین پال                  | [zarinpal.com]    | `zarinpal`    | 1.0.0      |
-| IDPay             | آی دی پی                  | [idpay.ir]        | `id_pay`      | 1.0.0      |
-| Pep               | پرداخت الکترونیک پاسارگاد | [pep.co.ir]       | `pep`         | Unreleased |
-| Sadad             | سداد                      | [sadadpsp.ir]     | `sadad`       | Unreleased |
+| Gateway Name (EN) | Gateway Name (FA)         | Gateway Website   | Gateway Key   | Version |
+| ----------------- | ------------------------- | ----------------- | ------------- | ------- |
+| Behpardakht       | به پرداخت ملت             | [behpardakht.com] | `behpardakht` | 1.0.0   |
+| Sep               | سامان کیش (سپ)            | [sep.ir]          | `sep`         | 1.0.0   |
+| Zarinpal          | زرین پال                  | [zarinpal.com]    | `zarinpal`    | 1.0.0   |
+| IDPay             | آی دی پی                  | [idpay.ir]        | `id_pay`      | 1.0.0   |
+| Pep               | پرداخت الکترونیک پاسارگاد | [pep.co.ir]       | `pep`         | 1.1.0   |
+| Sadad             | سداد                      | [sadadpsp.ir]     | `sadad`       | 1.1.0   |
 
 > [!CAUTION]
 > Gateways have different rules for pending verifications and reversals. Please check [gateways_note_en.md](./docs/gateways_note_en.md).
