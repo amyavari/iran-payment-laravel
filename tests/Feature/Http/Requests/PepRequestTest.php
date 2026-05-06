@@ -57,7 +57,7 @@ it('validates successfully if optional fields are null or empty', function (): v
 
     $response->assertOk()
         ->assertJson($validData);
-})->only();
+});
 
 // ------------
 // Helpers

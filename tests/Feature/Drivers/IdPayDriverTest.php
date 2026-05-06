@@ -261,7 +261,7 @@ it('returns failed response on successful payment verification with invalid amou
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1010- مبلغ پرداخت شده نامعتبر است')
+        ->error()->toBe('کد 9300- مبلغ پرداخت شده نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -320,7 +320,7 @@ it('returns failed response on the payment reversal', function (): void {
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1011- درگاه از بازگشت وجه پشتیبانی نمی کند')
+        ->error()->toBe('کد 9200- درگاه از بازگشت وجه پشتیبانی نمی کند')
         ->getRawResponse()->toBe('No API is called. IPG does not support reversal.');
 
     Http::assertSentCount(1); // Only verification is sent.
@@ -353,7 +353,7 @@ it('returns failed response on the payment reversal with no callback data', func
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1011- درگاه از بازگشت وجه پشتیبانی نمی کند')
+        ->error()->toBe('کد 9200- درگاه از بازگشت وجه پشتیبانی نمی کند')
         ->getRawResponse()->toBe('No API is called. IPG does not support reversal.');
 
     Http::assertSentCount(1); // Only verification is sent.

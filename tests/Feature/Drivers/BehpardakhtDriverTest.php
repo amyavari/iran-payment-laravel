@@ -377,7 +377,7 @@ it('returns failed verification with no callback data', function (): void {
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1001- درگاه از وریفای بدون callback پشتیبانی نمی کند.')
+        ->error()->toBe('کد 9100- درگاه از وریفای بدون callback پشتیبانی نمی کند.')
         ->getRawResponse()->toBe('No API is called.');
 
     Soap::assertNothingSent();

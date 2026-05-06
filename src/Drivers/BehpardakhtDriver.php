@@ -8,6 +8,7 @@ use AliYavari\IranPayment\Abstracts\Driver;
 use AliYavari\IranPayment\Concerns\NoCallbackDefaults;
 use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+use AliYavari\IranPayment\Enums\InternalErrorCode;
 use AliYavari\IranPayment\Facades\Soap;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\URL;
@@ -46,7 +47,7 @@ final class BehpardakhtDriver extends Driver
     /**
      * Status code returned by the last API call.
      */
-    private string $apiStatusCode;
+    private int $apiStatusCode;
 
     /**
      * Raw response from the last API call.
@@ -102,7 +103,7 @@ final class BehpardakhtDriver extends Driver
             'Referer' => URL::current(),
         ];
 
-        return new PaymentRedirectDto($this->getGaymentRedirectUrl(), 'POST', $payload, $headers);
+        return new PaymentRedirectDto($this->getPaymentRedirectUrl(), 'POST', $payload, $headers);
     }
 
     /**
@@ -168,7 +169,7 @@ final class BehpardakhtDriver extends Driver
             return $this->isNoCallbackSuccessful($this->apiStatusCode);
         }
 
-        return $this->apiStatusCode === '0';
+        return $this->apiStatusCode === 0;
     }
 
     /**
@@ -226,7 +227,7 @@ final class BehpardakhtDriver extends Driver
      */
     protected function getDriverStatusCode(): string
     {
-        return $this->apiStatusCode;
+        return (string) $this->apiStatusCode;
     }
 
     /**
@@ -234,80 +235,8 @@ final class BehpardakhtDriver extends Driver
      */
     protected function getDriverStatusMessage(): string
     {
-        if ($this->isNoCallback()) {
-            return $this->noCallbackMessage($this->apiStatusCode);
-        }
-
-        return match ($this->apiStatusCode) {
-            '0' => 'تراکنش با موفقیت انجام شد',
-            '11' => 'شماره کارت نامعتبر است',
-            '12' => 'موجودی کافی نیست',
-            '13' => 'رمز نادرست است',
-            '14' => 'تعداد دفعات وارد کردن رمز بیش از حد مجاز است',
-            '15' => 'کارت نامعتبر است',
-            '16' => 'دفعات برداشت وجه بیش از حد مجاز است',
-            '17' => 'کاربر از انجام تراکنش منصرف شده است',
-            '18' => 'تاریخ انقضای کارت گذشته است',
-            '19' => 'مبلغ برداشت وجه بیش از حد مجاز است',
-            '20' => 'عدم ارسال پارامترهای احراز هویت مشتری توسط پذیرنده',
-            '23' => 'خطای امنیتی رخ داده است',
-            '32' => 'فرمت اطلاعات ورودی صحیح نیست',
-            '21' => 'پذیرنده نامعتبر است',
-            '22' => 'ترمینال نامعتبر است',
-            '24' => 'اطلاعات کاربری پذیرنده نامعتبر است',
-            '29' => 'آدرس بازگشت (CallBackUrl) نامعتبر است',
-            '25' => 'مبلغ نامعتبر است',
-            '26' => 'شماره مرجع تراکنش نامعتبر است',
-            '27' => 'شماره درخواست تکراری است',
-            '28' => 'شماره درخواست یافت نشد',
-            '30' => 'تراکنش قبلاً با موفقیت انجام شده است',
-            '31' => 'پاسخ نامعتبر است',
-            '33' => 'حساب نامعتبر است',
-            '34' => 'خطای سیستمی',
-            '35' => 'تراکنش ناموفق',
-            '36' => 'تراکنش قبلاً برگشت داده شده است',
-            '37' => 'تراکنش در حال انجام است',
-            '38' => 'مدت زمان مجاز انجام تراکنش به پایان رسیده است',
-            '39' => 'خطا در انجام عملیات',
-            '40' => 'تراکنش مورد نظر یافت نشد',
-            '41' => 'تراکنش قبلاً تأیید (Verify) شده است',
-            '42' => 'تراکنش قبلاً تسویه (Settle) شده است',
-            '43' => 'امکان تسویه تراکنش وجود ندارد',
-            '44' => 'امکان برگشت تراکنش وجود ندارد',
-            '45' => 'تراکنش قبلاً برگشت داده شده است',
-            '46' => 'تراکنش تسویه نشده است',
-            '47' => 'خطا در انجام عملیات تسویه',
-            '48' => 'خطا در انجام عملیات تأیید',
-            '49' => 'خطا در انجام عملیات برگشت',
-            '50' => 'خطای داخلی سیستم',
-            '51' => 'تراکنش نامعتبر است',
-            '52' => 'اطلاعات پرداخت ناقص است',
-            '53' => 'پاسخ بانک نامعتبر است',
-            '54' => 'خطا در ارتباط با بانک',
-            '55' => 'عدم تطابق اطلاعات تراکنش',
-            '56' => 'خطا در پردازش اطلاعات',
-            '57' => 'پرداخت توسط کاربر لغو شد',
-            '58' => 'عدم تطابق RefId',
-            '59' => 'عدم تطابق SaleOrderId',
-            '60' => 'خطای ناشناخته',
-            '110' => 'کالا مشمول محدودیت سامانه مکنا می‌باشد',
-            '111' => 'کد کالای ارسالی نامعتبر است',
-            '112' => 'تعداد کالای ارسالی بیش از حد مجاز است',
-            '113' => 'خطا در بررسی اطلاعات کالای ایرانی',
-            '412' => 'خطا در ارتباط با شاپرک',
-            '413' => 'خطای زمان انتظار (Timeout)',
-            '414' => 'پاسخ نامعتبر از شاپرک',
-            '415' => 'خطای پردازش در شاپرک',
-            '416' => 'تراکنش توسط شاپرک رد شد',
-            '417' => 'خطای امنیتی در شاپرک',
-            '418' => 'عدم تطابق اطلاعات در شاپرک',
-            '419' => 'خطای ناشناخته در شاپرک',
-            '421' => 'IP سرور پذیرنده پیشتر به سامانه اعلام نشده است',
-            '995' => 'خطای سیستمی (Internal Error)',
-            '997' => 'سامانه مقصد غیر فعال می‌باشد',
-
-            default => 'کد پاسخ نامشخص'
-        };
+        return InternalErrorCode::getMessage($this->apiStatusCode)
+            ?? $this->getGatewayMessage();
     }
 
     /**
@@ -394,11 +323,11 @@ final class BehpardakhtDriver extends Driver
     }
 
     /**
-     * Pars the API response and set the status code.
+     * Parse the API response and set the status code.
      */
     private function setApiStatusCode(): void
     {
-        $this->apiStatusCode = (string) Str::of($this->rawResponse)->before(',');
+        $this->apiStatusCode = Str::of($this->rawResponse)->before(',')->toInteger();
     }
 
     /**
@@ -431,9 +360,86 @@ final class BehpardakhtDriver extends Driver
     /**
      * Get the gateway redirect URL based on the configuration.
      */
-    private function getGaymentRedirectUrl(): string
+    private function getPaymentRedirectUrl(): string
     {
         return $this->useSandbox() ? self::SANDBOX_PAYMENT_REDIRECT_URL : self::PAYMENT_REDIRECT_URL;
+    }
+
+    /**
+     * Get the error message returned by the gateway.
+     */
+    private function getGatewayMessage(): string
+    {
+        return match ($this->apiStatusCode) {
+            0 => 'تراکنش با موفقیت انجام شد',
+            11 => 'شماره کارت نامعتبر است',
+            12 => 'موجودی کافی نیست',
+            13 => 'رمز نادرست است',
+            14 => 'تعداد دفعات وارد کردن رمز بیش از حد مجاز است',
+            15 => 'کارت نامعتبر است',
+            16 => 'دفعات برداشت وجه بیش از حد مجاز است',
+            17 => 'کاربر از انجام تراکنش منصرف شده است',
+            18 => 'تاریخ انقضای کارت گذشته است',
+            19 => 'مبلغ برداشت وجه بیش از حد مجاز است',
+            20 => 'عدم ارسال پارامترهای احراز هویت مشتری توسط پذیرنده',
+            23 => 'خطای امنیتی رخ داده است',
+            32 => 'فرمت اطلاعات ورودی صحیح نیست',
+            21 => 'پذیرنده نامعتبر است',
+            22 => 'ترمینال نامعتبر است',
+            24 => 'اطلاعات کاربری پذیرنده نامعتبر است',
+            29 => 'آدرس بازگشت (CallBackUrl) نامعتبر است',
+            25 => 'مبلغ نامعتبر است',
+            26 => 'شماره مرجع تراکنش نامعتبر است',
+            27 => 'شماره درخواست تکراری است',
+            28 => 'شماره درخواست یافت نشد',
+            30 => 'تراکنش قبلاً با موفقیت انجام شده است',
+            31 => 'پاسخ نامعتبر است',
+            33 => 'حساب نامعتبر است',
+            34 => 'خطای سیستمی',
+            35 => 'تراکنش ناموفق',
+            36 => 'تراکنش قبلاً برگشت داده شده است',
+            37 => 'تراکنش در حال انجام است',
+            38 => 'مدت زمان مجاز انجام تراکنش به پایان رسیده است',
+            39 => 'خطا در انجام عملیات',
+            40 => 'تراکنش مورد نظر یافت نشد',
+            41 => 'تراکنش قبلاً تأیید (Verify) شده است',
+            42 => 'تراکنش قبلاً تسویه (Settle) شده است',
+            43 => 'امکان تسویه تراکنش وجود ندارد',
+            44 => 'امکان برگشت تراکنش وجود ندارد',
+            45 => 'تراکنش قبلاً برگشت داده شده است',
+            46 => 'تراکنش تسویه نشده است',
+            47 => 'خطا در انجام عملیات تسویه',
+            48 => 'خطا در انجام عملیات تأیید',
+            49 => 'خطا در انجام عملیات برگشت',
+            50 => 'خطای داخلی سیستم',
+            51 => 'تراکنش نامعتبر است',
+            52 => 'اطلاعات پرداخت ناقص است',
+            53 => 'پاسخ بانک نامعتبر است',
+            54 => 'خطا در ارتباط با بانک',
+            55 => 'عدم تطابق اطلاعات تراکنش',
+            56 => 'خطا در پردازش اطلاعات',
+            57 => 'پرداخت توسط کاربر لغو شد',
+            58 => 'عدم تطابق RefId',
+            59 => 'عدم تطابق SaleOrderId',
+            60 => 'خطای ناشناخته',
+            110 => 'کالا مشمول محدودیت سامانه مکنا می‌باشد',
+            111 => 'کد کالای ارسالی نامعتبر است',
+            112 => 'تعداد کالای ارسالی بیش از حد مجاز است',
+            113 => 'خطا در بررسی اطلاعات کالای ایرانی',
+            412 => 'خطا در ارتباط با شاپرک',
+            413 => 'خطای زمان انتظار (Timeout)',
+            414 => 'پاسخ نامعتبر از شاپرک',
+            415 => 'خطای پردازش در شاپرک',
+            416 => 'تراکنش توسط شاپرک رد شد',
+            417 => 'خطای امنیتی در شاپرک',
+            418 => 'عدم تطابق اطلاعات در شاپرک',
+            419 => 'خطای ناشناخته در شاپرک',
+            421 => 'IP سرور پذیرنده پیشتر به سامانه اعلام نشده است',
+            995 => 'خطای سیستمی (Internal Error)',
+            997 => 'سامانه مقصد غیر فعال می‌باشد',
+
+            default => 'کد پاسخ نامشخص'
+        };
     }
 
     /**
@@ -459,7 +465,7 @@ final class BehpardakhtDriver extends Driver
      */
     private function setPaymentStatusBasedOnCallback(): void
     {
-        $this->apiStatusCode = (string) $this->callbackPayload->get('ResCode');
+        $this->apiStatusCode = (int) $this->callbackPayload->get('ResCode');
         $this->rawResponse = $this->callbackPayload->all();
     }
 

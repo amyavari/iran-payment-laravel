@@ -7,6 +7,7 @@ namespace AliYavari\IranPayment\Drivers;
 use AliYavari\IranPayment\Abstracts\Driver;
 use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+use AliYavari\IranPayment\Enums\InternalErrorCode;
 use AliYavari\IranPayment\Exceptions\SandboxNotSupportedException;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Arr;
@@ -104,7 +105,7 @@ final class PepDriver extends Driver
         $this->execute($this->toApiUrl('purchase'), $data);
 
         if ($this->successful()) {
-            $this->urlId = Arr::get($this->rawResponse, 'data.urlId');
+            $this->setUrlId();
         }
     }
 
@@ -121,9 +122,263 @@ final class PepDriver extends Driver
      */
     protected function getDriverStatusMessage(): string
     {
-        return match ($this->apiStatusCode) {
-            1010 => 'مبلغ پرداخت شده نامعتبر است', // Internal status
+        return InternalErrorCode::getMessage($this->apiStatusCode)
+            ?? $this->getGatewayMessage();
+    }
 
+    /**
+     * {@inheritdoc}
+     */
+    protected function isSuccessful(): bool
+    {
+        return $this->apiStatusCode === 0;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function getDriverRawResponse(): array
+    {
+        return $this->rawResponse;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function verifyPayment(array $storedPayload): void
+    {
+        if ($this->isFailedPaymentBasedOnCallback()) {
+            $this->setFailedPaymentBasedOnCallback();
+
+            return;
+        }
+
+        $keyMapper = [
+            'invoiceId' => 'invoice',
+        ];
+
+        $this->ensureCallbackDataMatchesPayload($storedPayload, $keyMapper);
+
+        $this->urlId = Arr::get($storedPayload, 'urlId'); // Required for reverse.
+
+        $data = [
+            'checkVerify' => false,
+            'invoice' => $this->transactionId,
+            'urlId' => $this->urlId,
+        ];
+
+        $this->execute($this->toApiUrl('verify-payment'), $data);
+
+        if ($this->isSuccessful()) {
+            $this->validateVerifiedAmount($storedPayload);
+        }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function reversePayment(): void
+    {
+        $data = [
+            'invoice' => $this->transactionId,
+            'urlId' => $this->urlId,
+        ];
+
+        $this->execute($this->toApiUrl('reverse-transactions'), $data);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function prepareFromCallback(): void
+    {
+        $this->transactionId = (string) $this->callbackPayload->get('invoiceId');
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function prepareWithoutCallback(string $transactionId): void
+    {
+        $this->transactionId = $transactionId;
+
+        $this->callbackPayload = collect([
+            'status' => 'success',
+            'invoiceId' => $this->transactionId,
+        ]);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function getDriverTransactionId(): string
+    {
+        return $this->transactionId;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function getDriverPayload(): array
+    {
+        return [
+            'invoice' => $this->transactionId,
+            'urlId' => $this->urlId,
+            'amount' => $this->amount,
+        ];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function getDriverRedirectData(): PaymentRedirectDto
+    {
+        $url = Arr::get($this->rawResponse, 'data.url');
+
+        return new PaymentRedirectDto($url, 'GET', payload: []);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function getDriverRefNumber(): string
+    {
+        return Arr::get($this->rawResponse, 'data.referenceNumber');
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function getDriverCardNumber(): string
+    {
+        return Arr::get($this->rawResponse, 'data.maskedCardNumber');
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function getRequiredCallbackKeys(): array
+    {
+        return ['status', 'invoiceId'];
+    }
+
+    /**
+     * Generate unique order ID
+     */
+    private function generateInvoice(): string
+    {
+        $this->transactionId = $this->uniqueNumber->generate();
+
+        return $this->transactionId;
+    }
+
+    /**
+     * Convert the phone number to the format expected by the gateway.
+     */
+    private function toDriverPhone(string|int $phone): string
+    {
+        return (string) Str::of((string) $phone)
+            ->chopStart('+')
+            ->chopStart('98')
+            ->replaceStart('9', '09');
+    }
+
+    /**
+     * Convert API method to full endpoint URL.
+     */
+    private function toApiUrl(string $method): string
+    {
+        return self::GATEWAY_API_BASE_PATH."/{$method}";
+    }
+
+    /**
+     * Call the gateway's API with the given method and data.
+     *
+     * @param  array<string,mixed>|Arrayable<string,mixed>  $data
+     */
+    private function execute(string $url, array|Arrayable $data, bool $requireAuth = true): void
+    {
+        $this->guardAgainstSandbox();
+
+        $token = $requireAuth ? $this->resolveToken() : null;
+
+        if ($requireAuth && ! $token) {
+            return;
+        }
+
+        $this->rawResponse = Http::baseUrl($this->toHttps($this->baseUrl))
+            ->withToken($token)
+            ->withHeader('Referer', URL::current())
+            ->post($url, $data)
+            ->throwIfServerError()
+            ->json();
+
+        $this->setApiStatusCode();
+    }
+
+    /**
+     * Throws an exception if configured to use sandbox.
+     *
+     * @throws SandboxNotSupportedException
+     */
+    private function guardAgainstSandbox(): void
+    {
+        if ($this->useSandbox()) {
+            throw SandboxNotSupportedException::make($this->getGateway());
+        }
+    }
+
+    /**
+     * Resolve and return a valid token
+     */
+    private function resolveToken(): ?string
+    {
+        return Cache::lock(self::CACHE_KEY, 5)
+            ->block(2, fn (): ?string => Cache::remember(self::CACHE_KEY, 9 * 60, function (): ?string {
+                $data = [
+                    'username' => $this->username,
+                    'password' => $this->password,
+                ];
+
+                $this->execute(self::GATEWAY_GET_TOKEN, $data, requireAuth: false);
+
+                return Arr::get($this->rawResponse, 'token');
+            }));
+    }
+
+    /**
+     * Ensure the given URL uses HTTPS scheme.
+     */
+    private function toHttps(string $url): string
+    {
+        return (string) Str::of($url)
+            ->chopStart('http://')
+            ->chopStart('https://')
+            ->prepend('https://');
+    }
+
+    /**
+     * Parse the API response and set the status code.
+     */
+    private function setApiStatusCode(): void
+    {
+        $this->apiStatusCode = (int) Arr::get($this->rawResponse, 'resultCode');
+    }
+
+    /**
+     * Set the URL ID required to redirect the user to the payment page.
+     */
+    private function setUrlId(): void
+    {
+        $this->urlId = Arr::get($this->rawResponse, 'data.urlId');
+    }
+
+    /**
+     * Get the error message returned by the gateway.
+     */
+    private function getGatewayMessage(): string
+    {
+        return match ($this->apiStatusCode) {
             0 => 'تراکنش موفق است',
             1 => 'ناموفق',
             401 => 'مجاز به استفاده از سرویس نیستید',
@@ -329,238 +584,6 @@ final class PepDriver extends Driver
     }
 
     /**
-     * {@inheritdoc}
-     */
-    protected function isSuccessful(): bool
-    {
-        return $this->apiStatusCode === 0;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function getDriverRawResponse(): array
-    {
-        return $this->rawResponse;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function verifyPayment(array $storedPayload): void
-    {
-        if ($this->isFailedPaymentBasedOnCallback()) {
-            $this->setFailedPaymentBasedOnCallback();
-
-            return;
-        }
-
-        $keyMapper = [
-            'invoiceId' => 'invoice',
-        ];
-
-        $this->ensureCallbackDataMatchesPayload($storedPayload, $keyMapper);
-
-        $this->urlId = Arr::get($storedPayload, 'urlId'); // Required for reverse.
-
-        $data = [
-            'checkVerify' => false,
-            'invoice' => $this->transactionId,
-            'urlId' => $this->urlId,
-        ];
-
-        $this->execute($this->toApiUrl('verify-payment'), $data);
-
-        if ($this->isSuccessful()) {
-            $this->validateVerifiedAmount($storedPayload);
-        }
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function reversePayment(): void
-    {
-        $data = [
-            'invoice' => $this->transactionId,
-            'urlId' => $this->urlId,
-        ];
-
-        $this->execute($this->toApiUrl('reverse-transactions'), $data);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function prepareFromCallback(): void
-    {
-        $this->transactionId = (string) $this->callbackPayload->get('invoiceId');
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function prepareWithoutCallback(string $transactionId): void
-    {
-        $this->transactionId = $transactionId;
-
-        $this->callbackPayload = collect([
-            'status' => 'success',
-            'invoiceId' => $this->transactionId,
-        ]);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function getDriverTransactionId(): string
-    {
-        return $this->transactionId;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function getDriverPayload(): array
-    {
-        return [
-            'invoice' => $this->transactionId,
-            'urlId' => $this->urlId,
-            'amount' => $this->amount,
-        ];
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function getDriverRedirectData(): PaymentRedirectDto
-    {
-        $url = Arr::get($this->rawResponse, 'data.url');
-
-        return new PaymentRedirectDto($url, 'GET', payload: []);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function getDriverRefNumber(): string
-    {
-        return Arr::get($this->rawResponse, 'data.referenceNumber');
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function getDriverCardNumber(): string
-    {
-        return Arr::get($this->rawResponse, 'data.maskedCardNumber');
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function getRequiredCallbackKeys(): array
-    {
-        return ['status', 'invoiceId'];
-    }
-
-    /**
-     * Generate unique order ID
-     */
-    private function generateInvoice(): string
-    {
-        $this->transactionId = $this->uniqueNumber->generate();
-
-        return $this->transactionId;
-    }
-
-    /**
-     * Convert the phone number to the format expected by the gateway.
-     */
-    private function toDriverPhone(string|int $phone): string
-    {
-        return (string) Str::of((string) $phone)
-            ->chopStart('+')
-            ->chopStart('98')
-            ->replaceStart('9', '09');
-    }
-
-    /**
-     * Convert API method to full endpoint URL.
-     */
-    private function toApiUrl(string $method): string
-    {
-        return self::GATEWAY_API_BASE_PATH."/{$method}";
-    }
-
-    /**
-     * Call the gateway's API with the given method and data.
-     *
-     * @param  array<string,mixed>|Arrayable<string,mixed>  $data
-     */
-    private function execute(string $url, array|Arrayable $data, bool $requireAuth = true): void
-    {
-        $this->guardAgainstSandbox();
-
-        $token = $requireAuth ? $this->resolveToken() : null;
-
-        if ($requireAuth && ! $token) {
-            return;
-        }
-
-        $response = Http::baseUrl($this->toHttps($this->baseUrl))
-            ->withToken($token)
-            ->withHeader('Referer', URL::current())
-            ->post($url, $data)
-            ->throwIfServerError();
-
-        $this->rawResponse = $response->json();
-
-        $this->apiStatusCode = (int) Arr::get($this->rawResponse, 'resultCode');
-    }
-
-    /**
-     * Throws an exception if configured to use sandbox.
-     *
-     * @throws SandboxNotSupportedException
-     */
-    private function guardAgainstSandbox(): void
-    {
-        if ($this->useSandbox()) {
-            throw SandboxNotSupportedException::make($this->getGateway());
-        }
-    }
-
-    /**
-     * Resolve and return a valid token
-     */
-    private function resolveToken(): ?string
-    {
-        return Cache::lock(self::CACHE_KEY, 5)
-            ->block(2, fn (): ?string => Cache::remember(self::CACHE_KEY, 9 * 60, function (): ?string {
-                $data = [
-                    'username' => $this->username,
-                    'password' => $this->password,
-                ];
-
-                $this->execute(self::GATEWAY_GET_TOKEN, $data, requireAuth: false);
-
-                return Arr::get($this->rawResponse, 'token');
-            }));
-    }
-
-    /**
-     * Ensure the given URL uses HTTPS scheme.
-     */
-    private function toHttps(string $url): string
-    {
-        return (string) Str::of($url)
-            ->chopStart('http://')
-            ->chopStart('https://')
-            ->prepend('https://');
-    }
-
-    /**
      * Determine whether the payment failed based on the callback.
      */
     private function isFailedPaymentBasedOnCallback(): bool
@@ -587,7 +610,7 @@ final class PepDriver extends Driver
         $isAmountValid = Arr::get($storedPayload, 'amount') === Arr::get($this->rawResponse, 'data.amount');
 
         if (! $isAmountValid) {
-            $this->apiStatusCode = 1010;
+            $this->apiStatusCode = InternalErrorCode::InvalidAmount->value;
         }
     }
 }

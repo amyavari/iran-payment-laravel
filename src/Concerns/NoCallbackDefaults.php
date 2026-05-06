@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AliYavari\IranPayment\Concerns;
 
+use AliYavari\IranPayment\Enums\InternalErrorCode;
 use LogicException;
 
 /**
@@ -14,16 +15,6 @@ use LogicException;
  */
 trait NoCallbackDefaults
 {
-    /**
-     * Status code for verify in no-callback mode
-     */
-    private const No_CALLBACK_VERIFY_STATUS_CODE = '1001';
-
-    /**
-     * Status code for reverse in no-callback mode
-     */
-    private const No_CALLBACK_REVERSE_STATUS_CODE = '1002';
-
     /**
      * Indicates callback data is not provided
      */
@@ -48,14 +39,16 @@ trait NoCallbackDefaults
     /**
      * Get status code for no-callback mode
      */
-    private function noCallbackStatusCode(string $method): string
+    private function noCallbackStatusCode(string $method): int
     {
-        return match ($method) {
-            'verify' => self::No_CALLBACK_VERIFY_STATUS_CODE,
-            'reverse' => self::No_CALLBACK_REVERSE_STATUS_CODE,
+        $statusCode = match ($method) {
+            'verify' => InternalErrorCode::VerifyNoCallback,
+            'reverse' => InternalErrorCode::ReverseNoCallback,
 
             default => throw new LogicException('Wrong method name.'),
         };
+
+        return $statusCode->value;
     }
 
     /**
@@ -69,21 +62,8 @@ trait NoCallbackDefaults
     /**
      * Determine if no-callback result should considered as successful
      */
-    private function isNoCallbackSuccessful(string $statusCode): bool
+    private function isNoCallbackSuccessful(int $statusCode): bool
     {
-        return $statusCode === self::No_CALLBACK_REVERSE_STATUS_CODE;
-    }
-
-    /**
-     * Get message for no-callback mode
-     */
-    private function noCallbackMessage(string $statusCode): string
-    {
-        return match ($statusCode) {
-            self::No_CALLBACK_VERIFY_STATUS_CODE => 'درگاه از وریفای بدون callback پشتیبانی نمی کند.',
-            self::No_CALLBACK_REVERSE_STATUS_CODE => 'تراکنش به صورت خودکار برگشت داده می شود.',
-
-            default => throw new LogicException('Wrong status code.'),
-        };
+        return $statusCode === InternalErrorCode::ReverseNoCallback->value;
     }
 }
