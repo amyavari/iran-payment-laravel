@@ -473,7 +473,7 @@ it('returns failed response on successful payment verification with invalid amou
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1010- مبلغ پرداخت شده نامعتبر است')
+        ->error()->toBe('کد 9300- مبلغ پرداخت شده نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 

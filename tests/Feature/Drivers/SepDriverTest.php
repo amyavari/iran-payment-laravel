@@ -249,7 +249,7 @@ it('returns failed response on successful payment verification with invalid amou
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1010- مبلغ پرداخت شده نامعتبر است')
+        ->error()->toBe('کد 9300- مبلغ پرداخت شده نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -379,7 +379,7 @@ it('returns failed verification with no callback data', function (): void {
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1001- درگاه از وریفای بدون callback پشتیبانی نمی کند.')
+        ->error()->toBe('کد 9100- درگاه از وریفای بدون callback پشتیبانی نمی کند.')
         ->getRawResponse()->toBe('No API is called.');
 
     Http::assertNothingSent();

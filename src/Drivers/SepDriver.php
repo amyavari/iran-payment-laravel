@@ -8,6 +8,7 @@ use AliYavari\IranPayment\Abstracts\Driver;
 use AliYavari\IranPayment\Concerns\NoCallbackDefaults;
 use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+use AliYavari\IranPayment\Enums\InternalErrorCode;
 use AliYavari\IranPayment\Exceptions\SandboxNotSupportedException;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Collection;
@@ -124,10 +125,6 @@ final class SepDriver extends Driver
      */
     protected function getDriverStatusMessage(): string
     {
-        if ($this->isNoCallback()) {
-            return $this->noCallbackMessage($this->apiStatusCode);
-        }
-
         return $this->apiStatusMessage;
     }
 
@@ -137,7 +134,7 @@ final class SepDriver extends Driver
     protected function isSuccessful(): bool
     {
         if ($this->isNoCallback()) {
-            return $this->isNoCallbackSuccessful($this->apiStatusCode);
+            return $this->isNoCallbackSuccessful((int) $this->apiStatusCode);
         }
 
         return $this->apiIsSuccessful;
@@ -417,8 +414,8 @@ final class SepDriver extends Driver
         $this->apiIsSuccessful = Arr::get($storedPayload, 'amount') === Arr::get($this->rawResponse, 'TransactionDetail.OrginalAmount');
 
         if (! $this->apiIsSuccessful) {
-            $this->apiStatusCode = '1010';
-            $this->apiStatusMessage = 'مبلغ پرداخت شده نامعتبر است';
+            $this->apiStatusCode = (string) InternalErrorCode::InvalidAmount->value;
+            $this->apiStatusMessage = InternalErrorCode::getMessage((int) $this->apiStatusCode);
         }
     }
 
@@ -427,7 +424,8 @@ final class SepDriver extends Driver
      */
     private function setPaymentStatusForNoCallback(string $method): void
     {
-        $this->apiStatusCode = $this->noCallbackStatusCode($method);
+        $this->apiStatusCode = (string) $this->noCallbackStatusCode($method);
+        $this->apiStatusMessage = InternalErrorCode::getMessage((int) $this->apiStatusCode);
         $this->rawResponse = $this->noCallbackRawResponse();
     }
 }

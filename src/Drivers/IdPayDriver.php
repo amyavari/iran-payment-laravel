@@ -7,6 +7,7 @@ namespace AliYavari\IranPayment\Drivers;
 use AliYavari\IranPayment\Abstracts\Driver;
 use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+use AliYavari\IranPayment\Enums\InternalErrorCode;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
@@ -177,8 +178,8 @@ final class IdPayDriver extends Driver
     {
         $this->apiIsSuccessful = false;
 
-        $this->apiStatusCode = 1011;
-        $this->apiStatusMessage = 'درگاه از بازگشت وجه پشتیبانی نمی کند';
+        $this->apiStatusCode = InternalErrorCode::ReverseNotSupport->value;
+        $this->apiStatusMessage = InternalErrorCode::getMessage($this->apiStatusCode);
 
         $this->rawResponse = 'No API is called. IPG does not support reversal.';
     }
@@ -385,8 +386,8 @@ final class IdPayDriver extends Driver
         $this->apiIsSuccessful = Arr::get($storedPayload, 'amount') === Arr::get($this->rawResponse, 'amount');
 
         if (! $this->apiIsSuccessful) {
-            $this->apiStatusCode = 1010;
-            $this->apiStatusMessage = 'مبلغ پرداخت شده نامعتبر است';
+            $this->apiStatusCode = InternalErrorCode::InvalidAmount->value;
+            $this->apiStatusMessage = InternalErrorCode::getMessage($this->apiStatusCode);
         }
     }
 }
