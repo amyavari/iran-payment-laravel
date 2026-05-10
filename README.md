@@ -447,7 +447,6 @@ $fake->failedConnectionCreate($message = 'Creation connection failed');
 
 **Notes:**
 
-- If `$gatewayPayload` is null, a gateway‑specific default payload (correct keys, dummy values) is used.
 - If `$redirectData` is null, this default is returned:
 
 ```php
