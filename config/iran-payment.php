@@ -87,10 +87,16 @@ return [
 
         // https://sadadpsp.ir/
         'sadad' => [
+            'callback_url' => env('SADAD_CALLBACK_URL', ''),
             'terminal_id' => env('SADAD_TERMINAL_ID', ''),
             'merchant_id' => env('SADAD_MERCHANT_ID', ''),
             'terminal_key' => env('SADAD_TERMINAL_KEY', ''),
-            'callback_url' => env('SADAD_CALLBACK_URL', ''),
+        ],
+
+        // https://zibal.ir/
+        'zibal' => [
+            'callback_url' => env('ZIBAL_CALLBACK_URL', ''),
+            'merchant' => env('ZIBAL_MERCHANT', ''),
         ],
     ],
 ];

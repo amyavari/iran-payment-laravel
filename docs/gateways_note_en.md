@@ -37,3 +37,9 @@
 - This gateway sends the callback as a `POST` request.
 - You must verify the payment within **15 minutes** after a successful gateway payment; otherwise, the gateway will **automatically reverse** it.
 - A verified payment **can not be reversed**, so related method will return a **failed payment reversal**.
+
+# Zibal
+
+- This gateway sends the callback as a `GET` request.
+- There is no time limit for payment verification.
+- A payment **can not be reversed**, so related method will return a **failed payment reversal**.

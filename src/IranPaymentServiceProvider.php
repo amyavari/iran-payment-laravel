@@ -11,6 +11,7 @@ use AliYavari\IranPayment\Drivers\PepDriver;
 use AliYavari\IranPayment\Drivers\SadadDriver;
 use AliYavari\IranPayment\Drivers\SepDriver;
 use AliYavari\IranPayment\Drivers\ZarinpalDriver;
+use AliYavari\IranPayment\Drivers\ZibalDriver;
 use AliYavari\IranPayment\Services\TimeBasedUniqueNumberGenerator;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Collection;
@@ -71,6 +72,11 @@ final class IranPaymentServiceProvider extends PackageServiceProvider
         $this->app->bind(
             SadadDriver::class,
             fn (): SadadDriver => new SadadDriver(...$this->buildArguments('sadad'))
+        );
+
+        $this->app->bind(
+            ZibalDriver::class,
+            fn (): ZibalDriver => new ZibalDriver(...$this->buildArguments('zibal', withNumberGenerator: false))
         );
     }
 
