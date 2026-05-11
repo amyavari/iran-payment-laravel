@@ -12,6 +12,7 @@ use AliYavari\IranPayment\Drivers\PepDriver;
 use AliYavari\IranPayment\Drivers\SadadDriver;
 use AliYavari\IranPayment\Drivers\SepDriver;
 use AliYavari\IranPayment\Drivers\ZarinpalDriver;
+use AliYavari\IranPayment\Drivers\ZibalDriver;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Manager;
 use Override;
@@ -80,6 +81,11 @@ final class PaymentManager extends Manager
     protected function createSadadDriver(): SadadDriver
     {
         return $this->container->make(SadadDriver::class);
+    }
+
+    protected function createZibalDriver(): ZibalDriver
+    {
+        return $this->container->make(ZibalDriver::class);
     }
 
     private function shouldBeImmutable(string $driver): bool
