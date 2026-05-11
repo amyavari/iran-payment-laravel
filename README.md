@@ -22,14 +22,15 @@ To view the Persian documentation, please refer to [README_FA.md](./docs/README_
 
 ## List of Available Payment Gateways
 
-| Gateway Name (EN) | Gateway Name (FA)         | Gateway Website   | Gateway Key   | Version |
-| ----------------- | ------------------------- | ----------------- | ------------- | ------- |
-| Behpardakht       | به پرداخت ملت             | [behpardakht.com] | `behpardakht` | 1.0.0   |
-| Sep               | سامان کیش (سپ)            | [sep.ir]          | `sep`         | 1.0.0   |
-| Zarinpal          | زرین پال                  | [zarinpal.com]    | `zarinpal`    | 1.0.0   |
-| IDPay             | آی دی پی                  | [idpay.ir]        | `id_pay`      | 1.0.0   |
-| Pep               | پرداخت الکترونیک پاسارگاد | [pep.co.ir]       | `pep`         | 1.1.0   |
-| Sadad             | سداد                      | [sadadpsp.ir]     | `sadad`       | 1.1.0   |
+| Gateway Name (EN) | Gateway Name (FA)         | Gateway Website   | Gateway Key   | Version    |
+| ----------------- | ------------------------- | ----------------- | ------------- | ---------- |
+| Behpardakht       | به پرداخت ملت             | [behpardakht.com] | `behpardakht` | 1.0.0      |
+| Sep               | سامان کیش (سپ)            | [sep.ir]          | `sep`         | 1.0.0      |
+| Zarinpal          | زرین پال                  | [zarinpal.com]    | `zarinpal`    | 1.0.0      |
+| IDPay             | آی دی پی                  | [idpay.ir]        | `id_pay`      | 1.0.0      |
+| Pep               | پرداخت الکترونیک پاسارگاد | [pep.co.ir]       | `pep`         | 1.1.0      |
+| Sadad             | سداد                      | [sadadpsp.ir]     | `sadad`       | 1.1.0      |
+| Zibal             | زیبال                     | [zibal.ir]        | `zibal`       | Unreleased |
 
 > [!CAUTION]
 > Gateways have different rules for pending verifications and reversals. Please check [gateways_note_en.md](./docs/gateways_note_en.md).
@@ -394,6 +395,9 @@ use AliYavari\IranPayment\Http\Requests\PepRequest;
 
 // Sadad
 use AliYavari\IranPayment\Http\Requests\SadadRequest;
+
+// Zibal
+use AliYavari\IranPayment\Http\Requests\ZibalRequest;
 ```
 
 #### Verification Without Callback
@@ -500,5 +504,6 @@ Thank you for considering contributing to the Iran Payment Laravel! The contribu
 [idpay.ir]: https://idpay.ir
 [pep.co.ir]: https://pep.co.ir/
 [sadadpsp.ir]: https://sadadpsp.ir/
+[zibal.ir]: https://zibal.ir
 [Eloquent relationships: one-to-many polymorphic]: https://laravel.com/docs/12.x/eloquent-relationships#one-to-many-polymorphic-relations
 [Laravel's task scheduler]: https://laravel.com/docs/12.x/scheduling#scheduling-artisan-commands
