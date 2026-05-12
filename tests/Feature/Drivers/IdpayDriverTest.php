@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AliYavari\IranPayment\Tests\Feature\Drivers\IdPayDriverTest; // To avoid helper functions conflict.
+namespace AliYavari\IranPayment\Tests\Feature\Drivers\IdpayDriverTest; // To avoid helper functions conflict.
 
-use AliYavari\IranPayment\Drivers\IdPayDriver;
+use AliYavari\IranPayment\Drivers\IdpayDriver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
@@ -147,7 +147,7 @@ it('creates payment instance from callback data', function (): void {
     $payment = driver()->fromCallback($callbackPayload);
 
     expect($payment)
-        ->toBeInstanceOf(IdPayDriver::class)
+        ->toBeInstanceOf(IdpayDriver::class)
         ->getTransactionId()->toBe('123456789012345');
 });
 
@@ -155,10 +155,10 @@ it('throws exception when callback lacks required keys', function (string $key):
     // Failed callback has minimum required keys; only Status value differs.
     $callbackPayload = callbackFactory()->failed()->except([$key])->all();
 
-    expect(fn (): IdPayDriver => driver()->fromCallback($callbackPayload))
+    expect(fn (): IdpayDriver => driver()->fromCallback($callbackPayload))
         ->toThrow(
             MissingCallbackDataException::class,
-            sprintf('To create id_pay gateway instance from callback, "status, order_id" are required. "%s" is missing.', $key)
+            sprintf('To create idpay gateway instance from callback, "status, order_id" are required. "%s" is missing.', $key)
         );
 })->with([
     'status',
@@ -175,7 +175,7 @@ it('throws exception when stored payload and successful callback data do not mat
 
     $payment = driver()->fromCallback($callbackPayload);
 
-    expect(fn (): IdPayDriver => $payment->verify($payload))
+    expect(fn (): IdpayDriver => $payment->verify($payload))
         ->toThrow(
             InvalidCallbackDataException::class,
             sprintf('"%s" in the callback does not match with "%s" in the stored gateway payload.', $callbackKey, $payloadKey)
@@ -330,7 +330,7 @@ it('creates payment instance with no callback data', function (): void {
     $payment = driver()->noCallback(transactionId: '123456789');
 
     expect($payment)
-        ->toBeInstanceOf(IdPayDriver::class)
+        ->toBeInstanceOf(IdpayDriver::class)
         ->getTransactionId()->toBe('123456789');
 });
 
@@ -365,13 +365,13 @@ it('returns failed response on the payment reversal with no callback data', func
 
 function setDriverConfigs(): void
 {
-    Config::set('iran-payment.gateways.id_pay.callback_url', 'http://callback.test');
-    Config::set('iran-payment.gateways.id_pay.api_key', 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
+    Config::set('iran-payment.gateways.idpay.callback_url', 'http://callback.test');
+    Config::set('iran-payment.gateways.idpay.api_key', 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
 }
 
-function driver(): IdPayDriver
+function driver(): IdpayDriver
 {
-    return Payment::gateway('id_pay');
+    return Payment::gateway('idpay');
 }
 
 function successfulCreationResponse(): array
@@ -412,14 +412,14 @@ function failedResponse(): array
     ];
 }
 
-function driverFromSuccessfulCallback(): IdPayDriver
+function driverFromSuccessfulCallback(): IdpayDriver
 {
     $callback = callbackFactory()->successful()->all();
 
     return driver()->fromCallback($callback);
 }
 
-function verifiedPayment(): IdPayDriver
+function verifiedPayment(): IdpayDriver
 {
     return driverFromSuccessfulCallback()->verify(gatewayPayload());
 }

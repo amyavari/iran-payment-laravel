@@ -9,7 +9,7 @@ use Illuminate\Foundation\Http\FormRequest;
 /**
  * Form request for validating callback data from the IDPay gateway.
  */
-final class IdPayRequest extends FormRequest
+final class IdpayRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

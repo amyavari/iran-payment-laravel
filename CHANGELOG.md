@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - **Zibal** gateway
 
+### Changed
+
+- **IDPay** gateway key from `id-pay` to `idpay`.
+
 ## [1.1.0] - 2026-05-06
 
 ### Added

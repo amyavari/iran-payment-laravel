@@ -6,7 +6,7 @@ namespace AliYavari\IranPayment;
 
 use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Drivers\BehpardakhtDriver;
-use AliYavari\IranPayment\Drivers\IdPayDriver;
+use AliYavari\IranPayment\Drivers\IdpayDriver;
 use AliYavari\IranPayment\Drivers\PepDriver;
 use AliYavari\IranPayment\Drivers\SadadDriver;
 use AliYavari\IranPayment\Drivers\SepDriver;
@@ -60,8 +60,8 @@ final class IranPaymentServiceProvider extends PackageServiceProvider
         );
 
         $this->app->bind(
-            IdPayDriver::class,
-            fn (): IdPayDriver => new IdPayDriver(...$this->buildArguments('id_pay'))
+            IdpayDriver::class,
+            fn (): IdpayDriver => new IdpayDriver(...$this->buildArguments('idpay'))
         );
 
         $this->app->bind(

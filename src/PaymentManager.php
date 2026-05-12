@@ -7,7 +7,7 @@ namespace AliYavari\IranPayment;
 use AliYavari\IranPayment\Contracts\Payment;
 use AliYavari\IranPayment\Drivers\BehpardakhtDriver;
 use AliYavari\IranPayment\Drivers\FakeDriver;
-use AliYavari\IranPayment\Drivers\IdPayDriver;
+use AliYavari\IranPayment\Drivers\IdpayDriver;
 use AliYavari\IranPayment\Drivers\PepDriver;
 use AliYavari\IranPayment\Drivers\SadadDriver;
 use AliYavari\IranPayment\Drivers\SepDriver;
@@ -68,9 +68,9 @@ final class PaymentManager extends Manager
         return $this->container->make(ZarinpalDriver::class);
     }
 
-    protected function createIdPayDriver(): IdPayDriver
+    protected function createIdpayDriver(): IdpayDriver
     {
-        return $this->container->make(IdPayDriver::class);
+        return $this->container->make(IdpayDriver::class);
     }
 
     protected function createPepDriver(): PepDriver

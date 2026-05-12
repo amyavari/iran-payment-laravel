@@ -71,9 +71,9 @@ return [
         ],
 
         // https://idpay.ir/
-        'id_pay' => [
-            'callback_url' => env('ID_PAY_CALLBACK_URL', ''),
-            'api_key' => env('ID_PAY_API_KEY', ''),
+        'idpay' => [
+            'callback_url' => env('IDPAY_CALLBACK_URL', ''),
+            'api_key' => env('IDPAY_API_KEY', ''),
         ],
 
         // https://pep.co.ir/
