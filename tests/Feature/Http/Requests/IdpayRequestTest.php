@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace AliYavari\IranPayment\Tests\Feature\Http\Requests\IdPayRequestTest; // To avoid helper functions conflict.
+namespace AliYavari\IranPayment\Tests\Feature\Http\Requests\IdpayRequestTest; // To avoid helper functions conflict.
 
-use AliYavari\IranPayment\Http\Requests\IdPayRequest;
+use AliYavari\IranPayment\Http\Requests\IdpayRequest;
 use Illuminate\Support\Facades\Route;
 
 /**
  * This test file only tests some domain important validation rules.
  */
 it('authorizes everyone', function (): void {
-    $request = new IdPayRequest();
+    $request = new IdpayRequest();
 
     expect($request)
         ->authorize()->toBeTrue();
@@ -48,5 +48,5 @@ it('fails to validate if required data are not provided', function (): void {
 
 function activateFakeRoute(): void
 {
-    Route::post('/test', fn (IdPayRequest $request) => response()->json($request->validated(), 200));
+    Route::post('/test', fn (IdpayRequest $request) => response()->json($request->validated(), 200));
 }

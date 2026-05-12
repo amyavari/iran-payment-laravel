@@ -20,7 +20,7 @@ use Pest\Support\Arr;
  *
  * @see https://idpay.ir/web-service/v1.1/
  */
-final class IdPayDriver extends Driver
+final class IdpayDriver extends Driver
 {
     /**
      * Base URL of the payment gateway.
