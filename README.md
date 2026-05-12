@@ -27,7 +27,7 @@ To view the Persian documentation, please refer to [README_FA.md](./docs/README_
 | Behpardakht       | به پرداخت ملت             | [behpardakht.com] | `behpardakht` | 1.0.0      |
 | Sep               | سامان کیش (سپ)            | [sep.ir]          | `sep`         | 1.0.0      |
 | Zarinpal          | زرین پال                  | [zarinpal.com]    | `zarinpal`    | 1.0.0      |
-| IDPay             | آی دی پی                  | [idpay.ir]        | `id_pay`      | 1.0.0      |
+| IDPay             | آی دی پی                  | [idpay.ir]        | `idpay`       | 1.0.0      |
 | Pep               | پرداخت الکترونیک پاسارگاد | [pep.co.ir]       | `pep`         | 1.1.0      |
 | Sadad             | سداد                      | [sadadpsp.ir]     | `sadad`       | 1.1.0      |
 | Zibal             | زیبال                     | [zibal.ir]        | `zibal`       | Unreleased |
@@ -388,7 +388,7 @@ use AliYavari\IranPayment\Http\Requests\SepRequest;
 use AliYavari\IranPayment\Http\Requests\ZarinpalRequest;
 
 // IDPay
-use AliYavari\IranPayment\Http\Requests\IdPayRequest;
+use AliYavari\IranPayment\Http\Requests\IdpayRequest;
 
 // Pep
 use AliYavari\IranPayment\Http\Requests\PepRequest;
