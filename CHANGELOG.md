@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - **Zibal** gateway
+- **Payping** gateway
 
 ### Changed
 

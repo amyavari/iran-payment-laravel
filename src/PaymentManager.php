@@ -8,6 +8,7 @@ use AliYavari\IranPayment\Contracts\Payment;
 use AliYavari\IranPayment\Drivers\BehpardakhtDriver;
 use AliYavari\IranPayment\Drivers\FakeDriver;
 use AliYavari\IranPayment\Drivers\IdpayDriver;
+use AliYavari\IranPayment\Drivers\PaypingDriver;
 use AliYavari\IranPayment\Drivers\PepDriver;
 use AliYavari\IranPayment\Drivers\SadadDriver;
 use AliYavari\IranPayment\Drivers\SepDriver;
@@ -86,6 +87,11 @@ final class PaymentManager extends Manager
     protected function createZibalDriver(): ZibalDriver
     {
         return $this->container->make(ZibalDriver::class);
+    }
+
+    protected function createPaypingDriver(): PaypingDriver
+    {
+        return $this->container->make(PaypingDriver::class);
     }
 
     private function shouldBeImmutable(string $driver): bool

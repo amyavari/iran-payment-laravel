@@ -7,6 +7,7 @@ namespace AliYavari\IranPayment;
 use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Drivers\BehpardakhtDriver;
 use AliYavari\IranPayment\Drivers\IdpayDriver;
+use AliYavari\IranPayment\Drivers\PaypingDriver;
 use AliYavari\IranPayment\Drivers\PepDriver;
 use AliYavari\IranPayment\Drivers\SadadDriver;
 use AliYavari\IranPayment\Drivers\SepDriver;
@@ -77,6 +78,11 @@ final class IranPaymentServiceProvider extends PackageServiceProvider
         $this->app->bind(
             ZibalDriver::class,
             fn (): ZibalDriver => new ZibalDriver(...$this->buildArguments('zibal', withNumberGenerator: false))
+        );
+
+        $this->app->bind(
+            PaypingDriver::class,
+            fn (): PaypingDriver => new PaypingDriver(...$this->buildArguments('payping', withNumberGenerator: false))
         );
     }
 

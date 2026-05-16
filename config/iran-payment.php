@@ -98,5 +98,11 @@ return [
             'callback_url' => env('ZIBAL_CALLBACK_URL', ''),
             'merchant' => env('ZIBAL_MERCHANT', ''),
         ],
+
+        // https://payping.ir/
+        'payping' => [
+            'callback_url' => env('PAYPING_CALLBACK_URL', ''),
+            'token' => env('PAYPING_TOKEN', ''),
+        ],
     ],
 ];
