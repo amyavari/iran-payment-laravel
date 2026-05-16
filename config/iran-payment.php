@@ -104,5 +104,11 @@ return [
             'callback_url' => env('PAYPING_CALLBACK_URL', ''),
             'token' => env('PAYPING_TOKEN', ''),
         ],
+
+        // https://nextpay.org/
+        'nextpay' => [
+            'callback_url' => env('NEXTPAY_CALLBACK_URL', ''),
+            'api_key' => env('NEXTPAY_API_KEY', ''),
+        ],
     ],
 ];
