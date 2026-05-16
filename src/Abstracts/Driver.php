@@ -433,7 +433,7 @@ abstract class Driver implements Payment
     protected function ensureCallbackDataMatchesPayload(array $storedPayload, array $keyMapper): void
     {
         foreach ($keyMapper as $callbackKey => $storedKey) {
-            if ((string) $this->callbackPayload->get($callbackKey) !== (string) Arr::get($storedPayload, $storedKey)) {
+            if ((string) $this->callbackPayload->dot()->get($callbackKey) !== (string) Arr::get($storedPayload, $storedKey)) {
                 throw InvalidCallbackDataException::make($callbackKey, $storedKey);
             }
         }
@@ -549,7 +549,7 @@ abstract class Driver implements Payment
         $requiredKeys = $this->getRequiredCallbackKeys();
 
         foreach ($requiredKeys as $key) {
-            if (! $this->callbackPayload->has($key)) {
+            if (! $this->callbackPayload->dot()->has($key)) {
                 throw MissingCallbackDataException::make($this->getGateway(), $requiredKeys, $key);
             }
         }
