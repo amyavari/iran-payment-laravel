@@ -43,3 +43,10 @@
 - This gateway sends the callback as a `GET` request.
 - There is no time limit for payment verification.
 - A payment **can not be reversed**, so related method will return a **failed payment reversal**.
+
+# PayPing
+
+- This gateway sends the callback as a `POST` request.
+- You must verify the payment within **10 minutes** after a successful gateway payment; otherwise, the gateway will **automatically reverse** it.
+- A verified payment can be **reversed within 30 minutes**.
+- This gateway does not support verification without a callback, so related methods will return a **failed payment response**.

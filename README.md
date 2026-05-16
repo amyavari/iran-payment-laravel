@@ -31,6 +31,7 @@ To view the Persian documentation, please refer to [README_FA.md](./docs/README_
 | Pep               | پرداخت الکترونیک پاسارگاد | [pep.co.ir]       | `pep`         | 1.1.0      |
 | Sadad             | سداد                      | [sadadpsp.ir]     | `sadad`       | 1.1.0      |
 | Zibal             | زیبال                     | [zibal.ir]        | `zibal`       | Unreleased |
+| PayPing           | پی پینگ                   | [payping.ir]      | `payping`     | Unreleased |
 
 > [!CAUTION]
 > Gateways have different rules for pending verifications and reversals. Please check [gateways_note_en.md](./docs/gateways_note_en.md).
@@ -398,6 +399,9 @@ use AliYavari\IranPayment\Http\Requests\SadadRequest;
 
 // Zibal
 use AliYavari\IranPayment\Http\Requests\ZibalRequest;
+
+// Payping
+use AliYavari\IranPayment\Http\Requests\PaypingRequest;
 ```
 
 #### Verification Without Callback
@@ -505,5 +509,6 @@ Thank you for considering contributing to the Iran Payment Laravel! The contribu
 [pep.co.ir]: https://pep.co.ir/
 [sadadpsp.ir]: https://sadadpsp.ir/
 [zibal.ir]: https://zibal.ir
+[payping.ir]: https://payping.ir
 [Eloquent relationships: one-to-many polymorphic]: https://laravel.com/docs/12.x/eloquent-relationships#one-to-many-polymorphic-relations
 [Laravel's task scheduler]: https://laravel.com/docs/12.x/scheduling#scheduling-artisan-commands
