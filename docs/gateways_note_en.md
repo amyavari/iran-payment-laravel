@@ -50,3 +50,9 @@
 - You must verify the payment within **10 minutes** after a successful gateway payment; otherwise, the gateway will **automatically reverse** it.
 - A verified payment can be **reversed within 30 minutes**.
 - This gateway does not support verification without a callback, so related methods will return a **failed payment response**.
+
+# NextPay
+
+- This gateway sends the callback as a `GET` request.
+- You must verify the payment within **10 minutes** after a successful gateway payment; otherwise, the gateway will **automatically reverse** it.
+- A verified payment can be **reversed within 20 minutes**.
