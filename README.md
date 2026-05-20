@@ -352,7 +352,7 @@ $payment->getCardNumber();  // string|null
 
 #### Form Request Classes
 
-To sanitize and validate callback data from each gateway, this package provides simple FormRequest classes.
+To validate callback data from each gateway, this package provides simple FormRequest classes.
 You can use them like this (using the `sep` gateway as an example):
 
 ```php
@@ -457,9 +457,7 @@ $fake->failedCreate($rawResponse = 'Creation raw response', $errorCode = 0, $err
 $fake->failedConnectionCreate($message = 'Creation connection failed');
 ```
 
-**Notes:**
-
-- If `$redirectData` is null, this default is returned:
+**Note:** If `$redirectData` is null, this default is returned:
 
 ```php
 'url'     => 'https://gateway.test',
@@ -516,4 +514,3 @@ Thank you for considering contributing to the Iran Payment Laravel! The contribu
 [payping.ir]: https://payping.ir
 [nextpay.org]: https://nextpay.org
 [Eloquent relationships: one-to-many polymorphic]: https://laravel.com/docs/12.x/eloquent-relationships#one-to-many-polymorphic-relations
-[Laravel's task scheduler]: https://laravel.com/docs/12.x/scheduling#scheduling-artisan-commands
