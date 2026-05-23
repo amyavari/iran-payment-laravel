@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace AliYavari\IranPayment\Tests\Feature\Http\Requests\ZibalRequestTest; // To avoid helper functions conflict.
-
 use AliYavari\IranPayment\Http\Requests\ZibalRequest;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Uri;
 
-/**
- * This test file only tests some domain important validation rules.
- */
+// Helpers
+$activateFakeRoute = function (): void {
+    Route::get('/test', fn (ZibalRequest $request) => response()->json($request->validated(), 200));
+};
+
 it('authorizes everyone', function (): void {
     $request = new ZibalRequest();
 
@@ -18,8 +18,8 @@ it('authorizes everyone', function (): void {
         ->authorize()->toBeTrue();
 });
 
-it('validates successfully with valid data', function (): void {
-    activateFakeRoute();
+it('validates successfully with valid data', function () use ($activateFakeRoute): void {
+    $activateFakeRoute();
 
     $validData = [
         'status' => '2',
@@ -33,20 +33,11 @@ it('validates successfully with valid data', function (): void {
         ->assertJson($validData);
 });
 
-it('fails to validate if required data are not provided', function (): void {
-    activateFakeRoute();
+it('fails to validate if required data are not provided', function () use ($activateFakeRoute): void {
+    $activateFakeRoute();
 
     $response = $this->getJson('/test');
 
     $response->assertUnprocessable()
         ->assertOnlyInvalid(['status', 'success', 'trackId']);
 });
-
-// ------------
-// Helpers
-// ------------
-
-function activateFakeRoute(): void
-{
-    Route::get('/test', fn (ZibalRequest $request) => response()->json($request->validated(), 200));
-}

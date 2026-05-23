@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace AliYavari\IranPayment\Tests\Feature\Http\Requests\IdpayRequestTest; // To avoid helper functions conflict.
-
 use AliYavari\IranPayment\Http\Requests\IdpayRequest;
 use Illuminate\Support\Facades\Route;
 
-/**
- * This test file only tests some domain important validation rules.
- */
+// Helpers
+$activateFakeRoute = function (): void {
+    Route::post('/test', fn (IdpayRequest $request) => response()->json($request->validated(), 200));
+};
+
 it('authorizes everyone', function (): void {
     $request = new IdpayRequest();
 
@@ -17,8 +17,8 @@ it('authorizes everyone', function (): void {
         ->authorize()->toBeTrue();
 });
 
-it('validates successfully with valid data', function (): void {
-    activateFakeRoute();
+it('validates successfully with valid data', function () use ($activateFakeRoute): void {
+    $activateFakeRoute();
 
     $validData = [
         'status' => '100',
@@ -33,20 +33,11 @@ it('validates successfully with valid data', function (): void {
         ->assertJson($validData);
 });
 
-it('fails to validate if required data are not provided', function (): void {
-    activateFakeRoute();
+it('fails to validate if required data are not provided', function () use ($activateFakeRoute): void {
+    $activateFakeRoute();
 
     $response = $this->postJson('/test', []);
 
     $response->assertUnprocessable()
         ->assertOnlyInvalid(['status', 'track_id', 'id', 'order_id']);
 });
-
-// ------------
-// Helpers
-// ------------
-
-function activateFakeRoute(): void
-{
-    Route::post('/test', fn (IdpayRequest $request) => response()->json($request->validated(), 200));
-}

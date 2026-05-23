@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace AliYavari\IranPayment\Tests\Feature\Http\Requests\PepRequestTest; // To avoid helper functions conflict.
-
 use AliYavari\IranPayment\Http\Requests\PepRequest;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Uri;
 
-/**
- * This test file only tests some domain important validation rules.
- */
+// Helpers
+$activateFakeRoute = function (): void {
+    Route::get('/test', fn (PepRequest $request) => response()->json($request->validated(), 200));
+};
+
 it('authorizes everyone', function (): void {
     $request = new PepRequest();
 
@@ -18,8 +18,8 @@ it('authorizes everyone', function (): void {
         ->authorize()->toBeTrue();
 });
 
-it('validates successfully with valid data', function (): void {
-    activateFakeRoute();
+it('validates successfully with valid data', function () use ($activateFakeRoute): void {
+    $activateFakeRoute();
 
     $validData = [
         'invoiceId' => '123456789012345',
@@ -34,8 +34,8 @@ it('validates successfully with valid data', function (): void {
         ->assertJson($validData);
 });
 
-it('fails to validate if required data are not provided', function (): void {
-    activateFakeRoute();
+it('fails to validate if required data are not provided', function () use ($activateFakeRoute): void {
+    $activateFakeRoute();
 
     $response = $this->getJson('/test');
 
@@ -43,8 +43,8 @@ it('fails to validate if required data are not provided', function (): void {
         ->assertOnlyInvalid(['status', 'invoiceId']);
 });
 
-it('validates successfully if optional fields are null or empty', function (): void {
-    activateFakeRoute();
+it('validates successfully if optional fields are null or empty', function () use ($activateFakeRoute): void {
+    $activateFakeRoute();
 
     $validData = [
         'invoiceId' => '123456789012345',
@@ -58,12 +58,3 @@ it('validates successfully if optional fields are null or empty', function (): v
     $response->assertOk()
         ->assertJson($validData);
 });
-
-// ------------
-// Helpers
-// ------------
-
-function activateFakeRoute(): void
-{
-    Route::get('/test', fn (PepRequest $request) => response()->json($request->validated(), 200));
-}

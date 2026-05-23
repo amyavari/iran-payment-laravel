@@ -2,15 +2,14 @@
 
 declare(strict_types=1);
 
-namespace AliYavari\IranPayment\Tests\Feature\Http\Requests\ZarinpalRequestTest; // To avoid helper functions conflict.
-
 use AliYavari\IranPayment\Http\Requests\ZarinpalRequest;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Uri;
 
-/**
- * This test file only tests some domain important validation rules.
- */
+$activateFakeRoute = function (): void {
+    Route::get('/test', fn (ZarinpalRequest $request) => response()->json($request->validated(), 200));
+};
+
 it('authorizes everyone', function (): void {
     $request = new ZarinpalRequest();
 
@@ -18,8 +17,8 @@ it('authorizes everyone', function (): void {
         ->authorize()->toBeTrue();
 });
 
-it('validates successfully with valid data', function (): void {
-    activateFakeRoute();
+it('validates successfully with valid data', function () use ($activateFakeRoute): void {
+    $activateFakeRoute();
 
     $validData = [
         'Authority' => '1234ABab',
@@ -32,20 +31,11 @@ it('validates successfully with valid data', function (): void {
         ->assertJson($validData);
 });
 
-it('fails to validate if required data are not provided', function (): void {
-    activateFakeRoute();
+it('fails to validate if required data are not provided', function () use ($activateFakeRoute): void {
+    $activateFakeRoute();
 
     $response = $this->getJson('/test');
 
     $response->assertUnprocessable()
         ->assertOnlyInvalid(['Authority', 'Status']);
 });
-
-// ------------
-// Helpers
-// ------------
-
-function activateFakeRoute(): void
-{
-    Route::get('/test', fn (ZarinpalRequest $request) => response()->json($request->validated(), 200));
-}
