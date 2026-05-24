@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace AliYavari\IranPayment\Tests\Feature\Http\Requests\PaypingRequestTest; // To avoid helper functions conflict.
-
 use AliYavari\IranPayment\Http\Requests\PaypingRequest;
 use Illuminate\Support\Facades\Route;
 
-/**
- * This test file only tests some domain important validation rules.
- */
+// Helpers
+$activateFakeRoute = function (): void {
+    Route::post('/test', fn (PaypingRequest $request) => response()->json($request->validated(), 200));
+};
+
 it('authorizes everyone', function (): void {
     $request = new PaypingRequest();
 
@@ -17,8 +17,8 @@ it('authorizes everyone', function (): void {
         ->authorize()->toBeTrue();
 });
 
-it('validates successfully with valid data', function (): void {
-    activateFakeRoute();
+it('validates successfully with valid data', function () use ($activateFakeRoute): void {
+    $activateFakeRoute();
 
     $validData = [
         'status' => 0,
@@ -40,8 +40,8 @@ it('validates successfully with valid data', function (): void {
         ->assertJson($validData);
 });
 
-it('fails to validate if required data are not provided', function (): void {
-    activateFakeRoute();
+it('fails to validate if required data are not provided', function () use ($activateFakeRoute): void {
+    $activateFakeRoute();
 
     $response = $this->postJson('/test', []);
 
@@ -49,8 +49,8 @@ it('fails to validate if required data are not provided', function (): void {
         ->assertOnlyInvalid(['status', 'errorCode', 'data', 'data.paymentCode']);
 });
 
-it('validates successfully if optional fields are null or empty', function (): void {
-    activateFakeRoute();
+it('validates successfully if optional fields are null or empty', function () use ($activateFakeRoute): void {
+    $activateFakeRoute();
 
     $validData = [
         'status' => 0,
@@ -71,12 +71,3 @@ it('validates successfully if optional fields are null or empty', function (): v
     $response->assertOk()
         ->assertJson($validData);
 });
-
-// ------------
-// Helpers
-// ------------
-
-function activateFakeRoute(): void
-{
-    Route::post('/test', fn (PaypingRequest $request) => response()->json($request->validated(), 200));
-}

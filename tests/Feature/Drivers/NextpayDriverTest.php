@@ -2,28 +2,25 @@
 
 declare(strict_types=1);
 
-namespace AliYavari\IranPayment\Tests\Feature\Drivers\NextpayDriverTest;
-
 use AliYavari\IranPayment\Drivers\NextpayDriver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Exceptions\SandboxNotSupportedException;
-use AliYavari\IranPayment\Facades\Payment;
+use AliYavari\IranPayment\Tests\Helpers\NextpayHelper as Helper;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function (): void {
-    setDriverConfigs();
+    Helper::setDriverConfigs();
 });
 
 it('calls payment creation API with minimum passed data and config callback URL', function (): void {
-    fakeHttp(successfulCreationResponse());
+    fakeHttp(Helper::successfulCreationResponse());
     mockUniqueNumberGenerator('123456789012345');
 
-    driver()->create(10_000);
+    Helper::driver()->create(10_000);
 
     $request = getRecordedHttpRequest();
 
@@ -41,9 +38,9 @@ it('calls payment creation API with minimum passed data and config callback URL'
 });
 
 it('calls payment creation API with full passed data', function (): void {
-    fakeHttp(successfulCreationResponse());
+    fakeHttp(Helper::successfulCreationResponse());
 
-    driver()->create(1_000, 'Description', '09123456789');
+    Helper::driver()->create(1_000, 'Description', '09123456789');
 
     $request = getRecordedHttpRequest();
 
@@ -54,9 +51,9 @@ it('calls payment creation API with full passed data', function (): void {
 });
 
 it('converts phone number to gateway format if needed', function (string|int $phone): void {
-    fakeHttp(successfulCreationResponse());
+    fakeHttp(Helper::successfulCreationResponse());
 
-    driver()->create(1_000, phone: $phone);
+    Helper::driver()->create(1_000, phone: $phone);
 
     $request = getRecordedHttpRequest();
 
@@ -72,9 +69,9 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 ]);
 
 it('returns successful response on successful payment creation', function (): void {
-    fakeHttp($response = successfulCreationResponse());
+    fakeHttp($response = Helper::successfulCreationResponse());
 
-    $payment = driver()->create(10_000);
+    $payment = Helper::driver()->create(10_000);
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -83,9 +80,9 @@ it('returns successful response on successful payment creation', function (): vo
 });
 
 it('returns failed response on failed payment creation', function (): void {
-    fakeHttp($response = failedResponse());
+    fakeHttp($response = Helper::failedResponse());
 
-    $payment = driver()->create(10_000);
+    $payment = Helper::driver()->create(10_000);
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -94,19 +91,19 @@ it('returns failed response on failed payment creation', function (): void {
 });
 
 it('returns trans_id in the gateway response as transaction ID', function (): void {
-    fakeHttp(successfulCreationResponse());
+    fakeHttp(Helper::successfulCreationResponse());
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     expect($payment)
         ->getTransactionId()->toBe('f7c07568-c6d1-4bee-87b1-4a9e5ed2e4c1'); // From fake creation response
 });
 
 it('returns gateway payload needed to verify payment on successful payment creation', function (): void {
-    fakeHttp(successfulCreationResponse());
+    fakeHttp(Helper::successfulCreationResponse());
     mockUniqueNumberGenerator('123456789012345');
 
-    $payment = driver()->create(10_000);
+    $payment = Helper::driver()->create(10_000);
 
     expect($payment)
         ->getGatewayPayload()->toBe([
@@ -117,9 +114,9 @@ it('returns gateway payload needed to verify payment on successful payment creat
 });
 
 it('returns gateway redirect data on successful payment creation', function (): void {
-    fakeHttp(successfulCreationResponse());
+    fakeHttp(Helper::successfulCreationResponse());
 
-    $payment = driver()->create(10_000);
+    $payment = Helper::driver()->create(10_000);
 
     expect($payment->getRedirectData())
         ->toBeInstanceOf(PaymentRedirectDto::class)
@@ -134,16 +131,14 @@ it('throws an exception for payment creation when configured to use sandbox', fu
 
     Config::set('iran-payment.use_sandbox', true);
 
-    expect(fn (): NextpayDriver => driver()->create(10_000))
+    expect(fn (): NextpayDriver => Helper::driver()->create(10_000))
         ->toThrow(SandboxNotSupportedException::class, 'Nextpay gateway does not support the sandbox environment.');
 
     Http::assertNothingSent();
 });
 
 it('creates payment instance from callback data', function (): void {
-    $callbackPayload = callback()->all();
-
-    $payment = driver()->fromCallback($callbackPayload);
+    $payment = Helper::driver()->fromCallback(Helper::successfulCallback());
 
     expect($payment)
         ->toBeInstanceOf(NextpayDriver::class)
@@ -151,9 +146,9 @@ it('creates payment instance from callback data', function (): void {
 });
 
 it('throws exception when callback lacks required keys', function (string $key): void {
-    $callbackPayload = callback()->except([$key])->all();
+    $callbackPayload = Arr::except(Helper::successfulCallback(), $key);
 
-    expect(fn (): NextpayDriver => driver()->fromCallback($callbackPayload))
+    expect(fn (): NextpayDriver => Helper::driver()->fromCallback($callbackPayload))
         ->toThrow(
             MissingCallbackDataException::class,
             sprintf('To create nextpay gateway instance from callback, "trans_id" are required. "%s" is missing.', $key)
@@ -165,12 +160,10 @@ it('throws exception when callback lacks required keys', function (string $key):
 it('throws exception when stored payload and callback data do not match', function (string $payloadKey, string $callbackKey): void {
     fakeHttp();
 
-    $callbackPayload = callback()->all();
-
-    $payload = gatewayPayload();
+    $payload = Helper::gatewayPayload();
     Arr::set($payload, $payloadKey, '123'); // Change payload value for the given key so it no longer matches
 
-    $payment = driver()->fromCallback($callbackPayload);
+    $payment = Helper::driver()->fromCallback(Helper::successfulCallback());
 
     expect(fn (): NextpayDriver => $payment->verify($payload))
         ->toThrow(
@@ -184,9 +177,9 @@ it('throws exception when stored payload and callback data do not match', functi
 ]);
 
 it('verifies payment when callback matches stored payload', function (): void {
-    fakeHttp(successfulVerificationResponse());
+    fakeHttp(Helper::successfulVerificationResponse());
 
-    driverFromSuccessfulCallback()->verify(gatewayPayload());
+    Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     $request = getRecordedHttpRequest();
 
@@ -202,9 +195,9 @@ it('verifies payment when callback matches stored payload', function (): void {
 });
 
 it('returns successful response on successful payment verification', function (): void {
-    fakeHttp($response = successfulVerificationResponse());
+    fakeHttp($response = Helper::successfulVerificationResponse());
 
-    $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
+    $payment = Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -213,9 +206,9 @@ it('returns successful response on successful payment verification', function ()
 });
 
 it('returns failed response on failed payment verification', function (): void {
-    fakeHttp($response = failedResponse());
+    fakeHttp($response = Helper::failedResponse());
 
-    $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
+    $payment = Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -228,16 +221,16 @@ it('throws an exception for payment verification when configured to use sandbox'
 
     Config::set('iran-payment.use_sandbox', true);
 
-    expect(fn (): NextpayDriver => driverFromSuccessfulCallback()->verify(gatewayPayload()))
+    expect(fn (): NextpayDriver => Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload()))
         ->toThrow(SandboxNotSupportedException::class, 'Nextpay gateway does not support the sandbox environment.');
 
     Http::assertNothingSent();
 });
 
 it('returns card number and reference ID from successful verification', function (): void {
-    fakeHttp(successfulVerificationResponse());
+    fakeHttp(Helper::successfulVerificationResponse());
 
-    $payment = verifiedPayment();
+    $payment = Helper::verifiedPayment();
 
     expect($payment)
         ->getRefNumber()->toBe('141196584609') // From fake verification response
@@ -246,11 +239,11 @@ it('returns card number and reference ID from successful verification', function
 
 it('reverses the payment', function (): void {
     fakeHttp(
-        firstResponse: successfulVerificationResponse(),
-        secondResponse: successfulReversalResponse()
+        firstResponse: Helper::successfulVerificationResponse(),
+        secondResponse: Helper::successfulReversalResponse()
     );
 
-    verifiedPayment()->reverse();
+    Helper::verifiedPayment()->reverse();
 
     $request = getRecordedHttpRequest();
 
@@ -268,11 +261,11 @@ it('reverses the payment', function (): void {
 
 it('returns successful response on successful payment reversal', function (): void {
     fakeHttp(
-        firstResponse: successfulVerificationResponse(),
-        secondResponse: $response = successfulReversalResponse()
+        firstResponse: Helper::successfulVerificationResponse(),
+        secondResponse: $response = Helper::successfulReversalResponse()
     );
 
-    $payment = verifiedPayment()->reverse();
+    $payment = Helper::verifiedPayment()->reverse();
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -282,11 +275,11 @@ it('returns successful response on successful payment reversal', function (): vo
 
 it('returns failed response on failed payment reversal', function (): void {
     fakeHttp(
-        firstResponse: successfulVerificationResponse(),
-        secondResponse: $response = failedResponse()
+        firstResponse: Helper::successfulVerificationResponse(),
+        secondResponse: $response = Helper::failedResponse()
     );
 
-    $payment = verifiedPayment()->reverse();
+    $payment = Helper::verifiedPayment()->reverse();
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -295,9 +288,9 @@ it('returns failed response on failed payment reversal', function (): void {
 });
 
 it('throws an exception for payment reversal when configured to use sandbox', function (): void {
-    fakeHttp(successfulVerificationResponse());
+    fakeHttp(Helper::successfulVerificationResponse());
 
-    $payment = verifiedPayment();
+    $payment = Helper::verifiedPayment();
 
     Config::set('iran-payment.use_sandbox', true);
 
@@ -308,7 +301,7 @@ it('throws an exception for payment reversal when configured to use sandbox', fu
 });
 
 it('creates payment instance with no callback data', function (): void {
-    $payment = driver()->noCallback(transactionId: 'f7c07568-c6d1-4a9e5ed00022');
+    $payment = Helper::driver()->noCallback(transactionId: 'f7c07568-c6d1-4a9e5ed00022');
 
     expect($payment)
         ->toBeInstanceOf(NextpayDriver::class)
@@ -316,110 +309,24 @@ it('creates payment instance with no callback data', function (): void {
 });
 
 it('verifies normally with no callback data', function (): void {
-    fakeHttp(successfulVerificationResponse());
+    fakeHttp(Helper::successfulVerificationResponse());
 
-    $payment = driver()->noCallback('f7c07568-c6d1-4bee-87b1-4a9e5ed2e4c1');
+    $payment = Helper::driver()->noCallback('f7c07568-c6d1-4bee-87b1-4a9e5ed2e4c1');
 
-    $payment->verify(gatewayPayload());
+    $payment->verify(Helper::gatewayPayload());
 
     Http::assertSentCount(1);
 });
 
 it('reverses normally with no callback data', function (): void {
     fakeHttp(
-        firstResponse: successfulVerificationResponse(),
-        secondResponse: successfulReversalResponse()
+        firstResponse: Helper::successfulVerificationResponse(),
+        secondResponse: Helper::successfulReversalResponse()
     );
 
-    $payment = driver()->noCallback('f7c07568-c6d1-4bee-87b1-4a9e5ed2e4c1')->verify(gatewayPayload());
+    $payment = Helper::driver()->noCallback('f7c07568-c6d1-4bee-87b1-4a9e5ed2e4c1')->verify(Helper::gatewayPayload());
 
     $payment->reverse();
 
     Http::assertSentCount(2); // Verification and reversal
 });
-
-// ------------
-// Helpers
-// ------------
-
-function setDriverConfigs(): void
-{
-    Config::set('iran-payment.gateways.nextpay.callback_url', 'http://callback.test');
-    Config::set('iran-payment.gateways.nextpay.api_key', 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
-}
-
-function driver(): NextpayDriver
-{
-    return Payment::gateway('nextpay');
-}
-
-function successfulCreationResponse(): array
-{
-    return [
-        'code' => -1,
-        'trans_id' => 'f7c07568-c6d1-4bee-87b1-4a9e5ed2e4c1',
-    ];
-}
-
-function successfulVerificationResponse(): array
-{
-    return [
-        'code' => 0,
-        'amount' => 1_000,
-        'order_id' => '1234567890',
-        'card_holder' => '5022-29**-****-5020',
-        'customer_phone' => '09121234567',
-        'Shaparak_Ref_Id' => '141196584609',
-        'custom' => [],
-        'created_at' => '1397-01-01 14:16:17',
-    ];
-}
-
-function successfulReversalResponse(): array
-{
-    return [
-        'code' => -90,
-        'amount' => 1_000,
-        'order_id' => '1234567890',
-        'card_holder' => '5022-29**-****-5020',
-        'customer_phone' => '09121234567',
-        'custom' => [],
-    ];
-}
-
-function failedResponse(): array
-{
-    return [
-        'code' => -2,
-    ];
-}
-
-function driverFromSuccessfulCallback(): NextpayDriver
-{
-    $callback = callback()->all();
-
-    return driver()->fromCallback($callback);
-}
-
-function verifiedPayment(): NextpayDriver
-{
-    return driverFromSuccessfulCallback()->verify(gatewayPayload());
-}
-
-function callback(): Collection
-{
-    return collect([
-        'trans_id' => 'f7c07568-c6d1-4bee-87b1-4a9e5ed2e4c1',
-        'order_id' => '1234567890',
-        'amount' => 1_000,
-    ]);
-}
-
-function gatewayPayload(): array
-{
-    return [
-        'order_id' => '1234567890',
-        'transaction_id' => 'f7c07568-c6d1-4bee-87b1-4a9e5ed2e4c1',
-        'amount' => 1_000,
-    ];
-}
