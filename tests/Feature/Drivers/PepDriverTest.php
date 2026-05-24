@@ -2,34 +2,29 @@
 
 declare(strict_types=1);
 
-namespace AliYavari\IranPayment\Tests\Feature\Drivers\PepDriverTest; // To avoid helper functions conflict.
-
 use AliYavari\IranPayment\Drivers\PepDriver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Exceptions\SandboxNotSupportedException;
-use AliYavari\IranPayment\Facades\Payment;
+use AliYavari\IranPayment\Tests\Helpers\PepHelper as Helper;
 use Illuminate\Contracts\Cache\Lock as CacheLock;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\URL;
-use Mockery;
-use ReflectionMethod;
 
 beforeEach(function (): void {
     $this->cacheKey = 'iran_payment_pep_token';
 
-    setDriverConfigs();
+    Helper::setDriverConfigs();
 });
 
 it('calls get token API', function (): void {
-    fakeHttp(successfulGetTokenResponse());
+    fakeHttp(Helper::successfulGetTokenResponse());
 
-    callResolveToken();
+    Helper::callResolveToken();
 
     $request = getRecordedHttpRequest();
 
@@ -44,11 +39,11 @@ it('calls get token API', function (): void {
 });
 
 it('always calls HTTPS of base URL for getting token', function (string $baseUrl): void {
-    fakeHttp(successfulGetTokenResponse());
+    fakeHttp(Helper::successfulGetTokenResponse());
 
     Config::set('iran-payment.gateways.pep.base_url', $baseUrl);
 
-    callResolveToken();
+    Helper::callResolveToken();
 
     $request = getRecordedHttpRequest();
 
@@ -61,9 +56,9 @@ it('always calls HTTPS of base URL for getting token', function (string $baseUrl
 ]);
 
 it('puts token into the cache on successful getting token', function (): void {
-    fakeHttp(successfulGetTokenResponse());
+    fakeHttp(Helper::successfulGetTokenResponse());
 
-    $token = callResolveToken();
+    $token = Helper::callResolveToken();
 
     expect($token)
         ->toBe('token'); // From fake get token response
@@ -73,9 +68,9 @@ it('puts token into the cache on successful getting token', function (): void {
 });
 
 it('does not put anything into the cache on failed getting token', function (): void {
-    fakeHttp(failedResponse());
+    fakeHttp(Helper::failedResponse());
 
-    $token = callResolveToken();
+    $token = Helper::callResolveToken();
 
     expect($token)
         ->toBeNull();
@@ -89,7 +84,7 @@ it('does not call the API if token exists in the cache', function (): void {
 
     Cache::set($this->cacheKey, 'test');
 
-    $token = callResolveToken();
+    $token = Helper::callResolveToken();
 
     expect($token)
         ->toBe('test');
@@ -102,9 +97,9 @@ it('puts token into the cache on successful getting token for the gateway token 
      * 10 minutes is the official token expiration time of the gateway.
      * We expect 9 minutes ttl (1 min less) as safe zone to cover latency, inaccurate server time, ...
      */
-    fakeHttp(successfulGetTokenResponse());
+    fakeHttp(Helper::successfulGetTokenResponse());
 
-    callResolveToken();
+    Helper::callResolveToken();
 
     $this->travel(8)->minutes();
 
@@ -119,7 +114,7 @@ it('puts token into the cache on successful getting token for the gateway token 
 
 // TODO: Refactor to use a feature test instead of mocking.
 it('uses atomic lock to prevent concurrent API calls to get token', function (): void {
-    fakeHttp(successfulGetTokenResponse());
+    fakeHttp(Helper::successfulGetTokenResponse());
 
     $cacheLock = Mockery::mock(CacheLock::class);
     $cacheLock->shouldReceive('block')
@@ -136,7 +131,7 @@ it('uses atomic lock to prevent concurrent API calls to get token', function ():
         ->once()
         ->andReturnUsing(fn ($key, $ttl, $callable) => $callable());
 
-    $token = callResolveToken();
+    $token = Helper::callResolveToken();
 
     expect($token)
         ->toBe('token');
@@ -145,9 +140,9 @@ it('uses atomic lock to prevent concurrent API calls to get token', function ():
 });
 
 it('sets failed response on failed getting token on payment creation', function (): void {
-    fakeHttp($response = failedResponse());
+    fakeHttp($response = Helper::failedResponse());
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -159,12 +154,12 @@ it('sets failed response on failed getting token on payment creation', function 
 
 it('generates and returns transaction ID on payment creation', function (): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: successfulCreationResponse(),
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: Helper::successfulCreationResponse(),
     );
     mockUniqueNumberGenerator('123456789012345');
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     expect($payment)
         ->getTransactionId()->toBe('123456789012345');
@@ -176,11 +171,11 @@ it('calls payment creation API with minimum passed data and config callback URL'
     URL::useOrigin('http://myapp.com');
 
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: successfulCreationResponse(),
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: Helper::successfulCreationResponse(),
     );
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     $request = getRecordedHttpRequest();
 
@@ -204,13 +199,13 @@ it('calls payment creation API with minimum passed data and config callback URL'
 
 it('always calls HTTPS of base URL for payment creation', function (string $baseUrl): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: successfulCreationResponse(),
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: Helper::successfulCreationResponse(),
     );
 
     Config::set('iran-payment.gateways.pep.base_url', $baseUrl);
 
-    driver()->create(1_000);
+    Helper::driver()->create(1_000);
 
     $request = getRecordedHttpRequest();
 
@@ -224,11 +219,11 @@ it('always calls HTTPS of base URL for payment creation', function (string $base
 
 it('calls payment creation API with full passed data', function (): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: successfulCreationResponse(),
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: Helper::successfulCreationResponse(),
     );
 
-    driver()->create(1_000, 'Description', '09123456789');
+    Helper::driver()->create(1_000, 'Description', '09123456789');
 
     $request = getRecordedHttpRequest();
 
@@ -240,11 +235,11 @@ it('calls payment creation API with full passed data', function (): void {
 
 it('converts phone number to gateway format if needed', function (string|int $phone): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: successfulCreationResponse(),
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: Helper::successfulCreationResponse(),
     );
 
-    driver()->create(1_000, phone: $phone);
+    Helper::driver()->create(1_000, phone: $phone);
 
     $request = getRecordedHttpRequest();
 
@@ -261,11 +256,11 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 
 it('returns successful response on successful payment creation', function (): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: $response = successfulCreationResponse(),
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: $response = Helper::successfulCreationResponse(),
     );
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -275,11 +270,11 @@ it('returns successful response on successful payment creation', function (): vo
 
 it('returns failed response on failed payment creation', function (): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: $response = failedResponse(),
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: $response = Helper::failedResponse(),
     );
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -289,11 +284,11 @@ it('returns failed response on failed payment creation', function (): void {
 
 it('returns gateway payload needed to verify payment on successful payment creation', function (): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: successfulCreationResponse(),
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: Helper::successfulCreationResponse(),
     );
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     expect($payment)
         ->getGatewayPayload()->toBe([
@@ -305,11 +300,11 @@ it('returns gateway payload needed to verify payment on successful payment creat
 
 it('returns gateway redirect data on successful payment creation', function (): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: successfulCreationResponse(),
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: Helper::successfulCreationResponse(),
     );
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     expect($payment->getRedirectData())
         ->toBeInstanceOf(PaymentRedirectDto::class)
@@ -324,16 +319,14 @@ it('throws an exception for payment creation when configured to use sandbox', fu
 
     Config::set('iran-payment.use_sandbox', true);
 
-    expect(fn (): PepDriver => driver()->create(1_000))
+    expect(fn (): PepDriver => Helper::driver()->create(1_000))
         ->toThrow(SandboxNotSupportedException::class, 'Pep gateway does not support the sandbox environment.');
 
     Http::assertNothingSent();
 });
 
 it('creates payment instance from callback data', function (): void {
-    $callbackPayload = callbackFactory()->successful()->all();
-
-    $payment = driver()->fromCallback($callbackPayload);
+    $payment = Helper::driver()->fromCallback(Helper::successfulCallback());
 
     expect($payment)
         ->toBeInstanceOf(PepDriver::class)
@@ -341,9 +334,9 @@ it('creates payment instance from callback data', function (): void {
 });
 
 it('throws exception when callback lacks required keys', function (string $key): void {
-    $callbackPayload = callbackFactory()->successful()->except([$key])->all();
+    $callbackPayload = Arr::except(Helper::successfulCallback(), $key);
 
-    expect(fn (): PepDriver => driver()->fromCallback($callbackPayload))
+    expect(fn (): PepDriver => Helper::driver()->fromCallback($callbackPayload))
         ->toThrow(
             MissingCallbackDataException::class,
             sprintf('To create pep gateway instance from callback, "status, invoiceId" are required. "%s" is missing.', $key)
@@ -356,12 +349,10 @@ it('throws exception when callback lacks required keys', function (string $key):
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
     fakeHttp();
 
-    $callbackPayload = callbackFactory()->successful()->all();
-
-    $payload = gatewayPayload();
+    $payload = Helper::gatewayPayload();
     Arr::set($payload, $payloadKey, '123'); // Change payload value for the given key so it no longer matches
 
-    $payment = driver()->fromCallback($callbackPayload);
+    $payment = Helper::driver()->fromCallback(Helper::successfulCallback());
 
     expect(fn (): PepDriver => $payment->verify($payload))
         ->toThrow(
@@ -377,11 +368,11 @@ it('throws exception when stored payload and successful callback data do not mat
 it('does not verify payment when callback status is not successful', function (): void {
     fakeHttp();
 
-    $callbackPayload = callbackFactory()->failed()->all();
+    $callbackPayload = Helper::failedCallback();
 
-    $payment = driver()
+    $payment = Helper::driver()
         ->fromCallback($callbackPayload)
-        ->verify(gatewayPayload());
+        ->verify(Helper::gatewayPayload());
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -392,9 +383,9 @@ it('does not verify payment when callback status is not successful', function ()
 });
 
 it('sets failed response on failed getting token on payment verification', function (): void {
-    fakeHttp($response = failedResponse());
+    fakeHttp($response = Helper::failedResponse());
 
-    $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
+    $payment = Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -406,11 +397,11 @@ it('sets failed response on failed getting token on payment verification', funct
 
 it('verifies payment when callback is successful and matches stored payload', function (): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: successfulVerificationResponse(),
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: Helper::successfulVerificationResponse(),
     );
 
-    driverFromSuccessfulCallback()->verify(gatewayPayload());
+    Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     $request = getRecordedHttpRequest();
 
@@ -428,13 +419,13 @@ it('verifies payment when callback is successful and matches stored payload', fu
 
 it('always calls HTTPS of base URL for payment verification', function (string $baseUrl): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: successfulVerificationResponse(),
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: Helper::successfulVerificationResponse(),
     );
 
     Config::set('iran-payment.gateways.pep.base_url', $baseUrl);
 
-    driverFromSuccessfulCallback()->verify(gatewayPayload());
+    Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     $request = getRecordedHttpRequest();
 
@@ -448,11 +439,11 @@ it('always calls HTTPS of base URL for payment verification', function (string $
 
 it('returns successful response on successful payment verification', function (): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: $response = successfulVerificationResponse(),
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: $response = Helper::successfulVerificationResponse(),
     );
 
-    $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
+    $payment = Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -461,15 +452,15 @@ it('returns successful response on successful payment verification', function ()
 });
 
 it('returns failed response on successful payment verification with invalid amount', function (): void {
-    $response = successfulVerificationResponse();
+    $response = Helper::successfulVerificationResponse();
     Arr::set($response, 'data.amount', 2_000);
 
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
+        firstResponse: Helper::successfulGetTokenResponse(),
         secondResponse: $response,
     );
 
-    $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
+    $payment = Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -479,11 +470,11 @@ it('returns failed response on successful payment verification with invalid amou
 
 it('returns failed response on failed payment verification', function (): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: $response = failedResponse(),
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: $response = Helper::failedResponse(),
     );
 
-    $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
+    $payment = Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -496,7 +487,7 @@ it('throws an exception for payment verification when configured to use sandbox'
 
     Config::set('iran-payment.use_sandbox', true);
 
-    expect(fn (): PepDriver => driverFromSuccessfulCallback()->verify(gatewayPayload()))
+    expect(fn (): PepDriver => Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload()))
         ->toThrow(SandboxNotSupportedException::class, 'Pep gateway does not support the sandbox environment.');
 
     Http::assertNothingSent();
@@ -504,11 +495,11 @@ it('throws an exception for payment verification when configured to use sandbox'
 
 it('returns card number and reference ID from successful verification', function (): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: successfulVerificationResponse(),
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: Helper::successfulVerificationResponse(),
     );
 
-    $payment = verifiedPayment();
+    $payment = Helper::verifiedPayment();
 
     expect($payment)
         ->getRefNumber()->toBe('142514251425') // From fake verification response
@@ -517,13 +508,13 @@ it('returns card number and reference ID from successful verification', function
 
 it('sets failed response on failed getting token on payment reversal', function (): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: successfulVerificationResponse(),
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: Helper::successfulVerificationResponse(),
     )
-        ->push($response = failedResponse()) // Second getToken call
-        ->push(successfulReversalResponse());
+        ->push($response = Helper::failedResponse()) // Second getToken call
+        ->push(Helper::successfulReversalResponse());
 
-    $payment = verifiedPayment();
+    $payment = Helper::verifiedPayment();
 
     Cache::forget($this->cacheKey); // Force to call getToken for reversal
 
@@ -539,11 +530,11 @@ it('sets failed response on failed getting token on payment reversal', function 
 
 it('reverses the payment', function (): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: successfulVerificationResponse(),
-    )->push(successfulReversalResponse());
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: Helper::successfulVerificationResponse(),
+    )->push(Helper::successfulReversalResponse());
 
-    verifiedPayment()->reverse();
+    Helper::verifiedPayment()->reverse();
 
     $request = getRecordedHttpRequest();
 
@@ -560,13 +551,13 @@ it('reverses the payment', function (): void {
 
 it('always calls HTTPS of base URL for payment reversal', function (string $baseUrl): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: successfulVerificationResponse(),
-    )->push(successfulReversalResponse());
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: Helper::successfulVerificationResponse(),
+    )->push(Helper::successfulReversalResponse());
 
     Config::set('iran-payment.gateways.pep.base_url', $baseUrl);
 
-    verifiedPayment()->reverse();
+    Helper::verifiedPayment()->reverse();
 
     $request = getRecordedHttpRequest();
 
@@ -580,11 +571,11 @@ it('always calls HTTPS of base URL for payment reversal', function (string $base
 
 it('returns successful response on successful payment reversal', function (): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: successfulVerificationResponse(),
-    )->push($response = successfulReversalResponse());
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: Helper::successfulVerificationResponse(),
+    )->push($response = Helper::successfulReversalResponse());
 
-    $payment = verifiedPayment()->reverse();
+    $payment = Helper::verifiedPayment()->reverse();
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -594,11 +585,11 @@ it('returns successful response on successful payment reversal', function (): vo
 
 it('returns failed response on failed payment reversal', function (): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: successfulVerificationResponse(),
-    )->push($response = failedResponse());  // Reversal
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: Helper::successfulVerificationResponse(),
+    )->push($response = Helper::failedResponse());  // Reversal
 
-    $payment = verifiedPayment()->reverse();
+    $payment = Helper::verifiedPayment()->reverse();
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -608,11 +599,11 @@ it('returns failed response on failed payment reversal', function (): void {
 
 it('throws an exception for payment reversal when configured to use sandbox', function (): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: successfulVerificationResponse(),
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: Helper::successfulVerificationResponse(),
     );
 
-    $payment = verifiedPayment();
+    $payment = Helper::verifiedPayment();
 
     Config::set('iran-payment.use_sandbox', true);
 
@@ -623,7 +614,7 @@ it('throws an exception for payment reversal when configured to use sandbox', fu
 });
 
 it('creates payment instance with no callback data', function (): void {
-    $payment = driver()->noCallback(transactionId: '123456789');
+    $payment = Helper::driver()->noCallback(transactionId: '123456789');
 
     expect($payment)
         ->toBeInstanceOf(PepDriver::class)
@@ -632,161 +623,26 @@ it('creates payment instance with no callback data', function (): void {
 
 it('verifies normally with no callback data', function (): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: successfulVerificationResponse(),
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: Helper::successfulVerificationResponse(),
     );
 
-    $payment = driver()->noCallback('123456789012345');
+    $payment = Helper::driver()->noCallback('123456789012345');
 
-    $payment->verify(gatewayPayload());
+    $payment->verify(Helper::gatewayPayload());
 
     Http::assertSentCount(2); // getToken, verification
 });
 
 it('reverses normally with no callback data', function (): void {
     fakeHttp(
-        firstResponse: successfulGetTokenResponse(),
-        secondResponse: successfulVerificationResponse(),
-    )->push(successfulReversalResponse());
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: Helper::successfulVerificationResponse(),
+    )->push(Helper::successfulReversalResponse());
 
-    $payment = driver()->noCallback('123456789012345')->verify(gatewayPayload());
+    $payment = Helper::driver()->noCallback('123456789012345')->verify(Helper::gatewayPayload());
 
     $payment->reverse();
 
     Http::assertSentCount(3); // getToken, verification and reversal
 });
-
-// ------------
-// Helpers
-// ------------
-
-function setDriverConfigs(): void
-{
-    Config::set('iran-payment.gateways.pep.callback_url', 'http://callback.test');
-    Config::set('iran-payment.gateways.pep.base_url', 'https://base.url');
-    Config::set('iran-payment.gateways.pep.terminal_number', '1234');
-    Config::set('iran-payment.gateways.pep.username', 'username');
-    Config::set('iran-payment.gateways.pep.password', 'password');
-}
-
-function driver(): PepDriver
-{
-    return Payment::gateway('pep');
-}
-
-function callResolveToken(?PepDriver $driver = null): ?string
-{
-    $resolveToken = new ReflectionMethod(PepDriver::class, 'resolveToken');
-
-    return $resolveToken->invoke($driver ?? driver());
-}
-
-function successfulGetTokenResponse(): array
-{
-    return [
-        'resultMsg' => 'Successful',
-        'resultCode' => 0,
-        'token' => 'token',
-        'username' => 'username',
-        'firstName' => 'firstName',
-        'lastName' => 'lastName',
-        'userId' => '17',
-        'roles' => [
-            [
-                'authority' => 'mpg',
-            ],
-            [
-                'authority' => 'merchant',
-            ],
-        ],
-    ];
-}
-
-function successfulCreationResponse(): array
-{
-    return [
-        'resultMsg' => 'Successful',
-        'resultCode' => 0,
-        'data' => [
-            'urlId' => '8dcc5cd0ef7348548f8dc2ab29ebe11a7ad3eaad000000006217318',
-            'url' => 'http://pep.shaparak.ir/8dcc5cd0ef7348548f8dc2ab29ebe11a7ad3eaad000000006217318',
-        ],
-    ];
-}
-
-function successfulVerificationResponse(): array
-{
-    return [
-        'resultMsg' => 'Successful',
-        'resultCode' => 0,
-        'data' => [
-            'invoice' => '123456789012345',
-            'referenceNumber' => '142514251425',
-            'trackId' => '1234567',
-            'maskedCardNumber' => '123456******1234',
-            'hashedCardNumber' => 'ba6567ba6c9fc28e1434b838a91028a4250185fb6dd99d62c0392538a087c8be',
-            'requestDate' => '2025-12-10 18:30:10.00000000',
-            'amount' => 1_000,
-        ],
-    ];
-}
-
-function successfulReversalResponse(): array
-{
-    return [
-        'resultMsg' => 'Successful',
-        'resultCode' => 0,
-    ];
-}
-
-function failedResponse(): array
-{
-    return [
-        'resultMsg' => 'Failure',
-        'resultCode' => 1,
-    ];
-}
-
-function driverFromSuccessfulCallback(): PepDriver
-{
-    $callback = callbackFactory()->successful()->all();
-
-    return driver()->fromCallback($callback);
-}
-
-function verifiedPayment(): PepDriver
-{
-    return driverFromSuccessfulCallback()->verify(gatewayPayload());
-}
-
-function callbackFactory(): object
-{
-    return new class
-    {
-        public function successful(): Collection
-        {
-            return collect([
-                'invoiceId' => 123456789012345,
-                'status' => 'success',
-                'referenceNumber' => 142536124562,
-                'trackId' => 123456,
-            ]);
-        }
-
-        public function failed(): Collection
-        {
-            return $this->successful()->merge([
-                'status' => 'failed',
-            ]);
-        }
-    };
-}
-
-function gatewayPayload(): array
-{
-    return [
-        'invoice' => '123456789012345',
-        'urlId' => '8dcc5cd0ef7348548f8dc2ab29ebe11a7ad3eaad000000006217318',
-        'amount' => 1_000,
-    ];
-}

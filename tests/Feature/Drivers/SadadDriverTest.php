@@ -2,28 +2,25 @@
 
 declare(strict_types=1);
 
-namespace AliYavari\IranPayment\Tests\Feature\Drivers\SadadDriverTest; // To avoid helper functions conflict.
-
 use AliYavari\IranPayment\Drivers\SadadDriver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Exceptions\SandboxNotSupportedException;
-use AliYavari\IranPayment\Facades\Payment;
+use AliYavari\IranPayment\Tests\Helpers\SadadHelper as Helper;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function (): void {
-    setDriverConfigs();
+    Helper::setDriverConfigs();
 });
 
 it('generates and returns transaction ID on payment creation', function (): void {
-    fakeHttp(successfulCreationResponse());
+    fakeHttp(Helper::successfulCreationResponse());
     mockUniqueNumberGenerator('123456789012345');
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     expect($payment)
         ->getTransactionId()->toBe('123456789012345');
@@ -32,9 +29,9 @@ it('generates and returns transaction ID on payment creation', function (): void
 it('calls payment creation API with minimum passed data and config callback URL', function (): void {
     setTestNowIran('2025-12-10 18:30:10');
 
-    fakeHttp(successfulCreationResponse());
+    fakeHttp(Helper::successfulCreationResponse());
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     $request = getRecordedHttpRequest();
 
@@ -55,9 +52,9 @@ it('calls payment creation API with minimum passed data and config callback URL'
 });
 
 it('calls payment creation API with full passed data', function (): void {
-    fakeHttp(successfulCreationResponse());
+    fakeHttp(Helper::successfulCreationResponse());
 
-    driver()->create(1_000, 'Description', '09123456789');
+    Helper::driver()->create(1_000, 'Description', '09123456789');
 
     $request = getRecordedHttpRequest();
 
@@ -68,9 +65,9 @@ it('calls payment creation API with full passed data', function (): void {
 });
 
 it('converts phone number to gateway format if needed', function (string|int $phone): void {
-    fakeHttp(successfulCreationResponse());
+    fakeHttp(Helper::successfulCreationResponse());
 
-    driver()->create(1_000, phone: $phone);
+    Helper::driver()->create(1_000, phone: $phone);
 
     $request = getRecordedHttpRequest();
 
@@ -86,10 +83,10 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 ]);
 
 it('signs the necessary input data', function (): void {
-    fakeHttp(successfulCreationResponse());
+    fakeHttp(Helper::successfulCreationResponse());
     mockUniqueNumberGenerator('123456789012345');
 
-    driver()->create(1_000);
+    Helper::driver()->create(1_000);
 
     $request = getRecordedHttpRequest();
 
@@ -105,9 +102,9 @@ it('signs the necessary input data', function (): void {
 });
 
 it('returns successful response on successful payment creation', function (): void {
-    fakeHttp($response = successfulCreationResponse());
+    fakeHttp($response = Helper::successfulCreationResponse());
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -116,9 +113,9 @@ it('returns successful response on successful payment creation', function (): vo
 });
 
 it('returns failed response on failed payment creation', function (): void {
-    fakeHttp($response = failedCreationResponse());
+    fakeHttp($response = Helper::failedResponse('create'));
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -127,9 +124,9 @@ it('returns failed response on failed payment creation', function (): void {
 });
 
 it('returns gateway payload needed to verify payment on successful payment creation', function (): void {
-    fakeHttp(successfulCreationResponse());
+    fakeHttp(Helper::successfulCreationResponse());
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     expect($payment)
         ->getGatewayPayload()->toBe([
@@ -140,9 +137,9 @@ it('returns gateway payload needed to verify payment on successful payment creat
 });
 
 it('returns gateway redirect data on successful payment creation', function (): void {
-    fakeHttp(successfulCreationResponse());
+    fakeHttp(Helper::successfulCreationResponse());
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     expect($payment->getRedirectData())
         ->toBeInstanceOf(PaymentRedirectDto::class)
@@ -157,16 +154,14 @@ it('throws an exception for payment creation when configured to use sandbox', fu
 
     Config::set('iran-payment.use_sandbox', true);
 
-    expect(fn (): SadadDriver => driver()->create(1_000))
+    expect(fn (): SadadDriver => Helper::driver()->create(1_000))
         ->toThrow(SandboxNotSupportedException::class, 'Sadad gateway does not support the sandbox environment.');
 
     Http::assertNothingSent();
 });
 
 it('creates payment instance from callback data', function (): void {
-    $callbackPayload = callbackFactory()->successful()->all();
-
-    $payment = driver()->fromCallback($callbackPayload);
+    $payment = Helper::driver()->fromCallback(Helper::successfulCallback());
 
     expect($payment)
         ->toBeInstanceOf(SadadDriver::class)
@@ -174,9 +169,10 @@ it('creates payment instance from callback data', function (): void {
 });
 
 it('throws exception when callback lacks required keys', function (string $key): void {
-    $callbackPayload = callbackFactory()->successful()->except([$key])->all();
+    // Failed callback has minimum required keys; only ResCode value differs.
+    $callbackPayload = Arr::except(Helper::failedCallback(), $key);
 
-    expect(fn (): SadadDriver => driver()->fromCallback($callbackPayload))
+    expect(fn (): SadadDriver => Helper::driver()->fromCallback($callbackPayload))
         ->toThrow(
             MissingCallbackDataException::class,
             sprintf('To create sadad gateway instance from callback, "OrderId, ResCode" are required. "%s" is missing.', $key)
@@ -189,12 +185,10 @@ it('throws exception when callback lacks required keys', function (string $key):
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
     fakeHttp();
 
-    $callbackPayload = callbackFactory()->successful()->all();
-
-    $payload = gatewayPayload();
+    $payload = Helper::gatewayPayload();
     Arr::set($payload, $payloadKey, '123'); // Change payload value for the given key so it no longer matches
 
-    $payment = driver()->fromCallback($callbackPayload);
+    $payment = Helper::driver()->fromCallback(Helper::successfulCallback());
 
     expect(fn (): SadadDriver => $payment->verify($payload))
         ->toThrow(
@@ -210,11 +204,11 @@ it('throws exception when stored payload and successful callback data do not mat
 it('does not verify payment when callback status is not successful', function (): void {
     fakeHttp();
 
-    $callbackPayload = callbackFactory()->failed()->all();
+    $callbackPayload = Helper::failedCallback();
 
-    $payment = driver()
+    $payment = Helper::driver()
         ->fromCallback($callbackPayload)
-        ->verify(gatewayPayload());
+        ->verify(Helper::gatewayPayload());
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -225,9 +219,9 @@ it('does not verify payment when callback status is not successful', function ()
 });
 
 it('verifies payment when callback is successful and matches stored payload', function (): void {
-    fakeHttp(successfulVerificationResponse());
+    fakeHttp(Helper::successfulVerificationResponse());
 
-    driverFromSuccessfulCallback()->verify(gatewayPayload());
+    Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     $request = getRecordedHttpRequest();
 
@@ -242,9 +236,9 @@ it('verifies payment when callback is successful and matches stored payload', fu
 });
 
 it('returns successful response on successful payment verification', function (): void {
-    fakeHttp($response = successfulVerificationResponse());
+    fakeHttp($response = Helper::successfulVerificationResponse());
 
-    $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
+    $payment = Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -253,12 +247,12 @@ it('returns successful response on successful payment verification', function ()
 });
 
 it('returns successful response on subsequence successful payment verification', function (): void {
-    $response = successfulVerificationResponse();
+    $response = Helper::successfulVerificationResponse();
     Arr::set($response, 'ResCode', 100); // In the subsequence successful verifications it returns `100` instead of `0`
 
     fakeHttp($response);
 
-    $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
+    $payment = Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -267,12 +261,12 @@ it('returns successful response on subsequence successful payment verification',
 });
 
 it('returns failed response on successful payment verification with invalid amount', function (): void {
-    $response = successfulVerificationResponse();
+    $response = Helper::successfulVerificationResponse();
     Arr::set($response, 'Amount', 2_000);
 
     fakeHttp($response);
 
-    $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
+    $payment = Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -281,9 +275,9 @@ it('returns failed response on successful payment verification with invalid amou
 });
 
 it('returns failed response on failed payment verification', function (): void {
-    fakeHttp($response = failedVerificationResponse());
+    fakeHttp($response = Helper::failedResponse('verify'));
 
-    $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
+    $payment = Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -296,16 +290,16 @@ it('throws an exception for payment verification when configured to use sandbox'
 
     Config::set('iran-payment.use_sandbox', true);
 
-    expect(fn (): SadadDriver => driverFromSuccessfulCallback()->verify(gatewayPayload()))
+    expect(fn (): SadadDriver => Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload()))
         ->toThrow(SandboxNotSupportedException::class, 'Sadad gateway does not support the sandbox environment.');
 
     Http::assertNothingSent();
 });
 
 it('returns card number and reference ID from successful verification', function (): void {
-    fakeHttp(successfulVerificationResponse());
+    fakeHttp(Helper::successfulVerificationResponse());
 
-    $payment = verifiedPayment();
+    $payment = Helper::verifiedPayment();
 
     expect($payment)
         ->getRefNumber()->toBe('142514251425') // From fake verification response
@@ -313,9 +307,9 @@ it('returns card number and reference ID from successful verification', function
 });
 
 it('returns failed response on the payment reversal', function (): void {
-    fakeHttp(successfulVerificationResponse());
+    fakeHttp(Helper::successfulVerificationResponse());
 
-    $payment = verifiedPayment()->reverse();
+    $payment = Helper::verifiedPayment()->reverse();
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -326,7 +320,7 @@ it('returns failed response on the payment reversal', function (): void {
 });
 
 it('creates payment instance with no callback data', function (): void {
-    $payment = driver()->noCallback(transactionId: '123456789012345');
+    $payment = Helper::driver()->noCallback(transactionId: '123456789012345');
 
     expect($payment)
         ->toBeInstanceOf(SadadDriver::class)
@@ -334,19 +328,19 @@ it('creates payment instance with no callback data', function (): void {
 });
 
 it('verifies normally with no callback data', function (): void {
-    fakeHttp(successfulVerificationResponse());
+    fakeHttp(Helper::successfulVerificationResponse());
 
-    $payment = driver()->noCallback('123456789012345');
+    $payment = Helper::driver()->noCallback('123456789012345');
 
-    $payment->verify(gatewayPayload());
+    $payment->verify(Helper::gatewayPayload());
 
     Http::assertSentCount(1);
 });
 
 it('returns failed response on the payment reversal with no callback data', function (): void {
-    fakeHttp(successfulVerificationResponse());
+    fakeHttp(Helper::successfulVerificationResponse());
 
-    $payment = driver()->noCallback('123456789012345')->verify(gatewayPayload());
+    $payment = Helper::driver()->noCallback('123456789012345')->verify(Helper::gatewayPayload());
 
     $payment->reverse();
 
@@ -357,107 +351,3 @@ it('returns failed response on the payment reversal with no callback data', func
 
     Http::assertSentCount(1); // Only verification is sent.
 });
-
-// ------------
-// Helpers
-// ------------
-
-function setDriverConfigs(): void
-{
-    Config::set('iran-payment.gateways.sadad.callback_url', 'http://callback.test');
-    Config::set('iran-payment.gateways.sadad.merchant_id', '1234');
-    Config::set('iran-payment.gateways.sadad.terminal_id', '123456');
-    Config::set('iran-payment.gateways.sadad.terminal_key', 'K34VFiiu0qar9xWICc9PPHYucWDzi02l'); // 2b7e151628aed2a6abf7158809cf4f3c762e7160f38b4da5
-}
-
-function driver(): SadadDriver
-{
-    return Payment::gateway('sadad');
-}
-
-function successfulCreationResponse(): array
-{
-    return [
-        'ResCode' => 0,
-        'Token' => 'kjslflnvda13464sdv13a',
-        'Description' => '',
-    ];
-}
-
-function failedCreationResponse(): array
-{
-    return [
-        'ResCode' => 61,
-    ];
-}
-
-function successfulVerificationResponse(): array
-{
-    return [
-        'ResCode' => 0,
-        'Amount' => 1_000,
-        'Description' => '',
-        'RetrivalRefNo' => '142514251425',
-        'SystemTraceNo' => '4567',
-        'OrderId' => '123456789012345',
-        'TransactionDate' => '2025-12-01',
-        'CardHolderFullName' => '',
-    ];
-}
-
-function failedVerificationResponse(): array
-{
-    return [
-        'ResCode' => -1,
-    ];
-}
-
-function driverFromSuccessfulCallback(): SadadDriver
-{
-    $callback = callbackFactory()->successful()->all();
-
-    return driver()->fromCallback($callback);
-}
-
-function verifiedPayment(): SadadDriver
-{
-    return driverFromSuccessfulCallback()->verify(gatewayPayload());
-}
-
-function callbackFactory(): object
-{
-    return new class
-    {
-        public function successful(): Collection
-        {
-            return collect([
-                'ResCode' => 0,
-                'OrderId' => 123456789012345,
-                'SwitchResCod' => 1,
-                'Token' => 'kjslflnvda13464sdv13a',
-                'HashedCardNo' => 'ashdlf46463',
-                'PrimaryAccNo' => '123456******1234',
-                'CardHolderFullName' => '',
-            ]);
-        }
-
-        public function failed(): Collection
-        {
-            return collect([
-                'ResCode' => -1,
-                'OrderId' => 123456789012345,
-                'SwitchResCod' => 1,
-                'Token' => 'kjslflnvda13464sdv13a',
-            ]);
-        }
-    };
-}
-
-function gatewayPayload(): array
-{
-    return [
-        'orderId' => '123456789012345',
-        'token' => 'kjslflnvda13464sdv13a',
-        'amount' => 1_000,
-    ];
-}

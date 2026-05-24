@@ -2,38 +2,35 @@
 
 declare(strict_types=1);
 
-namespace AliYavari\IranPayment\Tests\Feature\Drivers\BehpardakhtDriverTest; // To avoid helper functions conflict.
-
 use AliYavari\IranPayment\Drivers\BehpardakhtDriver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
-use AliYavari\IranPayment\Facades\Payment;
 use AliYavari\IranPayment\Facades\Soap;
+use AliYavari\IranPayment\Tests\Helpers\BehpardakhtHelper as Helper;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\URL;
 
 beforeEach(function (): void {
-    setDriverConfigs();
+    Helper::setDriverConfigs();
 });
 
 it('generates and returns transaction ID on payment creation', function (): void {
-    fakeSoap(successfulCreationResponse());
+    Helper::fakeSoap(Helper::successfulCreationResponse());
     mockUniqueNumberGenerator('123456789012345');
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     expect($payment)
         ->getTransactionId()->toBe('123456789012345');
 });
 
 it('calls payment creation API with minimum passed data and config callback URL', function (): void {
-    fakeSoap(successfulCreationResponse());
+    Helper::fakeSoap(Helper::successfulCreationResponse());
     setTestNowIran('2025-12-10 18:30:10');
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     Soap::assertWsdl('https://bpm.shaparak.ir/pgwchannel/services/pgw?wsdl');
     Soap::assertMethodCalled('bpPayRequest');
@@ -53,9 +50,9 @@ it('calls payment creation API with minimum passed data and config callback URL'
 });
 
 it('calls payment creation API with full passed data', function (): void {
-    fakeSoap(successfulCreationResponse());
+    Helper::fakeSoap(Helper::successfulCreationResponse());
 
-    driver()->create(1_000, 'Description', '989123456789');
+    Helper::driver()->create(1_000, 'Description', '989123456789');
 
     // Only what differs from the previous test
     expect(Soap::getArguments(0))
@@ -65,9 +62,9 @@ it('calls payment creation API with full passed data', function (): void {
 });
 
 it('converts phone number to gateway format if needed', function (string|int $phone): void {
-    fakeSoap(successfulCreationResponse());
+    Helper::fakeSoap(Helper::successfulCreationResponse());
 
-    driver()->create(1_000, phone: $phone);
+    Helper::driver()->create(1_000, phone: $phone);
 
     expect(Soap::getArguments(0))
         ->mobileNo->toBe('989123456789');
@@ -81,9 +78,9 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 ]);
 
 it('returns successful response on successful payment creation', function (): void {
-    fakeSoap($response = successfulCreationResponse());
+    Helper::fakeSoap($response = Helper::successfulCreationResponse());
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -92,10 +89,9 @@ it('returns successful response on successful payment creation', function (): vo
 });
 
 it('returns failed response on failed payment creation', function (): void {
-    // Sample failed API response
-    fakeSoap($response = '11');
+    Helper::fakeSoap($response = Helper::failedResponse());
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -104,9 +100,9 @@ it('returns failed response on failed payment creation', function (): void {
 });
 
 it('returns gateway payload needed to verify payment on successful payment creation', function (): void {
-    fakeSoap(successfulCreationResponse());
+    Helper::fakeSoap(Helper::successfulCreationResponse());
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     expect($payment)
         ->getGatewayPayload()->toBe([
@@ -117,11 +113,11 @@ it('returns gateway payload needed to verify payment on successful payment creat
 });
 
 it('returns gateway redirect data on successful payment creation with full passed data', function (): void {
-    fakeSoap(successfulCreationResponse());
+    Helper::fakeSoap(Helper::successfulCreationResponse());
 
     URL::useOrigin('http://myapp.com');
 
-    $payment = driver()->create(1_000, 'Description', '9123456789');
+    $payment = Helper::driver()->create(1_000, 'Description', '9123456789');
 
     expect($payment->getRedirectData())
         ->toBeInstanceOf(PaymentRedirectDto::class)
@@ -139,11 +135,11 @@ it('returns gateway redirect data on successful payment creation with full passe
 });
 
 it('returns gateway redirect data on successful payment creation with minimum passed data', function (): void {
-    fakeSoap(successfulCreationResponse());
+    Helper::fakeSoap(Helper::successfulCreationResponse());
 
     URL::useOrigin('http://myapp.com');
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     expect($payment->getRedirectData())
         ->toBeInstanceOf(PaymentRedirectDto::class)
@@ -159,11 +155,11 @@ it('returns gateway redirect data on successful payment creation with minimum pa
 });
 
 it('communicates with sandbox environment for payment creation when configured', function (): void {
-    fakeSoap(successfulCreationResponse());
+    Helper::fakeSoap(Helper::successfulCreationResponse());
 
     Config::set('iran-payment.use_sandbox', true);
 
-    $payment = driver()->create(1_000);
+    $payment = Helper::driver()->create(1_000);
 
     Soap::assertWsdl('https://pgw.dev.bpmellat.ir/pgwchannel/services/pgw?wsdl');
 
@@ -172,9 +168,7 @@ it('communicates with sandbox environment for payment creation when configured',
 });
 
 it('creates payment instance from callback data', function (): void {
-    $callbackPayload = callbackFactory()->successful()->all();
-
-    $payment = driver()->fromCallback($callbackPayload);
+    $payment = Helper::driver()->fromCallback(Helper::successfulCallback());
 
     expect($payment)
         ->toBeInstanceOf(BehpardakhtDriver::class)
@@ -183,9 +177,9 @@ it('creates payment instance from callback data', function (): void {
 
 it('throws exception when callback lacks required keys', function (string $key): void {
     // Failed callback has minimum required keys; only ResCode value differs.
-    $callbackPayload = callbackFactory()->failed()->except([$key])->all();
+    $callbackPayload = Arr::except(Helper::failedCallback(), $key);
 
-    expect(fn (): BehpardakhtDriver => driver()->fromCallback($callbackPayload))
+    expect(fn (): BehpardakhtDriver => Helper::driver()->fromCallback($callbackPayload))
         ->toThrow(
             MissingCallbackDataException::class,
             sprintf('To create behpardakht gateway instance from callback, "RefId, ResCode, SaleOrderId" are required. "%s" is missing.', $key)
@@ -197,11 +191,9 @@ it('throws exception when callback lacks required keys', function (string $key):
 ]);
 
 it('returns card number and reference ID from successful callback', function (): void {
-    fakeSoap(successfulFollowUpResponse());
+    Helper::fakeSoap(Helper::successfulVerificationResponse());
 
-    $callbackPayload = callbackFactory()->successful()->all();
-
-    $payment = driver()->fromCallback($callbackPayload)->verify(gatewayPayload());
+    $payment = Helper::driver()->fromCallback(Helper::successfulCallback())->verify(Helper::gatewayPayload());
 
     expect($payment)
         ->getRefNumber()->toBe('227926981246') // From fake callback
@@ -209,11 +201,11 @@ it('returns card number and reference ID from successful callback', function ():
 });
 
 it('returns empty string as card number and reference ID when not provided in the callback', function (): void {
-    fakeSoap(successfulFollowUpResponse());
+    Helper::fakeSoap(Helper::successfulVerificationResponse());
 
-    $callbackPayload = callbackFactory()->successful()->except(['SaleReferenceId', 'CardHolderInfo'])->all();
+    $callbackPayload = Arr::except(Helper::successfulCallback(), ['SaleReferenceId', 'CardHolderInfo']);
 
-    $payment = driver()->fromCallback($callbackPayload)->verify(gatewayPayload());
+    $payment = Helper::driver()->fromCallback($callbackPayload)->verify(Helper::gatewayPayload());
 
     expect($payment)
         ->getRefNumber()->toBe('')
@@ -221,14 +213,12 @@ it('returns empty string as card number and reference ID when not provided in th
 });
 
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
-    fakeSoap();
+    Helper::fakeSoap();
 
-    $callbackPayload = callbackFactory()->successful()->all();
-
-    $payload = gatewayPayload();
+    $payload = Helper::gatewayPayload();
     Arr::set($payload, $payloadKey, '123'); // Change payload value for the given key so it no longer matches
 
-    $payment = driver()->fromCallback($callbackPayload);
+    $payment = Helper::driver()->fromCallback(Helper::successfulCallback());
 
     expect(fn (): BehpardakhtDriver => $payment->verify($payload))
         ->toThrow(
@@ -244,13 +234,13 @@ it('throws exception when stored payload and successful callback data do not mat
 ]);
 
 it('does not verify payment when callback status is not successful', function (): void {
-    fakeSoap();
+    Helper::fakeSoap();
 
-    $callbackPayload = callbackFactory()->failed()->all();
+    $callbackPayload = Helper::failedCallback();
 
-    $payment = driver()
+    $payment = Helper::driver()
         ->fromCallback($callbackPayload)
-        ->verify(gatewayPayload());
+        ->verify(Helper::gatewayPayload());
 
     Soap::assertNothingSent();
 
@@ -261,9 +251,9 @@ it('does not verify payment when callback status is not successful', function ()
 });
 
 it('verifies payment when callback is successful and matches stored payload', function (): void {
-    fakeSoap(successfulFollowUpResponse());
+    Helper::fakeSoap(Helper::successfulVerificationResponse());
 
-    driverFromSuccessfulCallback()->verify(gatewayPayload());
+    Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     Soap::assertWsdl('https://bpm.shaparak.ir/pgwchannel/services/pgw?wsdl');
     Soap::assertMethodCalled('bpVerifyRequest');
@@ -278,9 +268,9 @@ it('verifies payment when callback is successful and matches stored payload', fu
 });
 
 it('returns successful response on successful payment verification', function (): void {
-    fakeSoap($response = successfulFollowUpResponse());
+    Helper::fakeSoap($response = Helper::successfulVerificationResponse());
 
-    $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
+    $payment = Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -289,10 +279,9 @@ it('returns successful response on successful payment verification', function ()
 });
 
 it('returns failed response on failed payment verification', function (): void {
-    // Sample failed API response
-    fakeSoap($response = '11');
+    Helper::fakeSoap($response = Helper::failedResponse());
 
-    $payment = driverFromSuccessfulCallback()->verify(gatewayPayload());
+    $payment = Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -301,19 +290,19 @@ it('returns failed response on failed payment verification', function (): void {
 });
 
 it('communicates with sandbox environment for payment verification when configured', function (): void {
-    fakeSoap(successfulFollowUpResponse());
+    Helper::fakeSoap(Helper::successfulVerificationResponse());
 
     Config::set('iran-payment.use_sandbox', true);
 
-    driverFromSuccessfulCallback()->verify(gatewayPayload());
+    Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     Soap::assertWsdl('https://pgw.dev.bpmellat.ir/pgwchannel/services/pgw?wsdl');
 });
 
 it('reverses the payment', function (): void {
-    fakeSoap(successfulFollowUpResponse());
+    Helper::fakeSoap(Helper::successfulReversalResponse());
 
-    verifiedPayment()->reverse();
+    Helper::verifiedPayment()->reverse();
 
     Soap::assertWsdl('https://bpm.shaparak.ir/pgwchannel/services/pgw?wsdl');
     Soap::assertMethodCalled('bpReversalRequest');
@@ -328,9 +317,9 @@ it('reverses the payment', function (): void {
 });
 
 it('returns successful response on successful payment reversal', function (): void {
-    fakeSoap($response = successfulFollowUpResponse());
+    Helper::fakeSoap($response = Helper::successfulReversalResponse());
 
-    $payment = verifiedPayment()->reverse();
+    $payment = Helper::verifiedPayment()->reverse();
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -339,10 +328,9 @@ it('returns successful response on successful payment reversal', function (): vo
 });
 
 it('returns failed response on failed payment reversal', function (): void {
-    // Sample failed API response
-    fakeSoap($response = '11');
+    Helper::fakeSoap($response = Helper::failedResponse());
 
-    $payment = verifiedPayment()->reverse();
+    $payment = Helper::verifiedPayment()->reverse();
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -351,17 +339,17 @@ it('returns failed response on failed payment reversal', function (): void {
 });
 
 it('communicates with sandbox environment for payment reversal when configured', function (): void {
-    fakeSoap(successfulFollowUpResponse());
+    Helper::fakeSoap(Helper::successfulReversalResponse());
 
     Config::set('iran-payment.use_sandbox', true);
 
-    verifiedPayment()->reverse();
+    Helper::verifiedPayment()->reverse();
 
     Soap::assertWsdl('https://pgw.dev.bpmellat.ir/pgwchannel/services/pgw?wsdl');
 });
 
 it('creates payment instance with no callback data', function (): void {
-    $payment = driver()->noCallback(transactionId: '123456789');
+    $payment = Helper::driver()->noCallback(transactionId: '123456789');
 
     expect($payment)
         ->toBeInstanceOf(BehpardakhtDriver::class)
@@ -369,11 +357,11 @@ it('creates payment instance with no callback data', function (): void {
 });
 
 it('returns failed verification with no callback data', function (): void {
-    fakeSoap();
+    Helper::fakeSoap();
 
-    $payment = driver()->noCallback('123');
+    $payment = Helper::driver()->noCallback('123');
 
-    $payment->verify(gatewayPayload());
+    $payment->verify(Helper::gatewayPayload());
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -384,9 +372,9 @@ it('returns failed verification with no callback data', function (): void {
 });
 
 it('returns successful reversal with no callback data', function (): void {
-    fakeSoap();
+    Helper::fakeSoap();
 
-    $payment = driver()->noCallback('123')->verify(gatewayPayload());
+    $payment = Helper::driver()->noCallback('123')->verify(Helper::gatewayPayload());
 
     $payment->reverse();
 
@@ -397,84 +385,3 @@ it('returns successful reversal with no callback data', function (): void {
 
     Soap::assertNothingSent();
 });
-
-// ------------
-// Helpers
-// ------------
-
-function setDriverConfigs(): void
-{
-    Config::set('iran-payment.gateways.behpardakht.callback_url', 'http://callback.test');
-    Config::set('iran-payment.gateways.behpardakht.terminal_id', '1234');
-    Config::set('iran-payment.gateways.behpardakht.username', 'username');
-    Config::set('iran-payment.gateways.behpardakht.password', 'password');
-}
-
-function fakeSoap(string $response = ''): void
-{
-    Soap::fake($response);
-}
-
-function driver(): BehpardakhtDriver
-{
-    return Payment::gateway('behpardakht');
-}
-
-function successfulCreationResponse(): string
-{
-    return '0,AF82041a2Bf6989c7fF9';
-}
-
-function successfulFollowUpResponse(): string
-{
-    return '0';
-}
-
-function driverFromSuccessfulCallback(): BehpardakhtDriver
-{
-    $callback = callbackFactory()->successful()->all();
-
-    return driver()->fromCallback($callback);
-}
-
-function verifiedPayment(): BehpardakhtDriver
-{
-    return driverFromSuccessfulCallback()->verify(gatewayPayload());
-}
-
-function callbackFactory(): object
-{
-    return new class
-    {
-        public function successful(): Collection
-        {
-            return collect([
-                'RefId' => 'AF82041a2Bf6989c7fF9',
-                'ResCode' => 0,
-                'SaleOrderId' => 123456789012345,
-                'SaleReferenceId' => 227926981246,
-                'CardHolderInfo' => '1234-*-*-1234',
-                'CardHolderPan' => '1234ABsab',
-                'FinalAmount' => '1000',
-            ]);
-        }
-
-        public function failed(): Collection
-        {
-            return collect([
-                'RefId' => 'AF82041a2Bf6989c7fF9',
-                'ResCode' => 11,
-                'SaleOrderId' => 123456789012345,
-            ]);
-        }
-    };
-}
-
-function gatewayPayload(): array
-{
-    return [
-        'orderId' => '123456789012345',
-        'amount' => 1_000,
-        'refId' => 'AF82041a2Bf6989c7fF9',
-    ];
-}
