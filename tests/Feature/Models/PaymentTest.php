@@ -45,9 +45,8 @@ it('returns only successful payment relationship', function (): void {
     $failedPayment = createPayment(PaymentStatus::Failed);
     $pendingPayment = createPayment(PaymentStatus::Pending);
 
-    expect(Payment::query()->successful()->get())
-        ->toHaveCount(1)
-        ->first()->is($successfulPayment)->toBeTrue();
+    expect(Payment::query()->successful()->sole())
+        ->is($successfulPayment)->toBeTrue();
 });
 
 it('returns only failed payment relationship', function (): void {
@@ -55,9 +54,8 @@ it('returns only failed payment relationship', function (): void {
     $failedPayment = createPayment(PaymentStatus::Failed);
     $pendingPayment = createPayment(PaymentStatus::Pending);
 
-    expect(Payment::query()->failed()->get())
-        ->toHaveCount(1)
-        ->first()->is($failedPayment)->toBeTrue();
+    expect(Payment::query()->failed()->sole())
+        ->is($failedPayment)->toBeTrue();
 });
 
 it('returns only pending payment relationship', function (): void {
@@ -65,29 +63,22 @@ it('returns only pending payment relationship', function (): void {
     $failedPayment = createPayment(PaymentStatus::Failed);
     $pendingPayment = createPayment(PaymentStatus::Pending);
 
-    expect(Payment::query()->pending()->get())
-        ->toHaveCount(1)
-        ->first()->is($pendingPayment)->toBeTrue();
+    expect(Payment::query()->pending()->sole())
+        ->is($pendingPayment)->toBeTrue();
 });
 
 it('creates a gateway payment instance from stored payment', function (): void {
     $payment = createPayment(fake()->randomElement(PaymentStatus::cases()));
 
-    $mockedGateway = Mockery::mock(PaymentInterface::class);
-    $mockedGateway->shouldReceive('noCallback')
+    $mockGateway = Mockery::mock(PaymentInterface::class);
+    $mockGateway->shouldReceive('noCallback')
         ->with($payment->transaction_id)
         ->once();
 
-    PaymentFacade::partialMock()
-        ->shouldReceive('gateway')
-        ->with($payment->gateway)
-        ->once()
-        ->andReturn($mockedGateway);
+    PaymentFacade::extend($payment->gateway, fn () => $mockGateway);
 
-    $gateway = $payment->toGatewayPayment();
-
-    expect($gateway)
-        ->toBe($mockedGateway);
+    expect($payment->toGatewayPayment())
+        ->toBe($mockGateway);
 });
 
 // ------------

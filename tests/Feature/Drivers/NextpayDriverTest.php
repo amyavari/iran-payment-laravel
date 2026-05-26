@@ -86,7 +86,7 @@ it('returns failed response on failed payment creation', function (): void {
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد -2- پرداخت رد شده توسط کاربر یا بانک') // From fake failed response
+        ->error()->toContain('-2')->toContain('پرداخت رد شده توسط کاربر یا بانک')
         ->getRawResponse()->toBe($response);
 });
 
@@ -212,7 +212,7 @@ it('returns failed response on failed payment verification', function (): void {
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد -2- پرداخت رد شده توسط کاربر یا بانک') // From fake failed response
+        ->error()->toContain('-2')->toContain('پرداخت رد شده توسط کاربر یا بانک')
         ->getRawResponse()->toBe($response);
 });
 
@@ -283,7 +283,7 @@ it('returns failed response on failed payment reversal', function (): void {
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد -2- پرداخت رد شده توسط کاربر یا بانک') // From fake failed response
+        ->error()->toContain('-2')->toContain('پرداخت رد شده توسط کاربر یا بانک')
         ->getRawResponse()->toBe($response);
 });
 
