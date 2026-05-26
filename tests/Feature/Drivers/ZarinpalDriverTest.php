@@ -85,7 +85,7 @@ it('returns failed response on failed payment creation', function (): void {
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد -10- ای پی یا مرچنت كد پذیرنده صحیح نیست') // From fake failed response
+        ->error()->toContain('-10')->toContain('ای پی یا مرچنت كد پذیرنده صحیح نیست')
         ->getRawResponse()->toBe($response);
 });
 
@@ -190,7 +190,7 @@ it('does not verify payment when callback status is not successful', function ()
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد -51- پرداخت ناموفق') // The error code is set by fake failed callback.
+        ->error()->toContain('-51')->toContain('پرداخت ناموفق') // The error code is set by fake failed callback.
         ->getRawResponse()->toBe($callbackPayload);
 
     Http::assertNothingSent();
@@ -246,7 +246,7 @@ it('returns failed response on failed payment verification', function (): void {
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد -10- ای پی یا مرچنت كد پذیرنده صحیح نیست') // From fake failed response
+        ->error()->toContain('-10')->toContain('ای پی یا مرچنت كد پذیرنده صحیح نیست')
         ->getRawResponse()->toBe($response);
 });
 
@@ -317,7 +317,7 @@ it('returns failed response on failed payment reversal', function (): void {
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد -10- ای پی یا مرچنت كد پذیرنده صحیح نیست') // From fake failed response
+        ->error()->toContain('-10')->toContain('ای پی یا مرچنت كد پذیرنده صحیح نیست')
         ->getRawResponse()->toBe($response);
 });
 

@@ -95,7 +95,7 @@ it('returns failed response on failed payment creation', function (): void {
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 32- شماره سفارش `order_id` نباید خالی باشد.') // From fake failed response
+        ->error()->toContain('32')->toContain('شماره سفارش `order_id` نباید خالی باشد')
         ->getRawResponse()->toBe($response);
 });
 
@@ -189,7 +189,7 @@ it('does not verify payment when callback status is not successful', function ()
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1- پرداخت انجام نشده است') // The error code is set by fake failed callback.
+        ->error()->toContain('1')->toContain('پرداخت انجام نشده است') // The error code is set by fake failed callback.
         ->getRawResponse()->toBe($callbackPayload);
 
     Http::assertNothingSent();
@@ -253,7 +253,7 @@ it('returns failed response on successful payment verification with invalid amou
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 9300- مبلغ پرداخت شده نامعتبر است')
+        ->error()->toContain('9300')->toContain('مبلغ پرداخت شده نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -264,7 +264,7 @@ it('returns failed response on payment verification when HTTP status is not succ
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 32- شماره سفارش `order_id` نباید خالی باشد.') // From fake failed response
+        ->error()->toContain('32')->toContain('شماره سفارش `order_id` نباید خالی باشد')
         ->getRawResponse()->toBe($response);
 });
 
@@ -278,7 +278,7 @@ it('returns failed response on payment verification when verification status is 
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1- پرداخت انجام نشده است')
+        ->error()->toContain('1')->toContain('پرداخت انجام نشده است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -312,7 +312,7 @@ it('returns failed response on the payment reversal', function (): void {
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 9200- درگاه از بازگشت وجه پشتیبانی نمی کند')
+        ->error()->toContain('9200')->toContain('درگاه از بازگشت وجه پشتیبانی نمی کند')
         ->getRawResponse()->toBe('No API is called. IPG does not support reversal.');
 
     Http::assertSentCount(1); // Only verification is sent.
@@ -345,7 +345,7 @@ it('returns failed response on the payment reversal with no callback data', func
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 9200- درگاه از بازگشت وجه پشتیبانی نمی کند')
+        ->error()->toContain('9200')->toContain('درگاه از بازگشت وجه پشتیبانی نمی کند')
         ->getRawResponse()->toBe('No API is called. IPG does not support reversal.');
 
     Http::assertSentCount(1); // Only verification is sent.

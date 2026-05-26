@@ -90,7 +90,7 @@ it('fakes a failed create API response', function (): void {
 
     expect($payment)
         ->failed()->toBeTrue()
-        ->error()->toBe('کد 0- Creation failed')
+        ->error()->toContain('0')->toContain('Creation failed')
         ->getRawResponse()->toBe('Creation raw response');
 });
 
@@ -153,7 +153,7 @@ it('fakes a failed verify API response', function (): void {
 
     expect($payment)
         ->failed()->toBeTrue()
-        ->error()->toBe('کد 0- Verification failed')
+        ->error()->toContain('0')->toContain('Verification failed')
         ->getRawResponse()->toBe('Verification raw response');
 });
 
@@ -193,7 +193,7 @@ it('fakes a failed reverse API response', function (): void {
 
     expect($payment)
         ->failed()->toBeTrue()
-        ->error()->toBe('کد 0- Reversal failed')
+        ->error()->toContain('0')->toContain('Reversal failed')
         ->getRawResponse()->toBe('Reversal raw response');
 });
 

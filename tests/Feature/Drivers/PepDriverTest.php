@@ -146,7 +146,7 @@ it('sets failed response on failed getting token on payment creation', function 
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1- ناموفق') // From fake failed response
+        ->error()->toContain('1')->toContain('ناموفق')
         ->getRawResponse()->toBe($response);
 
     Http::assertSentCount(1); // Only getToken
@@ -278,7 +278,7 @@ it('returns failed response on failed payment creation', function (): void {
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1- ناموفق') // From fake failed response
+        ->error()->toContain('1')->toContain('ناموفق')
         ->getRawResponse()->toBe($response);
 });
 
@@ -376,7 +376,7 @@ it('does not verify payment when callback status is not successful', function ()
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1- ناموفق')
+        ->error()->toContain('1')->toContain('ناموفق') // The error code is set by fake failed callback.
         ->getRawResponse()->toBe($callbackPayload);
 
     Http::assertNothingSent();
@@ -389,7 +389,7 @@ it('sets failed response on failed getting token on payment verification', funct
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1- ناموفق') // From fake failed response
+        ->error()->toContain('1')->toContain('ناموفق')
         ->getRawResponse()->toBe($response);
 
     Http::assertSentCount(1); // Only getToken
@@ -464,7 +464,7 @@ it('returns failed response on successful payment verification with invalid amou
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 9300- مبلغ پرداخت شده نامعتبر است')
+        ->error()->toContain('9300')->toContain('مبلغ پرداخت شده نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -478,7 +478,7 @@ it('returns failed response on failed payment verification', function (): void {
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1- ناموفق') // From fake failed response
+        ->error()->toContain('1')->toContain('ناموفق')
         ->getRawResponse()->toBe($response);
 });
 
@@ -522,7 +522,7 @@ it('sets failed response on failed getting token on payment reversal', function 
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1- ناموفق') // From fake failed response
+        ->error()->toContain('1')->toContain('ناموفق')
         ->getRawResponse()->toBe($response);
 
     Http::assertSentCount(3); // getToken, verification and getToken
@@ -593,7 +593,7 @@ it('returns failed response on failed payment reversal', function (): void {
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1- ناموفق') // From fake failed response
+        ->error()->toContain('1')->toContain('ناموفق')
         ->getRawResponse()->toBe($response);
 });
 

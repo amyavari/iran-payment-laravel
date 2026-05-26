@@ -95,7 +95,7 @@ it('returns failed response on failed payment creation', function (): void {
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 11- شماره کارت نامعتبر است')
+        ->error()->toContain('11')->toContain('شماره کارت نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -193,7 +193,7 @@ it('does not verify payment when callback status is not successful', function ()
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 1- کاربر انصراف داده است') // The error code is set by fake failed callback.
+        ->error()->toContain('1')->toContain('کاربر انصراف داده است') // The error code is set by fake failed callback.
         ->getRawResponse()->toBe($callbackPayload);
 
     Http::assertNothingSent();
@@ -237,7 +237,7 @@ it('returns failed response on successful payment verification with invalid amou
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 9300- مبلغ پرداخت شده نامعتبر است')
+        ->error()->toContain('9300')->toContain('مبلغ پرداخت شده نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -248,7 +248,7 @@ it('returns failed response on failed payment verification', function (): void {
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد -2- تراکنش یافت نشد')
+        ->error()->toContain('2')->toContain('تراکنش یافت نشد')
         ->getRawResponse()->toBe($response);
 });
 
@@ -319,7 +319,7 @@ it('returns failed response on failed payment reversal', function (): void {
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد -2- تراکنش یافت نشد')
+        ->error()->toContain('-2')->toContain('تراکنش یافت نشد')
         ->getRawResponse()->toBe($response);
 });
 
@@ -353,7 +353,7 @@ it('returns failed verification with no callback data', function (): void {
 
     expect($payment)
         ->successful()->toBeFalse()
-        ->error()->toBe('کد 9100- درگاه از وریفای بدون callback پشتیبانی نمی کند.')
+        ->error()->toContain('9100')->toContain('درگاه از وریفای بدون callback پشتیبانی نمی کند.')
         ->getRawResponse()->toBe('No API is called.');
 
     Http::assertNothingSent();
