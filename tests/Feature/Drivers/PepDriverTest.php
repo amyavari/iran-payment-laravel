@@ -11,6 +11,7 @@ use AliYavari\IranPayment\Tests\Helpers\PepHelper as Helper;
 use Illuminate\Contracts\Cache\Lock as CacheLock;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Concurrency;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\URL;
@@ -112,8 +113,18 @@ it('puts token into the cache on successful getting token for the gateway token 
         ->toBeNull();
 });
 
-// TODO: Refactor to use a feature test instead of mocking.
-it('uses atomic lock to prevent concurrent API calls to get token', function (): void {
+it('uses atomic lock to prevent concurrent API calls', function (): void {
+    fakeHttp(Helper::successfulGetTokenResponse());
+
+    Concurrency::driver('sync')->run([
+        fn (): ?string => Helper::callResolveToken(),
+        fn (): ?string => Helper::callResolveToken(),
+    ]);
+
+    Http::assertSentCount(1);
+});
+
+it('holds lock for 5 seconds and wait for it for 2 seconds', function (): void {
     fakeHttp(Helper::successfulGetTokenResponse());
 
     $cacheLock = Mockery::mock(CacheLock::class);
@@ -131,12 +142,7 @@ it('uses atomic lock to prevent concurrent API calls to get token', function ():
         ->once()
         ->andReturnUsing(fn ($key, $ttl, $callable) => $callable());
 
-    $token = Helper::callResolveToken();
-
-    expect($token)
-        ->toBe('token');
-
-    Http::assertSentCount(1);
+    Helper::callResolveToken();
 });
 
 it('sets failed response on failed getting token on payment creation', function (): void {

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Rector\CodingStyle\Rector\ArrowFunction\ArrowFunctionDelegatingCallToFirstClassCallableRector;
 use Rector\CodingStyle\Rector\Encapsed\EncapsedStringsToSprintfRector;
 use Rector\CodingStyle\Rector\Use_\SeparateMultiUseImportsRector;
 use Rector\Config\RectorConfig;
@@ -16,6 +17,7 @@ return RectorConfig::configure()
         SeparateMultiUseImportsRector::class,
         EncapsedStringsToSprintfRector::class,
         PrivatizeFinalClassMethodRector::class => [__DIR__.'/src/PaymentManager.php'],
+        ArrowFunctionDelegatingCallToFirstClassCallableRector::class => [__DIR__.'/tests/Feature/Drivers/PepDriverTest.php'],
     ])
     ->withPreparedSets(
         deadCode: true,
