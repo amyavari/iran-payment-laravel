@@ -10,40 +10,40 @@ use LogicException;
 /**
  * @internal
  *
- * Provides default status responses when gateway APIs
- * cannot be called because callback payload is not provided.
+ * Provides default status responses when gateway APIs cannot
+ * be called because callback payload is not provided.
  */
-trait NoCallbackDefaults
+trait FailsWithoutCallback
 {
     /**
      * Indicates callback data is not provided
      */
-    private bool $noCallback = false;
+    private bool $withoutCallback = false;
 
     /**
      * Enable no-callback mode
      */
-    private function enableNoCallback(): void
+    private function enableWithoutCallback(): void
     {
-        $this->noCallback = true;
+        $this->withoutCallback = true;
     }
 
     /**
      * Check if no-callback mode is enabled
      */
-    private function isNoCallback(): bool
+    private function isWithoutCallback(): bool
     {
-        return $this->noCallback;
+        return $this->withoutCallback;
     }
 
     /**
      * Get status code for no-callback mode
      */
-    private function noCallbackStatusCode(string $method): int
+    private function withoutCallbackStatusCode(string $method): int
     {
         $statusCode = match ($method) {
-            'verify' => InternalErrorCode::VerifyNoCallback,
-            'reverse' => InternalErrorCode::ReverseNoCallback,
+            'verify' => InternalErrorCode::withoutCallbackVerify,
+            'reverse' => InternalErrorCode::withoutCallbackReverse,
 
             default => throw new LogicException('Wrong method name.'),
         };
@@ -54,7 +54,7 @@ trait NoCallbackDefaults
     /**
      * Raw response for no-callback mode
      */
-    private function noCallbackRawResponse(): string
+    private function withoutCallbackRawResponse(): string
     {
         return 'No API is called.';
     }
@@ -62,8 +62,8 @@ trait NoCallbackDefaults
     /**
      * Determine if no-callback result should considered as successful
      */
-    private function isNoCallbackSuccessful(int $statusCode): bool
+    private function isWithoutCallbackSuccessful(int $statusCode): bool
     {
-        return $statusCode === InternalErrorCode::ReverseNoCallback->value;
+        return $statusCode === InternalErrorCode::withoutCallbackReverse->value;
     }
 }

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Drivers;
 
 use AliYavari\IranPayment\Abstracts\Driver;
-use AliYavari\IranPayment\Concerns\NoCallbackDefaults;
+use AliYavari\IranPayment\Concerns\FailsWithoutCallback;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Enums\InternalErrorCode;
 use AliYavari\IranPayment\Exceptions\SandboxNotSupportedException;
@@ -23,7 +23,7 @@ use Pest\Support\Arr;
  */
 final class PaypingDriver extends Driver
 {
-    use NoCallbackDefaults;
+    use FailsWithoutCallback;
 
     /**
      * Base URL of the payment gateway.
@@ -130,7 +130,7 @@ final class PaypingDriver extends Driver
      */
     protected function verifyPayment(array $storedPayload): void
     {
-        if ($this->isNoCallback()) {
+        if ($this->isWithoutCallback()) {
             $this->setPaymentStatusForNoCallback('verify');
 
             return;
@@ -162,7 +162,7 @@ final class PaypingDriver extends Driver
      */
     protected function reversePayment(): void
     {
-        if ($this->isNoCallback()) {
+        if ($this->isWithoutCallback()) {
             $this->setPaymentStatusForNoCallback('reverse');
 
             return;
@@ -191,7 +191,7 @@ final class PaypingDriver extends Driver
     {
         $this->transactionId = $transactionId;
 
-        $this->enableNoCallback();
+        $this->enableWithoutCallback();
     }
 
     /**
@@ -378,8 +378,8 @@ final class PaypingDriver extends Driver
      */
     private function setPaymentStatusForNoCallback(string $method): void
     {
-        $this->apiStatusCode = $this->noCallbackStatusCode($method);
-        $this->apiIsSuccessful = $this->isNoCallbackSuccessful($this->apiStatusCode);
-        $this->rawResponse = $this->noCallbackRawResponse();
+        $this->apiStatusCode = $this->withoutCallbackStatusCode($method);
+        $this->apiIsSuccessful = $this->isWithoutCallbackSuccessful($this->apiStatusCode);
+        $this->rawResponse = $this->withoutCallbackRawResponse();
     }
 }

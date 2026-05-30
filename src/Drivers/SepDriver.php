@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Drivers;
 
 use AliYavari\IranPayment\Abstracts\Driver;
-use AliYavari\IranPayment\Concerns\NoCallbackDefaults;
+use AliYavari\IranPayment\Concerns\FailsWithoutCallback;
 use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Enums\InternalErrorCode;
@@ -23,7 +23,7 @@ use Pest\Support\Arr;
  */
 final class SepDriver extends Driver
 {
-    use NoCallbackDefaults;
+    use FailsWithoutCallback;
 
     /**
      * URL of the payment gateway to create a new payment.
@@ -133,8 +133,8 @@ final class SepDriver extends Driver
      */
     protected function isSuccessful(): bool
     {
-        if ($this->isNoCallback()) {
-            return $this->isNoCallbackSuccessful((int) $this->apiStatusCode);
+        if ($this->isWithoutCallback()) {
+            return $this->isWithoutCallbackSuccessful((int) $this->apiStatusCode);
         }
 
         return $this->apiIsSuccessful;
@@ -153,7 +153,7 @@ final class SepDriver extends Driver
      */
     protected function verifyPayment(array $storedPayload): void
     {
-        if ($this->isNoCallback()) {
+        if ($this->isWithoutCallback()) {
             $this->setPaymentStatusForNoCallback('verify');
 
             return;
@@ -186,7 +186,7 @@ final class SepDriver extends Driver
      */
     protected function reversePayment(): void
     {
-        if ($this->isNoCallback()) {
+        if ($this->isWithoutCallback()) {
             $this->setPaymentStatusForNoCallback('reverse');
 
             return;
@@ -212,7 +212,7 @@ final class SepDriver extends Driver
     {
         $this->transactionId = $transactionId;
 
-        $this->enableNoCallback();
+        $this->enableWithoutCallback();
     }
 
     /**
@@ -424,8 +424,8 @@ final class SepDriver extends Driver
      */
     private function setPaymentStatusForNoCallback(string $method): void
     {
-        $this->apiStatusCode = (string) $this->noCallbackStatusCode($method);
+        $this->apiStatusCode = (string) $this->withoutCallbackStatusCode($method);
         $this->apiStatusMessage = InternalErrorCode::getMessage((int) $this->apiStatusCode);
-        $this->rawResponse = $this->noCallbackRawResponse();
+        $this->rawResponse = $this->withoutCallbackRawResponse();
     }
 }
