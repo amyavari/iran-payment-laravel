@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Drivers;
 
 use AliYavari\IranPayment\Abstracts\Driver;
-use AliYavari\IranPayment\Concerns\NoCallbackDefaults;
+use AliYavari\IranPayment\Concerns\FailsWithoutCallback;
 use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Enums\InternalErrorCode;
@@ -22,7 +22,7 @@ use Illuminate\Support\Stringable;
  */
 final class BehpardakhtDriver extends Driver
 {
-    use NoCallbackDefaults;
+    use FailsWithoutCallback;
 
     /**
      * WSDL URL of the payment gateway.
@@ -149,7 +149,7 @@ final class BehpardakhtDriver extends Driver
     {
         $this->transactionId = $transactionId;
 
-        $this->enableNoCallback();
+        $this->enableWithoutCallback();
     }
 
     /**
@@ -165,8 +165,8 @@ final class BehpardakhtDriver extends Driver
      */
     protected function isSuccessful(): bool
     {
-        if ($this->isNoCallback()) {
-            return $this->isNoCallbackSuccessful($this->apiStatusCode);
+        if ($this->isWithoutCallback()) {
+            return $this->isWithoutCallbackSuccessful($this->apiStatusCode);
         }
 
         return $this->apiStatusCode === 0;
@@ -185,7 +185,7 @@ final class BehpardakhtDriver extends Driver
      */
     protected function verifyPayment(array $storedPayload): void
     {
-        if ($this->isNoCallback()) {
+        if ($this->isWithoutCallback()) {
             $this->setPaymentStatusForNoCallback('verify');
 
             return;
@@ -213,7 +213,7 @@ final class BehpardakhtDriver extends Driver
      */
     protected function reversePayment(): void
     {
-        if ($this->isNoCallback()) {
+        if ($this->isWithoutCallback()) {
             $this->setPaymentStatusForNoCallback('reverse');
 
             return;
@@ -447,8 +447,8 @@ final class BehpardakhtDriver extends Driver
      */
     private function setPaymentStatusForNoCallback(string $method): void
     {
-        $this->apiStatusCode = $this->noCallbackStatusCode($method);
-        $this->rawResponse = $this->noCallbackRawResponse();
+        $this->apiStatusCode = $this->withoutCallbackStatusCode($method);
+        $this->rawResponse = $this->withoutCallbackRawResponse();
 
     }
 
