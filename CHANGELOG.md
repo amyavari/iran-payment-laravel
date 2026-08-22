@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Importing `Arr` from Pest namespace instead of Illuminate namespace in some drivers
+- Throwing `ConnectionException` correctly in the testing helper methods
+
 ## [2.0.0] - 2026-05-16
 
 ### Added
