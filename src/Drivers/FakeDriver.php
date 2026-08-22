@@ -10,8 +10,8 @@ use AliYavari\IranPayment\Dtos\DriverBehaviorDto;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\GatewayBehaviorNotDefinedException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Http;
 use SoapFault;
 
 /**
@@ -436,7 +436,7 @@ final class FakeDriver extends Driver
         match ($this->gateway) {
             'behpardakht' => throw new SoapFault('0', $message),
 
-            default => Http::failedConnection($message),
+            default => throw new ConnectionException($message),
         };
     }
 }

@@ -8,10 +8,19 @@ use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\GatewayBehaviorNotDefinedException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Facades\Payment;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Config;
 
 dataset('gateway_connections', [
     'behpardakht' => ['behpardakht', SoapFault::class],
+    'sep' => ['sep', ConnectionException::class],
+    'zarinpal' => ['zarinpal', ConnectionException::class],
+    'idpay' => ['idpay', ConnectionException::class],
+    'pep' => ['pep', ConnectionException::class],
+    'sadad' => ['sadad', ConnectionException::class],
+    'zibal' => ['zibal', ConnectionException::class],
+    'payping' => ['payping', ConnectionException::class],
+    'nextpay' => ['nextpay', ConnectionException::class],
 ]);
 
 it('returns a fake instance for the default gateway', function (): void {
@@ -94,11 +103,11 @@ it('fakes a failed create API response', function (): void {
         ->getRawResponse()->toBe('Creation raw response');
 });
 
-it('throws a connection exception on the create API', function (string $gateway, string $connectionType): void {
+it('throws a connection exception on the create API', function (string $gateway, string $exceptionType): void {
     Payment::fake($gateway)->failedConnectionCreate();
 
     expect(fn () => Payment::gateway($gateway)->create(10))
-        ->toThrow($connectionType, 'Creation connection failed');
+        ->toThrow($exceptionType, 'Creation connection failed');
 })->with('gateway_connections');
 
 it('creates payment instance with no callback data', function (): void {
@@ -157,13 +166,13 @@ it('fakes a failed verify API response', function (): void {
         ->getRawResponse()->toBe('Verification raw response');
 });
 
-it('throws a connection exception on the verify API', function (string $gateway, string $connectionType): void {
+it('throws a connection exception on the verify API', function (string $gateway, string $exceptionType): void {
     Payment::fake($gateway)->failedConnectionVerify();
 
     $payment = Payment::gateway($gateway)->fromCallback([]);
 
     expect(fn () => $payment->verify([]))
-        ->toThrow($connectionType, 'Verification connection failed');
+        ->toThrow($exceptionType, 'Verification connection failed');
 })->with('gateway_connections');
 
 it('throws an exception when the reverse behavior is not defined', function (): void {
@@ -197,13 +206,13 @@ it('fakes a failed reverse API response', function (): void {
         ->getRawResponse()->toBe('Reversal raw response');
 });
 
-it('throws a connection exception on the reverse API', function (string $gateway, string $connectionType): void {
+it('throws a connection exception on the reverse API', function (string $gateway, string $exceptionType): void {
     Payment::fake($gateway)->successfulVerify()->failedConnectionReverse();
 
     $payment = Payment::gateway($gateway)->fromCallback([])->verify([]);
 
     expect(fn () => $payment->reverse())
-        ->toThrow($connectionType, 'Reversal connection failed');
+        ->toThrow($exceptionType, 'Reversal connection failed');
 })->with('gateway_connections');
 
 // ------------
