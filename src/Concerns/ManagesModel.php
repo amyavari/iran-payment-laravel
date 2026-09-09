@@ -15,11 +15,13 @@ use Illuminate\Support\Facades\Schema;
  *
  * Provides logic for interacting with payment Eloquent models.
  *
- * Expects the consuming class to have the following properties:
- * - $payment
- * - $payable
- * - $callbackPayload
- * - $amount
+ * Expects the consuming class to declare:
+ * - private ?Payment $payment
+ * - private Model $payable
+ * - protected Collection<string,mixed> $callbackPayload
+ * - private int $amount
+ *
+ * @phpstan-require-implements \AliYavari\IranPayment\Contracts\Payment
  */
 trait ManagesModel
 {
@@ -45,7 +47,7 @@ trait ManagesModel
     /**
      * Gets the payment record from the database
      */
-    private function getStoredPayment(): void
+    private function loadStoredPayment(): void
     {
         $this->payment = Payment::query()
             ->where('transaction_id', $this->getTransactionId())

@@ -13,12 +13,12 @@ use LogicException;
 final class MissingCallbackDataException extends LogicException
 {
     /**
-     * @param  array<string>  $necessaryKeys
+     * @param  array<string>  $requiredKeys
      */
-    public static function make(string $gateway, array $necessaryKeys, string $missingKey): self
+    public static function make(string $gateway, array $requiredKeys, string $missingKey): self
     {
         return new self(
-            sprintf('To create %s gateway instance from callback, "%s" are required. "%s" is missing.', $gateway, Arr::join($necessaryKeys, ', '), $missingKey)
+            sprintf('To create %s gateway instance from callback, "%s" are required. "%s" is missing.', $gateway, Arr::join($requiredKeys, ', '), $missingKey)
         );
     }
 }

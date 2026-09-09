@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AliYavari\IranPayment\Abstracts;
 
+use AliYavari\IranPayment\Concerns\FormatsPhoneNumber;
 use AliYavari\IranPayment\Concerns\ManagesModel;
 use AliYavari\IranPayment\Contracts\Payment;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
@@ -26,7 +27,7 @@ use Illuminate\Support\Str;
  */
 abstract class Driver implements Payment
 {
-    use ManagesModel;
+    use FormatsPhoneNumber, ManagesModel;
 
     /**
      * Explicit gateway key defined by the concrete driver, if needed.
@@ -78,12 +79,14 @@ abstract class Driver implements Payment
     /**
      * The verification error message used for auto-reverse.
      */
-    private mixed $verificationErrorMessage;
+    private ?string $verificationErrorMessage = null;
 
     /**
      * The verification raw response used for auto-reverse.
+     *
+     * @var string|array<mixed>
      */
-    private mixed $verificationRawResponse;
+    private string|array $verificationRawResponse;
 
     /**
      * Determine whether a callback method has been called..
@@ -301,7 +304,7 @@ abstract class Driver implements Payment
      */
     final public function getTransactionId(): ?string
     {
-        $this->ensureCreationOrCallbackAreCalledFor(__FUNCTION__);
+        $this->ensureCreationOrCallbackIsCalledFor(__FUNCTION__);
 
         if ($this->callbackCalled) {
             return $this->getDriverTransactionId();
@@ -347,9 +350,7 @@ abstract class Driver implements Payment
 
         $this->setCalledApiMethod(__FUNCTION__);
 
-        if (is_null($gatewayPayload)) {
-            $gatewayPayload = $this->getStoredPayload();
-        }
+        $gatewayPayload ??= $this->getStoredPayload();
 
         $this->ensurePaymentIsNotVerified();
 
@@ -566,7 +567,7 @@ abstract class Driver implements Payment
     {
         $this->ensureTableExists();
 
-        $this->getStoredPayment();
+        $this->loadStoredPayment();
 
         $this->ensurePaymentExists();
 
@@ -590,7 +591,7 @@ abstract class Driver implements Payment
      *
      * @throws InvalidCallOrderException
      */
-    private function ensureCreationOrCallbackAreCalledFor(string $method): void
+    private function ensureCreationOrCallbackIsCalledFor(string $method): void
     {
         if (! $this->isCalledApiMethod('create') && ! $this->callbackCalled) {
             throw InvalidCallOrderException::make($method, ['create', 'fromCallback', 'noCallback']);
@@ -666,26 +667,26 @@ abstract class Driver implements Payment
     /**
      * Capture the current verification state.
      *
-     * @return Collection<string,mixed>
+     * @return array{successful: bool, error: ?string, raw_response: string|array<mixed>}
      */
-    private function snapshotVerificationState(): Collection
+    private function snapshotVerificationState(): array
     {
-        return collect([
+        return [
             'successful' => $this->isSuccessful(),
             'error' => $this->error(),
             'raw_response' => $this->getRawResponse(),
-        ]);
+        ];
     }
 
     /**
      * Restore a previously captured verification state.
      *
-     * @param  Collection<string,mixed>  $state
+     * @param  array{successful: bool, error: ?string, raw_response: string|array<mixed>}  $state
      */
-    private function restoreVerificationState(Collection $state): void
+    private function restoreVerificationState(array $state): void
     {
-        $this->verificationSuccessfulStatus = $state->get('successful');
-        $this->verificationErrorMessage = $state->get('error');
-        $this->verificationRawResponse = $state->get('raw_response');
+        $this->verificationSuccessfulStatus = $state['successful'];
+        $this->verificationErrorMessage = $state['error'];
+        $this->verificationRawResponse = $state['raw_response'];
     }
 }

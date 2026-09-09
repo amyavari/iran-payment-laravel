@@ -10,7 +10,6 @@ use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 
 /**
  * @internal
@@ -80,7 +79,7 @@ final class ZarinpalDriver extends Driver
         ])
             ->when($phone, fn (Collection $data) => $data->merge([
                 'metadata' => [
-                    'mobile' => $this->toDriverPhone($phone),
+                    'mobile' => $this->toLocalPhone($phone),
                 ],
             ]));
 
@@ -150,8 +149,7 @@ final class ZarinpalDriver extends Driver
      */
     protected function isSuccessful(): bool
     {
-        return $this->apiStatusCode === 100
-            || $this->apiStatusCode === 101;
+        return in_array($this->apiStatusCode, [100, 101], true);
     }
 
     /**
@@ -246,7 +244,7 @@ final class ZarinpalDriver extends Driver
      */
     protected function getDriverRedirectData(): PaymentRedirectDto
     {
-        return new PaymentRedirectDto($this->getGaymentRedirectUrl(), 'GET', payload: []);
+        return new PaymentRedirectDto($this->getPaymentRedirectUrl(), 'GET', payload: []);
     }
 
     /**
@@ -298,15 +296,15 @@ final class ZarinpalDriver extends Driver
     }
 
     /**
-     * Get the gateway redirect URL based on the cofiguration and the authority.
+     * Get the gateway redirect URL based on the configuration and the authority.
      */
-    private function getGaymentRedirectUrl(): string
+    private function getPaymentRedirectUrl(): string
     {
         return sprintf(self::PAYMENT_REDIRECT_URL, $this->getApiSubdomain(), $this->transactionId);
     }
 
     /**
-     * Get the gateway subsomain based on the configuration.
+     * Get the gateway subdomain based on the configuration.
      */
     private function getApiSubdomain(): string
     {
@@ -322,17 +320,6 @@ final class ZarinpalDriver extends Driver
         $errorCode = Arr::get($this->rawResponse, 'errors.code');
 
         $this->apiStatusCode = $successCode ?? $errorCode;
-    }
-
-    /**
-     * Convert the phone number to the format expected by the gateway.
-     */
-    private function toDriverPhone(string|int $phone): string
-    {
-        return (string) Str::of((string) $phone)
-            ->chopStart('+')
-            ->chopStart('98')
-            ->replaceStart('9', '09');
     }
 
     /**

@@ -5,16 +5,7 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment;
 
 use AliYavari\IranPayment\Contracts\Payment;
-use AliYavari\IranPayment\Drivers\BehpardakhtDriver;
 use AliYavari\IranPayment\Drivers\FakeDriver;
-use AliYavari\IranPayment\Drivers\IdpayDriver;
-use AliYavari\IranPayment\Drivers\NextpayDriver;
-use AliYavari\IranPayment\Drivers\PaypingDriver;
-use AliYavari\IranPayment\Drivers\PepDriver;
-use AliYavari\IranPayment\Drivers\SadadDriver;
-use AliYavari\IranPayment\Drivers\SepDriver;
-use AliYavari\IranPayment\Drivers\ZarinpalDriver;
-use AliYavari\IranPayment\Drivers\ZibalDriver;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Manager;
 use Override;
@@ -53,51 +44,6 @@ final class PaymentManager extends Manager
     public function gateway(string $gateway): Payment
     {
         return $this->driver($gateway);
-    }
-
-    protected function createBehpardakhtDriver(): BehpardakhtDriver
-    {
-        return $this->container->make(BehpardakhtDriver::class);
-    }
-
-    protected function createSepDriver(): SepDriver
-    {
-        return $this->container->make(SepDriver::class);
-    }
-
-    protected function createZarinpalDriver(): ZarinpalDriver
-    {
-        return $this->container->make(ZarinpalDriver::class);
-    }
-
-    protected function createIdpayDriver(): IdpayDriver
-    {
-        return $this->container->make(IdpayDriver::class);
-    }
-
-    protected function createPepDriver(): PepDriver
-    {
-        return $this->container->make(PepDriver::class);
-    }
-
-    protected function createSadadDriver(): SadadDriver
-    {
-        return $this->container->make(SadadDriver::class);
-    }
-
-    protected function createZibalDriver(): ZibalDriver
-    {
-        return $this->container->make(ZibalDriver::class);
-    }
-
-    protected function createPaypingDriver(): PaypingDriver
-    {
-        return $this->container->make(PaypingDriver::class);
-    }
-
-    protected function createNextpayDriver(): NextpayDriver
-    {
-        return $this->container->make(NextpayDriver::class);
     }
 
     private function shouldBeImmutable(string $driver): bool

@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Drivers;
 
 use AliYavari\IranPayment\Abstracts\Driver;
+use AliYavari\IranPayment\Concerns\DoesNotSupportSandbox;
 use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Enums\InternalErrorCode;
-use AliYavari\IranPayment\Exceptions\SandboxNotSupportedException;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
@@ -24,6 +24,8 @@ use Illuminate\Support\Str;
  */
 final class PepDriver extends Driver
 {
+    use DoesNotSupportSandbox;
+
     /**
      * Cache key used to store the gateway token.
      */
@@ -99,7 +101,7 @@ final class PepDriver extends Driver
             'serviceType' => 'PURCHASE',
             'terminalNumber' => (int) $this->terminalNumber,
         ])
-            ->when($phone, fn (Collection $data) => $data->merge(['mobileNumber' => $this->toDriverPhone($phone)]))
+            ->when($phone, fn (Collection $data) => $data->merge(['mobileNumber' => $this->toLocalPhone($phone)]))
             ->when($description, fn (Collection $data) => $data->merge(['description' => (string) $description]));
 
         $this->execute($this->toApiUrl('purchase'), $data);
@@ -273,17 +275,6 @@ final class PepDriver extends Driver
     }
 
     /**
-     * Convert the phone number to the format expected by the gateway.
-     */
-    private function toDriverPhone(string|int $phone): string
-    {
-        return (string) Str::of((string) $phone)
-            ->chopStart('+')
-            ->chopStart('98')
-            ->replaceStart('9', '09');
-    }
-
-    /**
      * Convert API method to full endpoint URL.
      */
     private function toApiUrl(string $method): string
@@ -314,18 +305,6 @@ final class PepDriver extends Driver
             ->json();
 
         $this->setApiStatusCode();
-    }
-
-    /**
-     * Throws an exception if configured to use sandbox.
-     *
-     * @throws SandboxNotSupportedException
-     */
-    private function guardAgainstSandbox(): void
-    {
-        if ($this->useSandbox()) {
-            throw SandboxNotSupportedException::make($this->getGateway());
-        }
     }
 
     /**

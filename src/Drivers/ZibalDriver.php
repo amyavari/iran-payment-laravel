@@ -10,7 +10,6 @@ use AliYavari\IranPayment\Enums\InternalErrorCode;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 
 /**
  * @internal
@@ -71,7 +70,7 @@ final class ZibalDriver extends Driver
             'callbackUrl' => $callbackUrl,
         ])
             ->when($description, fn (Collection $data) => $data->merge(['description' => (string) $description]))
-            ->when($phone, fn (Collection $data) => $data->merge(['mobile' => $this->toDriverPhone($phone)]));
+            ->when($phone, fn (Collection $data) => $data->merge(['mobile' => $this->toLocalPhone($phone)]));
 
         $this->execute('v1/request', $data);
 
@@ -102,8 +101,7 @@ final class ZibalDriver extends Driver
      */
     protected function isSuccessful(): bool
     {
-        return $this->apiStatusCode === 100
-            || $this->apiStatusCode === 1;
+        return in_array($this->apiStatusCode, [100, 1], true);
     }
 
     /**
@@ -157,7 +155,7 @@ final class ZibalDriver extends Driver
      */
     protected function reversePayment(): void
     {
-        $this->apiStatusCode = InternalErrorCode::ReverseNotSupport->value;
+        $this->apiStatusCode = InternalErrorCode::ReverseNotSupported->value;
         $this->rawResponse = 'No API is called. IPG does not support reversal.';
     }
 
@@ -304,17 +302,6 @@ final class ZibalDriver extends Driver
     private function setApiStatusCode(): void
     {
         $this->apiStatusCode = (int) Arr::get($this->rawResponse, 'result');
-    }
-
-    /**
-     * Convert the phone number to the format expected by the gateway.
-     */
-    private function toDriverPhone(string|int $phone): string
-    {
-        return (string) Str::of((string) $phone)
-            ->chopStart('+')
-            ->chopStart('98')
-            ->replaceStart('9', '09');
     }
 
     /**

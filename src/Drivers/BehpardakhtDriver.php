@@ -13,7 +13,6 @@ use AliYavari\IranPayment\Facades\Soap;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
-use Illuminate\Support\Stringable;
 
 /**
  * @internal
@@ -296,21 +295,6 @@ final class BehpardakhtDriver extends Driver
     }
 
     /**
-     * Convert the phone number to the format expected by the gateway.
-     */
-    private function toDriverPhone(string $phone): string
-    {
-        return (string) Str::of($phone)
-            ->chopStart('+')
-            ->replaceStart('09', '989')
-            ->replaceStart('9809', '989')
-            ->when(
-                fn (Stringable $phone): bool => ! $phone->startsWith('98'),
-                fn (Stringable $phone) => $phone->prepend('98')
-            );
-    }
-
-    /**
      * Call the gateway's API with the given method and data.
      *
      * @param  array<string,mixed>  $data
@@ -344,7 +328,7 @@ final class BehpardakhtDriver extends Driver
     private function setPaymentMetadata(?string $description, ?string $phone): void
     {
         $this->metadata = collect([])
-            ->when($phone, fn (Collection $data) => $data->merge(['mobileNo' => $this->toDriverPhone($phone)]))
+            ->when($phone, fn (Collection $data) => $data->merge(['mobileNo' => $this->toInternationalPhone($phone)]))
             ->when($description, fn (Collection $data) => $data->merge(['cartItem' => $description]))
             ->all();
     }

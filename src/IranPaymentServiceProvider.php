@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AliYavari\IranPayment;
 
+use AliYavari\IranPayment\Contracts\Payment;
 use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Drivers\BehpardakhtDriver;
 use AliYavari\IranPayment\Drivers\IdpayDriver;
@@ -27,6 +28,23 @@ use Spatie\LaravelPackageTools\PackageServiceProvider;
  */
 final class IranPaymentServiceProvider extends PackageServiceProvider
 {
+    /**
+     * All supported gateways, with the driver they resolve to.
+     *
+     * @var array<string, array{class: class-string<Abstracts\Driver>, with_number_generator: bool}>
+     */
+    private const array DRIVERS = [
+        'behpardakht' => ['class' => BehpardakhtDriver::class, 'with_number_generator' => true],
+        'sep' => ['class' => SepDriver::class, 'with_number_generator' => true],
+        'zarinpal' => ['class' => ZarinpalDriver::class, 'with_number_generator' => false],
+        'idpay' => ['class' => IdpayDriver::class, 'with_number_generator' => true],
+        'pep' => ['class' => PepDriver::class, 'with_number_generator' => true],
+        'sadad' => ['class' => SadadDriver::class, 'with_number_generator' => true],
+        'zibal' => ['class' => ZibalDriver::class, 'with_number_generator' => false],
+        'payping' => ['class' => PaypingDriver::class, 'with_number_generator' => false],
+        'nextpay' => ['class' => NextpayDriver::class, 'with_number_generator' => true],
+    ];
+
     public function configurePackage(Package $package): void
     {
         $package->name('iran-payment')
@@ -44,60 +62,27 @@ final class IranPaymentServiceProvider extends PackageServiceProvider
     {
         $this->app->singleton(UniqueNumberGenerator::class, fn (): UniqueNumberGenerator => new TimeBasedUniqueNumberGenerator());
 
-        $this->app->singleton(PaymentManager::class, fn (Application $app): PaymentManager => new PaymentManager($app));
+        $this->app->singleton(PaymentManager::class, function (Application $app): PaymentManager {
+            $manager = new PaymentManager($app);
 
-        $this->app->bind(
-            BehpardakhtDriver::class,
-            fn (): BehpardakhtDriver => new BehpardakhtDriver(...$this->buildArguments('behpardakht'))
-        );
+            foreach (self::DRIVERS as $driver => ['class' => $class]) {
+                $manager->extend($driver, fn (): Payment => $app->make($class));
+            }
 
-        $this->app->bind(
-            SepDriver::class,
-            fn (): SepDriver => new SepDriver(...$this->buildArguments('sep'))
-        );
+            return $manager;
+        });
 
-        $this->app->bind(
-            ZarinpalDriver::class,
-            fn (): ZarinpalDriver => new ZarinpalDriver(...$this->buildArguments('zarinpal', withNumberGenerator: false))
-        );
-
-        $this->app->bind(
-            IdpayDriver::class,
-            fn (): IdpayDriver => new IdpayDriver(...$this->buildArguments('idpay'))
-        );
-
-        $this->app->bind(
-            PepDriver::class,
-            fn (): PepDriver => new PepDriver(...$this->buildArguments('pep'))
-        );
-
-        $this->app->bind(
-            SadadDriver::class,
-            fn (): SadadDriver => new SadadDriver(...$this->buildArguments('sadad'))
-        );
-
-        $this->app->bind(
-            ZibalDriver::class,
-            fn (): ZibalDriver => new ZibalDriver(...$this->buildArguments('zibal', withNumberGenerator: false))
-        );
-
-        $this->app->bind(
-            PaypingDriver::class,
-            fn (): PaypingDriver => new PaypingDriver(...$this->buildArguments('payping', withNumberGenerator: false))
-        );
-
-        $this->app->bind(
-            NextpayDriver::class,
-            fn (): NextpayDriver => new NextpayDriver(...$this->buildArguments('nextpay'))
-        );
+        foreach (self::DRIVERS as $driver => ['class' => $class, 'with_number_generator' => $withNumberGenerator]) {
+            $this->app->bind($class, fn (): Payment => new $class(...$this->buildArguments($driver, $withNumberGenerator)));
+        }
     }
 
     /**
      * @return array<string,mixed>
      */
-    private function buildArguments(string $gateway, bool $withNumberGenerator = true): array
+    private function buildArguments(string $driver, bool $withNumberGenerator): array
     {
-        return $this->configWithCamelCaseKeys("iran-payment.gateways.{$gateway}")
+        return $this->configWithCamelCaseKeys("iran-payment.gateways.{$driver}")
             ->when(
                 $withNumberGenerator,
                 fn (Collection $arguments): Collection => $arguments->merge([
@@ -110,9 +95,9 @@ final class IranPaymentServiceProvider extends PackageServiceProvider
     /**
      * @return Collection<string,mixed>
      */
-    private function configWithCamelCaseKeys(string $key): Collection
+    private function configWithCamelCaseKeys(string $configKey): Collection
     {
-        return collect(config()->array($key))
+        return collect(config()->array($configKey))
             ->mapWithKeys(fn (mixed $value, string $key): array => [Str::camel($key) => $value]);
     }
 }

@@ -13,7 +13,6 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 
 /**
  * @internal
@@ -38,7 +37,7 @@ final class IdpayDriver extends Driver
     private string $apiStatusMessage;
 
     /**
-     * Determine whether te last API call was successful.
+     * Determine whether the last API call was successful.
      */
     private bool $apiIsSuccessful;
 
@@ -91,7 +90,7 @@ final class IdpayDriver extends Driver
             'callback_url' => $callbackUrl,
         ])
             ->when($description, fn (Collection $data) => $data->merge(['desc' => (string) $description]))
-            ->when($phone, fn (Collection $data) => $data->merge(['phone' => $this->toDriverPhone($phone)]));
+            ->when($phone, fn (Collection $data) => $data->merge(['phone' => $this->toLocalPhone($phone)]));
 
         $this->execute('payment', $data);
 
@@ -178,7 +177,7 @@ final class IdpayDriver extends Driver
     {
         $this->apiIsSuccessful = false;
 
-        $this->apiStatusCode = InternalErrorCode::ReverseNotSupport->value;
+        $this->apiStatusCode = InternalErrorCode::ReverseNotSupported->value;
         $this->apiStatusMessage = InternalErrorCode::getMessage($this->apiStatusCode);
 
         $this->rawResponse = 'No API is called. IPG does not support reversal.';
@@ -303,17 +302,6 @@ final class IdpayDriver extends Driver
             $this->apiStatusCode = Arr::get($this->rawResponse, 'error_code');
             $this->apiStatusMessage = Arr::get($this->rawResponse, 'error_message');
         }
-    }
-
-    /**
-     * Convert the phone number to the format expected by the gateway.
-     */
-    private function toDriverPhone(string|int $phone): string
-    {
-        return (string) Str::of((string) $phone)
-            ->chopStart('+')
-            ->chopStart('98')
-            ->replaceStart('9', '09');
     }
 
     /**

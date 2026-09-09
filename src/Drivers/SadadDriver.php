@@ -5,15 +5,14 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Drivers;
 
 use AliYavari\IranPayment\Abstracts\Driver;
+use AliYavari\IranPayment\Concerns\DoesNotSupportSandbox;
 use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Enums\InternalErrorCode;
-use AliYavari\IranPayment\Exceptions\SandboxNotSupportedException;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 
 /**
  * @internal
@@ -22,6 +21,8 @@ use Illuminate\Support\Str;
  */
 final class SadadDriver extends Driver
 {
+    use DoesNotSupportSandbox;
+
     /**
      * Base URL of the payment gateway.
      */
@@ -94,7 +95,7 @@ final class SadadDriver extends Driver
             'SignData' => $this->buildSignData($this->terminalId, $orderId, $this->amount),
         ])
             ->when($description, fn (Collection $data): Collection => $data->merge(['AdditionalData' => (string) $description]))
-            ->when($phone, fn (Collection $data): Collection => $data->merge(['CardHolderIdentity' => $this->toDriverPhone($phone)]));
+            ->when($phone, fn (Collection $data): Collection => $data->merge(['CardHolderIdentity' => $this->toLocalPhone($phone)]));
 
         $this->execute('Request/PaymentRequest', $data);
 
@@ -125,8 +126,7 @@ final class SadadDriver extends Driver
      */
     protected function isSuccessful(): bool
     {
-        return $this->apiStatusCode === 0
-            || $this->apiStatusCode === 100;
+        return in_array($this->apiStatusCode, [0, 100], true);
     }
 
     /**
@@ -173,7 +173,7 @@ final class SadadDriver extends Driver
      */
     protected function reversePayment(): void
     {
-        $this->apiStatusCode = InternalErrorCode::ReverseNotSupport->value;
+        $this->apiStatusCode = InternalErrorCode::ReverseNotSupported->value;
         $this->rawResponse = 'No API is called. IPG does not support reversal.';
     }
 
@@ -280,17 +280,6 @@ final class SadadDriver extends Driver
     }
 
     /**
-     * Convert the phone number to the format expected by the gateway.
-     */
-    private function toDriverPhone(string|int $phone): string
-    {
-        return (string) Str::of((string) $phone)
-            ->chopStart('+')
-            ->chopStart('98')
-            ->replaceStart('9', '09');
-    }
-
-    /**
      * Call the gateway's API with the given method and data.
      *
      * @param  array<string,mixed>|Arrayable<string,mixed>  $data
@@ -305,18 +294,6 @@ final class SadadDriver extends Driver
             ->json();
 
         $this->setApiStatusCode();
-    }
-
-    /**
-     * Throws an exception if configured to use sandbox.
-     *
-     * @throws SandboxNotSupportedException
-     */
-    private function guardAgainstSandbox(): void
-    {
-        if ($this->useSandbox()) {
-            throw SandboxNotSupportedException::make($this->getGateway());
-        }
     }
 
     /**

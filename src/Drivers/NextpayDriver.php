@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Drivers;
 
 use AliYavari\IranPayment\Abstracts\Driver;
+use AliYavari\IranPayment\Concerns\DoesNotSupportSandbox;
 use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
-use AliYavari\IranPayment\Exceptions\SandboxNotSupportedException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 
 /**
  * @internal
@@ -20,6 +19,8 @@ use Illuminate\Support\Str;
  */
 final class NextpayDriver extends Driver
 {
+    use DoesNotSupportSandbox;
+
     /**
      * Base URL of the payment gateway.
      */
@@ -81,7 +82,7 @@ final class NextpayDriver extends Driver
             'callback_uri' => $callbackUrl,
         ])
             ->when($description, fn (Collection $data) => $data->merge(['payer_desc' => (string) $description]))
-            ->when($phone, fn (Collection $data) => $data->merge(['customer_phone' => $this->toDriverPhone($phone)]));
+            ->when($phone, fn (Collection $data) => $data->merge(['customer_phone' => $this->toLocalPhone($phone)]));
 
         $this->execute('token', $data);
 
@@ -292,17 +293,6 @@ final class NextpayDriver extends Driver
     }
 
     /**
-     * {@inheritdoc}
-     */
-    private function toDriverPhone(string|int $phone): string
-    {
-        return (string) Str::of((string) $phone)
-            ->chopStart('+')
-            ->chopStart('98')
-            ->replaceStart('9', '09');
-    }
-
-    /**
      * Call the gateway's API with the given method and data.
      *
      * @param  Collection<string,mixed>  $data
@@ -317,18 +307,6 @@ final class NextpayDriver extends Driver
             ->json();
 
         $this->setApiStatusCode();
-    }
-
-    /**
-     * Throws an exception if configured to use sandbox.
-     *
-     * @throws SandboxNotSupportedException
-     */
-    private function guardAgainstSandbox(): void
-    {
-        if ($this->useSandbox()) {
-            throw SandboxNotSupportedException::make($this->getGateway());
-        }
     }
 
     /**

@@ -78,7 +78,7 @@ return [
 
         // https://pep.co.ir/
         'pep' => [
-            'terminalNumber' => env('PEP_TERMINAL_NUMBER', ''),
+            'terminal_number' => env('PEP_TERMINAL_NUMBER', ''),
             'base_url' => env('PEP_BASE_URL', ''),
             'username' => env('PEP_USERNAME', ''),
             'password' => env('PEP_PASSWORD', ''),
