@@ -101,8 +101,7 @@ final class ZibalDriver extends Driver
      */
     protected function isSuccessful(): bool
     {
-        return $this->apiStatusCode === 100
-            || $this->apiStatusCode === 1;
+        return in_array($this->apiStatusCode, [100, 1], true);
     }
 
     /**

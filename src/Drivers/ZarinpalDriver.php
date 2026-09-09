@@ -149,8 +149,7 @@ final class ZarinpalDriver extends Driver
      */
     protected function isSuccessful(): bool
     {
-        return $this->apiStatusCode === 100
-            || $this->apiStatusCode === 101;
+        return in_array($this->apiStatusCode, [100, 101], true);
     }
 
     /**

@@ -126,8 +126,7 @@ final class SadadDriver extends Driver
      */
     protected function isSuccessful(): bool
     {
-        return $this->apiStatusCode === 0
-            || $this->apiStatusCode === 100;
+        return in_array($this->apiStatusCode, [0, 100], true);
     }
 
     /**

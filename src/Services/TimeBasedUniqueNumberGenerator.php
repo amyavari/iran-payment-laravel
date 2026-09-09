@@ -6,7 +6,6 @@ namespace AliYavari\IranPayment\Services;
 
 use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use Carbon\Carbon;
-use Illuminate\Support\Str;
 
 /**
  * @internal
@@ -29,7 +28,6 @@ final class TimeBasedUniqueNumberGenerator implements UniqueNumberGenerator
 
         $millisecondsSinceEpoch = $now - $epoch;
 
-        return (string) Str::of((string) $millisecondsSinceEpoch)
-            ->append((string) $randomNumber);
+        return $millisecondsSinceEpoch.$randomNumber;
     }
 }
