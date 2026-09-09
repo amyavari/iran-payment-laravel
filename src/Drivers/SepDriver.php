@@ -5,16 +5,15 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Drivers;
 
 use AliYavari\IranPayment\Abstracts\Driver;
+use AliYavari\IranPayment\Concerns\DoesNotSupportSandbox;
 use AliYavari\IranPayment\Concerns\FailsWithoutCallback;
 use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Enums\InternalErrorCode;
-use AliYavari\IranPayment\Exceptions\SandboxNotSupportedException;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 
 /**
  * @internal
@@ -23,6 +22,7 @@ use Illuminate\Support\Str;
  */
 final class SepDriver extends Driver
 {
+    use DoesNotSupportSandbox;
     use FailsWithoutCallback;
 
     /**
@@ -105,7 +105,7 @@ final class SepDriver extends Driver
             'ResNum' => $this->generateResNum(),
             'RedirectUrl' => $callbackUrl,
         ])
-            ->when($phone, fn (Collection $data) => $data->merge(['CellNumber' => $this->toDriverPhone($phone)]));
+            ->when($phone, fn (Collection $data) => $data->merge(['CellNumber' => $this->toNationalPhone($phone)]));
 
         $this->execute(self::GATEWAY_CREATE_URL, $data);
 
@@ -300,17 +300,6 @@ final class SepDriver extends Driver
     }
 
     /**
-     * Convert the phone number to the format expected by the gateway.
-     */
-    private function toDriverPhone(string|int $phone): string
-    {
-        return (string) Str::of((string) $phone)
-            ->chopStart('+')
-            ->chopStart('98')
-            ->replaceStart('09', '9');
-    }
-
-    /**
      * Determine whether the payment failed based on the callback.
      */
     private function isFailedPaymentBasedOnCallback(): bool
@@ -366,18 +355,6 @@ final class SepDriver extends Driver
         $this->rawResponse = Http::post($url, $data)
             ->throwIfServerError()
             ->json();
-    }
-
-    /**
-     * Throws an exception if configured to use sandbox.
-     *
-     * @throws SandboxNotSupportedException
-     */
-    private function guardAgainstSandbox(): void
-    {
-        if ($this->useSandbox()) {
-            throw SandboxNotSupportedException::make($this->getGateway());
-        }
     }
 
     /**

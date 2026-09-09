@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AliYavari\IranPayment\Abstracts;
 
+use AliYavari\IranPayment\Concerns\FormatsPhoneNumber;
 use AliYavari\IranPayment\Concerns\ManagesModel;
 use AliYavari\IranPayment\Contracts\Payment;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
@@ -26,7 +27,7 @@ use Illuminate\Support\Str;
  */
 abstract class Driver implements Payment
 {
-    use ManagesModel;
+    use FormatsPhoneNumber, ManagesModel;
 
     /**
      * Explicit gateway key defined by the concrete driver, if needed.

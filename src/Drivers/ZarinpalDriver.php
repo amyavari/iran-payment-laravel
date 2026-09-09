@@ -10,7 +10,6 @@ use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 
 /**
  * @internal
@@ -80,7 +79,7 @@ final class ZarinpalDriver extends Driver
         ])
             ->when($phone, fn (Collection $data) => $data->merge([
                 'metadata' => [
-                    'mobile' => $this->toDriverPhone($phone),
+                    'mobile' => $this->toLocalPhone($phone),
                 ],
             ]));
 
@@ -322,17 +321,6 @@ final class ZarinpalDriver extends Driver
         $errorCode = Arr::get($this->rawResponse, 'errors.code');
 
         $this->apiStatusCode = $successCode ?? $errorCode;
-    }
-
-    /**
-     * Convert the phone number to the format expected by the gateway.
-     */
-    private function toDriverPhone(string|int $phone): string
-    {
-        return (string) Str::of((string) $phone)
-            ->chopStart('+')
-            ->chopStart('98')
-            ->replaceStart('9', '09');
     }
 
     /**
