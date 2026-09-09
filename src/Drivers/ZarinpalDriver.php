@@ -245,7 +245,7 @@ final class ZarinpalDriver extends Driver
      */
     protected function getDriverRedirectData(): PaymentRedirectDto
     {
-        return new PaymentRedirectDto($this->getGaymentRedirectUrl(), 'GET', payload: []);
+        return new PaymentRedirectDto($this->getPaymentRedirectUrl(), 'GET', payload: []);
     }
 
     /**
@@ -297,15 +297,15 @@ final class ZarinpalDriver extends Driver
     }
 
     /**
-     * Get the gateway redirect URL based on the cofiguration and the authority.
+     * Get the gateway redirect URL based on the configuration and the authority.
      */
-    private function getGaymentRedirectUrl(): string
+    private function getPaymentRedirectUrl(): string
     {
         return sprintf(self::PAYMENT_REDIRECT_URL, $this->getApiSubdomain(), $this->transactionId);
     }
 
     /**
-     * Get the gateway subsomain based on the configuration.
+     * Get the gateway subdomain based on the configuration.
      */
     private function getApiSubdomain(): string
     {

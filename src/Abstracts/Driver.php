@@ -302,7 +302,7 @@ abstract class Driver implements Payment
      */
     final public function getTransactionId(): ?string
     {
-        $this->ensureCreationOrCallbackAreCalledFor(__FUNCTION__);
+        $this->ensureCreationOrCallbackIsCalledFor(__FUNCTION__);
 
         if ($this->callbackCalled) {
             return $this->getDriverTransactionId();
@@ -567,7 +567,7 @@ abstract class Driver implements Payment
     {
         $this->ensureTableExists();
 
-        $this->getStoredPayment();
+        $this->loadStoredPayment();
 
         $this->ensurePaymentExists();
 
@@ -591,7 +591,7 @@ abstract class Driver implements Payment
      *
      * @throws InvalidCallOrderException
      */
-    private function ensureCreationOrCallbackAreCalledFor(string $method): void
+    private function ensureCreationOrCallbackIsCalledFor(string $method): void
     {
         if (! $this->isCalledApiMethod('create') && ! $this->callbackCalled) {
             throw InvalidCallOrderException::make($method, ['create', 'fromCallback', 'noCallback']);

@@ -156,7 +156,7 @@ final class ZibalDriver extends Driver
      */
     protected function reversePayment(): void
     {
-        $this->apiStatusCode = InternalErrorCode::ReverseNotSupport->value;
+        $this->apiStatusCode = InternalErrorCode::ReverseNotSupported->value;
         $this->rawResponse = 'No API is called. IPG does not support reversal.';
     }
 

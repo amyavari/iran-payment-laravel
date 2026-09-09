@@ -42,8 +42,8 @@ trait FailsWithoutCallback
     private function withoutCallbackStatusCode(string $method): int
     {
         $statusCode = match ($method) {
-            'verify' => InternalErrorCode::withoutCallbackVerify,
-            'reverse' => InternalErrorCode::withoutCallbackReverse,
+            'verify' => InternalErrorCode::WithoutCallbackVerify,
+            'reverse' => InternalErrorCode::WithoutCallbackReverse,
 
             default => throw new LogicException('Wrong method name.'),
         };
@@ -64,6 +64,6 @@ trait FailsWithoutCallback
      */
     private function isWithoutCallbackSuccessful(int $statusCode): bool
     {
-        return $statusCode === InternalErrorCode::withoutCallbackReverse->value;
+        return $statusCode === InternalErrorCode::WithoutCallbackReverse->value;
     }
 }

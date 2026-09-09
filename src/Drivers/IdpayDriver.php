@@ -37,7 +37,7 @@ final class IdpayDriver extends Driver
     private string $apiStatusMessage;
 
     /**
-     * Determine whether te last API call was successful.
+     * Determine whether the last API call was successful.
      */
     private bool $apiIsSuccessful;
 
@@ -177,7 +177,7 @@ final class IdpayDriver extends Driver
     {
         $this->apiIsSuccessful = false;
 
-        $this->apiStatusCode = InternalErrorCode::ReverseNotSupport->value;
+        $this->apiStatusCode = InternalErrorCode::ReverseNotSupported->value;
         $this->apiStatusMessage = InternalErrorCode::getMessage($this->apiStatusCode);
 
         $this->rawResponse = 'No API is called. IPG does not support reversal.';

@@ -12,10 +12,10 @@ namespace AliYavari\IranPayment\Enums;
  */
 enum InternalErrorCode: int
 {
-    case withoutCallbackVerify = 9100;
-    case withoutCallbackReverse = 9110;
+    case WithoutCallbackVerify = 9100;
+    case WithoutCallbackReverse = 9110;
 
-    case ReverseNotSupport = 9200;
+    case ReverseNotSupported = 9200;
 
     case InvalidAmount = 9300;
 
@@ -33,9 +33,9 @@ enum InternalErrorCode: int
     private function message(): string
     {
         return match ($this) {
-            self::withoutCallbackVerify => 'درگاه از وریفای بدون callback پشتیبانی نمی کند.',
-            self::withoutCallbackReverse => 'تراکنش به صورت خودکار برگشت داده می شود.',
-            self::ReverseNotSupport => 'درگاه از بازگشت وجه پشتیبانی نمی کند',
+            self::WithoutCallbackVerify => 'درگاه از وریفای بدون callback پشتیبانی نمی کند.',
+            self::WithoutCallbackReverse => 'تراکنش به صورت خودکار برگشت داده می شود.',
+            self::ReverseNotSupported => 'درگاه از بازگشت وجه پشتیبانی نمی کند',
             self::InvalidAmount => 'مبلغ پرداخت شده نامعتبر است',
         };
     }

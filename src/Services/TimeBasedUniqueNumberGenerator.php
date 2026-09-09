@@ -22,7 +22,7 @@ final class TimeBasedUniqueNumberGenerator implements UniqueNumberGenerator
 
         /**
          * Logic: Use a custom Epoch (starting from Jan 1, 2025) to reduce
-         * the timestamp's digit count (from 13 to 11 digits). Safe until ~2029
+         * the timestamp's digit count (from 13 to 11 digits). Safe until 2028-03-03
          */
         $epoch = Carbon::make('2025-01-01 00:00:00.000')->getTimestampMs();
         $now = now()->getTimestampMs();

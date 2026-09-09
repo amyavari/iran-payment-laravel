@@ -36,7 +36,7 @@ final class PaypingDriver extends Driver
     private int $apiStatusCode;
 
     /**
-     * Determine whether te last API call was successful.
+     * Determine whether the last API call was successful.
      */
     private bool $apiIsSuccessful;
 

@@ -51,7 +51,7 @@ final class SepDriver extends Driver
     private string $apiStatusMessage;
 
     /**
-     * Determine whether te last API call was successful.
+     * Determine whether the last API call was successful.
      */
     private bool $apiIsSuccessful;
 

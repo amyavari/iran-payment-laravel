@@ -95,9 +95,9 @@ final class IranPaymentServiceProvider extends PackageServiceProvider
     /**
      * @return Collection<string,mixed>
      */
-    private function configWithCamelCaseKeys(string $key): Collection
+    private function configWithCamelCaseKeys(string $configKey): Collection
     {
-        return collect(config()->array($key))
+        return collect(config()->array($configKey))
             ->mapWithKeys(fn (mixed $value, string $key): array => [Str::camel($key) => $value]);
     }
 }
