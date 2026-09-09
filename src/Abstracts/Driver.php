@@ -350,9 +350,7 @@ abstract class Driver implements Payment
 
         $this->setCalledApiMethod(__FUNCTION__);
 
-        if (is_null($gatewayPayload)) {
-            $gatewayPayload = $this->getStoredPayload();
-        }
+        $gatewayPayload ??= $this->getStoredPayload();
 
         $this->ensurePaymentIsNotVerified();
 
