@@ -608,6 +608,34 @@ it('throws an exception if reverse is called on an object that was not verified'
         ->calledMethods()->toBe([]); // Nothing is called
 });
 
+it('reverses the payment again if it was already reversed', function (): void {
+    $driver = testDriver()->performVerification();
+
+    $driver->reverse();
+    $driver->reverse();
+
+    expect($driver)
+        ->calledMethods()->toBe(['verify', 'reverse', 'reverse']);
+});
+
+it('throws an exception when get card number is called after the reverse API call', function (): void {
+    $driver = testDriver()->asSuccessful('verify')->performVerification();
+
+    $driver->reverse();
+
+    expect(fn (): ?string => $driver->getCardNumber())
+        ->toThrow(InvalidCallOrderException::class, 'Cannot call "getCardNumber()" after calling one of the following methods: "reverse".');
+});
+
+it('throws an exception when get reference number is called after the reverse API call', function (): void {
+    $driver = testDriver()->asSuccessful('verify')->performVerification();
+
+    $driver->reverse();
+
+    expect(fn (): ?string => $driver->getRefNumber())
+        ->toThrow(InvalidCallOrderException::class, 'Cannot call "getRefNumber()" after calling one of the following methods: "reverse".');
+});
+
 it('reverses after failed verification when auto-reverse is enabled', function (): void {
     $driver = testDriver()->asFailed('verify');
 
@@ -664,6 +692,16 @@ it('keeps the verification state after auto-reverse is performed', function (): 
         ->failed()->toBeTrue()
         ->error()->toBe('کد 12- خطایی رخ داد.') // asFailed() sets this error code and message
         ->getRawResponse()->toBe('verify raw response'); // Set by TestDriver
+});
+
+it('keeps the transaction accessors callable after auto-reverse is performed', function (): void {
+    $driver = testDriver()->asFailed('verify');
+
+    $driver->autoReverse()->performVerification();
+
+    expect($driver)
+        ->getRefNumber()->toBeNull()
+        ->getCardNumber()->toBeNull();
 });
 
 // ------------

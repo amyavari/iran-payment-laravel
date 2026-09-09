@@ -15,10 +15,20 @@ final class InvalidCallOrderException extends LogicException
     /**
      * @param  array<string>  $requiredMethods
      */
-    public static function make(string $attemptedMethod, array $requiredMethods): self
+    public static function mustBeCalledAfter(string $attemptedMethod, array $requiredMethods): self
     {
         return new self(
             sprintf('Cannot call "%s()" before calling one of the following methods: "%s".', $attemptedMethod, Arr::join($requiredMethods, ', '))
+        );
+    }
+
+    /**
+     * @param  array<string>  $blockingMethods
+     */
+    public static function mustBeCalledBefore(string $attemptedMethod, array $blockingMethods): self
+    {
+        return new self(
+            sprintf('Cannot call "%s()" after calling one of the following methods: "%s".', $attemptedMethod, Arr::join($blockingMethods, ', '))
         );
     }
 }
