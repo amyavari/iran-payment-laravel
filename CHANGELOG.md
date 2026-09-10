@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - **Behpardakht** `getCardNumber()` returns `CardHolderPan` instead of `CardHolderInfo`.
 - **Payping** `getRefNumber()` and `getCardNumber()` return the correct values when the payment was already verified.
 - **Nextpay** `create()` throws a `CannotConvertToTomanException` when the Rial amount is not a multiple of 10.
+- The `currency` config is compared case-insensitively to compare `Toman` and `Rial` correctly.
+  **Warning:** if your app set `APP_CURRENCY` to `Toman` in a different letter case than exactly `Toman` (for example `toman` or `TOMAN`), amounts were sent to the gateway as Rial. After the upgrade, the amount sent is ten times bigger, which is the correct amount.
 
 ## [2.0.1] - 2026-08-22
 
