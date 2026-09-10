@@ -182,6 +182,24 @@ it('throws exception when callback lacks required keys', function (string $key):
     'ResCode',
 ]);
 
+it('throws exception when a required callback key is blank', function (string $key, mixed $value): void {
+    // Failed callback has minimum required keys; only ResCode value differs.
+    $callbackPayload = Helper::failedCallback();
+    Arr::set($callbackPayload, $key, $value);
+
+    expect(fn (): SadadDriver => Helper::driver()->fromCallback($callbackPayload))
+        ->toThrow(
+            MissingCallbackDataException::class,
+            sprintf('To create sadad gateway instance from callback, "OrderId, ResCode" are required. "%s" is empty.', $key)
+        );
+})->with([
+    'OrderId',
+    'ResCode',
+])->with([
+    'null' => null,
+    'empty string' => '',
+]);
+
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
     fakeHttp();
 

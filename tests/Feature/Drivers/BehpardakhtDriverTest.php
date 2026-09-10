@@ -190,6 +190,25 @@ it('throws exception when callback lacks required keys', function (string $key):
     'SaleOrderId',
 ]);
 
+it('throws exception when a required callback key is blank', function (string $key, mixed $value): void {
+    // Failed callback has minimum required keys; only ResCode value differs.
+    $callbackPayload = Helper::failedCallback();
+    Arr::set($callbackPayload, $key, $value);
+
+    expect(fn (): BehpardakhtDriver => Helper::driver()->fromCallback($callbackPayload))
+        ->toThrow(
+            MissingCallbackDataException::class,
+            sprintf('To create behpardakht gateway instance from callback, "RefId, ResCode, SaleOrderId" are required. "%s" is empty.', $key)
+        );
+})->with([
+    'RefId',
+    'ResCode',
+    'SaleOrderId',
+])->with([
+    'null' => null,
+    'empty string' => '',
+]);
+
 it('returns card number and reference ID from successful callback', function (): void {
     Helper::fakeSoap(Helper::successfulVerificationResponse());
 
