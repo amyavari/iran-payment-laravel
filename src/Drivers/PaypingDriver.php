@@ -58,6 +58,11 @@ final class PaypingDriver extends Driver
      */
     private int $amount;
 
+    /**
+     * Determine whether the last API call reported the payment as already verified.
+     */
+    private bool $alreadyVerified = false;
+
     public function __construct(
         private readonly string $callbackUrl,
         private readonly string $token,
@@ -229,7 +234,9 @@ final class PaypingDriver extends Driver
      */
     protected function getDriverRefNumber(): string
     {
-        return (string) Arr::get($this->rawResponse, 'paymentRefId');
+        $key = $this->alreadyVerified ? 'metaData.message.PaymentRefId' : 'paymentRefId';
+
+        return (string) Arr::get($this->rawResponse, $key);
     }
 
     /**
@@ -237,7 +244,9 @@ final class PaypingDriver extends Driver
      */
     protected function getDriverCardNumber(): string
     {
-        return Arr::get($this->rawResponse, 'cardNumber');
+        $key = $this->alreadyVerified ? 'metaData.message.CardNumber' : 'cardNumber';
+
+        return Arr::get($this->rawResponse, $key);
     }
 
     /**
@@ -274,8 +283,10 @@ final class PaypingDriver extends Driver
 
         $this->apiStatusCode = (int) Arr::get($this->rawResponse, 'metaData.code');
 
+        $this->alreadyVerified = $this->isAlreadyVerified($response);
+
         $this->apiIsSuccessful = $response->status() === 200
-                              || $this->isAlreadyVerified($response);
+                              || $this->alreadyVerified;
     }
 
     /**

@@ -8,6 +8,7 @@ use AliYavari\IranPayment\Abstracts\Driver;
 use AliYavari\IranPayment\Concerns\DoesNotSupportSandbox;
 use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+use AliYavari\IranPayment\Exceptions\CannotConvertToTomanException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
@@ -72,7 +73,11 @@ final class NextpayDriver extends Driver
      */
     protected function createPayment(string $callbackUrl, int $amount, ?string $description = null, string|int|null $phone = null): void
     {
-        $this->amount = $amount / 10; // Toman
+        if ($amount % 10 !== 0) {
+            throw CannotConvertToTomanException::make($this->getGateway(), $amount);
+        }
+
+        $this->amount = intdiv($amount, 10); // Toman
 
         $this->orderId = $this->uniqueNumber->generate();
 

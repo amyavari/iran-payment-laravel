@@ -203,7 +203,7 @@ it('returns card number and reference ID from successful callback', function ():
 it('returns empty string as card number and reference ID when not provided in the callback', function (): void {
     Helper::fakeSoap(Helper::successfulVerificationResponse());
 
-    $callbackPayload = Arr::except(Helper::successfulCallback(), ['SaleReferenceId', 'CardHolderInfo']);
+    $callbackPayload = Arr::except(Helper::successfulCallback(), ['SaleReferenceId', 'CardHolderPan']);
 
     $payment = Helper::driver()->fromCallback($callbackPayload)->verify(Helper::gatewayPayload());
 

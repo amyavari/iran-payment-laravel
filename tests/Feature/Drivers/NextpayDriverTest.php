@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use AliYavari\IranPayment\Drivers\NextpayDriver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+use AliYavari\IranPayment\Exceptions\CannotConvertToTomanException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Exceptions\SandboxNotSupportedException;
@@ -133,6 +134,15 @@ it('throws an exception for payment creation when configured to use sandbox', fu
 
     expect(fn (): NextpayDriver => Helper::driver()->create(10_000))
         ->toThrow(SandboxNotSupportedException::class, 'Nextpay gateway does not support the sandbox environment.');
+
+    Http::assertNothingSent();
+});
+
+it('throws an exception for payment creation when the Rial amount is not a multiple of 10', function (): void {
+    fakeHttp();
+
+    expect(fn (): NextpayDriver => Helper::driver()->create(1_005)) // Default currency is Rial
+        ->toThrow(CannotConvertToTomanException::class, 'Nextpay gateway only supports Toman, so the Rial amount must be a multiple of 10. "1005" given.');
 
     Http::assertNothingSent();
 });

@@ -25,8 +25,8 @@ it('validates successfully with valid data', function () use ($activateFakeRoute
         'ResCode' => '1234',
         'SaleOrderId' => '1234',
         'SaleReferenceId' => '1234',
-        'CardHolderInfo' => '123-**-123',
-        'CardHolderPan' => '1234ABab',
+        'CardHolderInfo' => '1234ABab',
+        'CardHolderPan' => '123-**-123',
         'FinalAmount' => '1000',
     ];
 

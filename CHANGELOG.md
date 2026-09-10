@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Pep** and **IDPay** gateways return `کد پاسخ نامشخص` as the message for unknown status codes, like the other gateways.
+
 ### Fixed
 
 - Reading `getRefNumber()` and `getCardNumber()` after a manual `reverse()` call throws an `InvalidCallOrderException`.
+- **Behpardakht** `getCardNumber()` returns `CardHolderPan` instead of `CardHolderInfo`.
+- **Payping** `getRefNumber()` and `getCardNumber()` return the correct values when the payment was already verified.
+- **Nextpay** `create()` throws a `CannotConvertToTomanException` when the Rial amount is not a multiple of 10.
 
 ## [2.0.1] - 2026-08-22
 

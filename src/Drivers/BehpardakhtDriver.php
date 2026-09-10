@@ -119,7 +119,7 @@ final class BehpardakhtDriver extends Driver
      */
     protected function getDriverCardNumber(): string
     {
-        return $this->callbackPayload->get('CardHolderInfo', '');
+        return $this->callbackPayload->get('CardHolderPan', '');
     }
 
     /**
@@ -423,7 +423,7 @@ final class BehpardakhtDriver extends Driver
             995 => 'خطای سیستمی (Internal Error)',
             997 => 'سامانه مقصد غیر فعال می‌باشد',
 
-            default => 'کد پاسخ نامشخص'
+            default => 'کد پاسخ نامشخص',
         };
     }
 

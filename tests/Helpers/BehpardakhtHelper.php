@@ -80,8 +80,8 @@ final class BehpardakhtHelper extends AbstractHelper
             'ResCode' => 0,
             'SaleOrderId' => 123456789012345,
             'SaleReferenceId' => 227926981246,
-            'CardHolderInfo' => '1234-*-*-1234',
-            'CardHolderPan' => '1234ABsab',
+            'CardHolderInfo' => '1234ABsab',
+            'CardHolderPan' => '1234-*-*-1234',
             'FinalAmount' => '1000',
         ];
     }

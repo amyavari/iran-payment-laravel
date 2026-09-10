@@ -336,7 +336,7 @@ final class SepDriver extends Driver
             'TerminalNotFound' => 'شماره ترمینال ارسال شده یافت نشد.',
             'MultisettlePolicyErrors' => 'محدودیت های مدل چند حسابی رعایت نشده',
 
-            default => 'کد پاسخ نامشخص'
+            default => 'کد پاسخ نامشخص',
         };
     }
 
