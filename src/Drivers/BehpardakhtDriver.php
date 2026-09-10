@@ -119,7 +119,7 @@ final class BehpardakhtDriver extends Driver
      */
     protected function getDriverCardNumber(): string
     {
-        return $this->callbackPayload->get('CardHolderInfo', '');
+        return $this->callbackPayload->get('CardHolderPan', '');
     }
 
     /**
