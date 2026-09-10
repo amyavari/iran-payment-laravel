@@ -350,6 +350,8 @@ $payment->getRefNumber();   // string|null
 $payment->getCardNumber();  // string|null
 ```
 
+**Note:** Both methods describe the **verification** result, so you must call them before you call `reverse()` yourself. After a manual `reverse()`, they throw an `InvalidCallOrderException`. Auto-reverse is not affected.
+
 #### Form Request Classes
 
 To validate callback data from each gateway, this package provides simple FormRequest classes.
