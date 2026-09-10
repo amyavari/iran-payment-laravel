@@ -6,6 +6,7 @@ namespace AliYavari\IranPayment\Models;
 
 use AliYavari\IranPayment\Builders\PaymentBuilder;
 use AliYavari\IranPayment\Contracts\Payment as PaymentInterface;
+use AliYavari\IranPayment\Enums\ApiMethod;
 use AliYavari\IranPayment\Enums\PaymentStatus;
 use AliYavari\IranPayment\Facades\Payment as PaymentFacade;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -49,14 +50,14 @@ final class Payment extends Model
     /**
      * Append a raw response to the model's raw responses log.
      */
-    public function addRawResponse(string $method, mixed $response): static
+    public function addRawResponse(ApiMethod $method, mixed $response): static
     {
         $now = now()->format('YmdHis');
 
         $this->fill([
             'raw_responses' => collect($this->raw_responses)
                 ->merge([
-                    "{$method}_{$now}" => $response,
+                    "{$method->value}_{$now}" => $response,
                 ]),
         ]);
 

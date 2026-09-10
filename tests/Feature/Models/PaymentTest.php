@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use AliYavari\IranPayment\Contracts\Payment as PaymentInterface;
+use AliYavari\IranPayment\Enums\ApiMethod;
 use AliYavari\IranPayment\Enums\PaymentStatus;
 use AliYavari\IranPayment\Facades\Payment as PaymentFacade;
 use AliYavari\IranPayment\Models\Payment;
@@ -13,11 +14,11 @@ it('adds a the first raw response when raw_responses is initially null or empty'
 
     $payment = new Payment();
 
-    $payment->addRawResponse('method', ['key' => 'value']);
+    $payment->addRawResponse(ApiMethod::Create, ['key' => 'value']);
 
     expect($payment)
         ->raw_responses->toBe([
-            'method_20251210183010' => ['key' => 'value'],
+            'create_20251210183010' => ['key' => 'value'],
         ]);
 
 });
@@ -31,12 +32,12 @@ it('adds a new raw response without overwriting existing entries', function (): 
         ],
     ]);
 
-    $payment->addRawResponse('method', ['key' => 'value']);
+    $payment->addRawResponse(ApiMethod::Verify, ['key' => 'value']);
 
     expect($payment)
         ->raw_responses->toBe([
             'old_key' => 'old_value',
-            'method_20251210183010' => ['key' => 'value'],
+            'verify_20251210183010' => ['key' => 'value'],
         ]);
 });
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AliYavari\IranPayment\Concerns;
 
+use AliYavari\IranPayment\Enums\ApiMethod;
 use AliYavari\IranPayment\Enums\PaymentStatus;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingGatewayPayloadException;
@@ -40,7 +41,7 @@ trait ManagesModel
         ]);
 
         $this->payment->payable()->associate($this->payable)
-            ->addRawResponse('create', $this->getRawResponse())
+            ->addRawResponse(ApiMethod::Create, $this->getRawResponse())
             ->save();
     }
 
@@ -86,7 +87,7 @@ trait ManagesModel
      */
     private function updatePaymentForInvalidCallback(InvalidCallbackDataException $exception, array $payload): void
     {
-        $this->updatePaymentIfExists('verify', [
+        $this->updatePaymentIfExists(ApiMethod::Verify, [
             'status' => PaymentStatus::Failed,
             'error' => $exception->getMessage(),
             'verified_at' => now(),
@@ -101,7 +102,7 @@ trait ManagesModel
      */
     private function updatePaymentAfterVerification(): void
     {
-        $this->updatePaymentIfExists('verify', [
+        $this->updatePaymentIfExists(ApiMethod::Verify, [
             'status' => $this->successful() ? PaymentStatus::Successful : PaymentStatus::Failed,
             'error' => $this->error(),
             'verified_at' => now(),
@@ -113,7 +114,7 @@ trait ManagesModel
      *
      * @param  array<string,mixed>  $data
      */
-    private function updatePaymentIfExists(string $method, array $data, mixed $rawResponse = null): void
+    private function updatePaymentIfExists(ApiMethod $method, array $data, mixed $rawResponse = null): void
     {
         $this->payment?->fill($data)
             ->addRawResponse($method, $rawResponse ?? $this->getRawResponse())
@@ -125,7 +126,7 @@ trait ManagesModel
      */
     private function updatePaymentAfterReversal(): void
     {
-        $this->updatePaymentIfExists('reverse', [
+        $this->updatePaymentIfExists(ApiMethod::Reverse, [
             'reversed_at' => now(),
         ]);
     }

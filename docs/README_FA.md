@@ -335,6 +335,8 @@ $payment->getRefNumber();   // string|null
 $payment->getCardNumber();  // string|null
 ```
 
+**نکته:** هر دو متد نتیجه **تایید پرداخت** را برمی‌گردانند، بنابراین باید پیش از فراخوانی دستی `reverse()` از آن‌ها استفاده کنید. پس از فراخوانی دستی `reverse()`، این متدها خطای `InvalidCallOrderException` می دهند. `auto-reverse` تحت تاثیر قرار نمی‌گیرد.
+
 #### کلاس‌های Form Request
 
 برای اعتبارسنجی داده‌های callback از هر درگاه، این پکیج کلاس‌های FormRequest ساده‌ای را ارائه می‌دهد.

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AliYavari\IranPayment\Concerns;
 
+use AliYavari\IranPayment\Enums\ApiMethod;
 use AliYavari\IranPayment\Enums\InternalErrorCode;
 use LogicException;
 
@@ -39,13 +40,13 @@ trait FailsWithoutCallback
     /**
      * Get status code for no-callback mode
      */
-    private function withoutCallbackStatusCode(string $method): int
+    private function withoutCallbackStatusCode(ApiMethod $method): int
     {
         $statusCode = match ($method) {
-            'verify' => InternalErrorCode::WithoutCallbackVerify,
-            'reverse' => InternalErrorCode::WithoutCallbackReverse,
+            ApiMethod::Verify => InternalErrorCode::WithoutCallbackVerify,
+            ApiMethod::Reverse => InternalErrorCode::WithoutCallbackReverse,
 
-            default => throw new LogicException('Wrong method name.'),
+            default => throw new LogicException(sprintf('No no-callback status code for %s method.', $method->value)),
         };
 
         return $statusCode->value;

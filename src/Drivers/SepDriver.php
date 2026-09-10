@@ -9,6 +9,7 @@ use AliYavari\IranPayment\Concerns\DoesNotSupportSandbox;
 use AliYavari\IranPayment\Concerns\FailsWithoutCallback;
 use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+use AliYavari\IranPayment\Enums\ApiMethod;
 use AliYavari\IranPayment\Enums\InternalErrorCode;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Arr;
@@ -154,7 +155,7 @@ final class SepDriver extends Driver
     protected function verifyPayment(array $storedPayload): void
     {
         if ($this->isWithoutCallback()) {
-            $this->setPaymentStatusForNoCallback('verify');
+            $this->setPaymentStatusForNoCallback(ApiMethod::Verify);
 
             return;
         }
@@ -187,7 +188,7 @@ final class SepDriver extends Driver
     protected function reversePayment(): void
     {
         if ($this->isWithoutCallback()) {
-            $this->setPaymentStatusForNoCallback('reverse');
+            $this->setPaymentStatusForNoCallback(ApiMethod::Reverse);
 
             return;
         }
@@ -399,7 +400,7 @@ final class SepDriver extends Driver
     /**
      * Set the payment status when the gateway is called without callback data.
      */
-    private function setPaymentStatusForNoCallback(string $method): void
+    private function setPaymentStatusForNoCallback(ApiMethod $method): void
     {
         $this->apiStatusCode = (string) $this->withoutCallbackStatusCode($method);
         $this->apiStatusMessage = InternalErrorCode::getMessage((int) $this->apiStatusCode);
