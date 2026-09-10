@@ -140,7 +140,7 @@ final class ZarinpalDriver extends Driver
             100 => 'عملیات موفق',
             101 => 'تراکنش وریفای شده است',
 
-            default => 'کد پاسخ نامشخص'
+            default => 'کد پاسخ نامشخص',
         };
     }
 
