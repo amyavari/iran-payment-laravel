@@ -116,7 +116,11 @@ it('converts currency to Rial if the app currency is Toman', function (string $c
         ->receivedParameters('amount')->toBe($result);
 })->with([
     'Toman' => ['Toman', 10_000],
+    'toman' => ['toman', 10_000],
+    'TOMAN' => ['TOMAN', 10_000],
     'Rial' => ['Rial', 1_000],
+    'rial' => ['rial', 1_000],
+    'RIAL' => ['RIAL', 1_000],
 ]);
 
 it('throws an exception when status checks are called before any API call', function (string $method): void {
