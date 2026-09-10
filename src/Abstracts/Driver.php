@@ -480,7 +480,7 @@ abstract class Driver implements Payment
      */
     private function toRial(int $amount): int
     {
-        if (config()->string('iran-payment.currency') === 'Toman') {
+        if (Str::lower(config()->string('iran-payment.currency')) === 'toman') {
             return $amount * 10;
         }
 
