@@ -8,6 +8,7 @@ use AliYavari\IranPayment\Abstracts\Driver;
 use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\DriverBehaviorDto;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+use AliYavari\IranPayment\Enums\ApiMethod;
 use AliYavari\IranPayment\Exceptions\GatewayBehaviorNotDefinedException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use Illuminate\Http\Client\ConnectionException;
@@ -21,21 +22,6 @@ use SoapFault;
  */
 final class FakeDriver extends Driver
 {
-    /**
-     * Create operation key.
-     */
-    private const string CREATE = 'create';
-
-    /**
-     * Verify operation key.
-     */
-    private const string VERIFY = 'verify';
-
-    /**
-     * Reverse operation key.
-     */
-    private const string REVERSE = 'reverse';
-
     /**
      * Configured fake behaviors per operation
      *
@@ -112,7 +98,7 @@ final class FakeDriver extends Driver
     {
         $behavior = new DriverBehaviorDto(successful: true, rawResponse: $rawResponse);
 
-        $this->setBehaviorFor(self::CREATE, $behavior);
+        $this->setBehaviorFor(ApiMethod::Create, $behavior);
 
         $this->gatewayPayload = $gatewayPayload;
 
@@ -132,7 +118,7 @@ final class FakeDriver extends Driver
     {
         $behavior = new DriverBehaviorDto(successful: false, errorCode: (string) $errorCode, errorMessage: $errorMessage, rawResponse: $rawResponse);
 
-        $this->setBehaviorFor(self::CREATE, $behavior);
+        $this->setBehaviorFor(ApiMethod::Create, $behavior);
 
         return $this;
     }
@@ -144,7 +130,7 @@ final class FakeDriver extends Driver
     {
         $behavior = new DriverBehaviorDto(exceptionMessage: $message);
 
-        $this->setBehaviorFor(self::CREATE, $behavior);
+        $this->setBehaviorFor(ApiMethod::Create, $behavior);
 
         return $this;
     }
@@ -158,7 +144,7 @@ final class FakeDriver extends Driver
     {
         $behavior = new DriverBehaviorDto(successful: true, rawResponse: $rawResponse);
 
-        $this->setBehaviorFor(self::VERIFY, $behavior);
+        $this->setBehaviorFor(ApiMethod::Verify, $behavior);
 
         $this->cardNumber = $cardNumber;
 
@@ -176,7 +162,7 @@ final class FakeDriver extends Driver
     {
         $behavior = new DriverBehaviorDto(successful: false, errorCode: (string) $errorCode, errorMessage: $errorMessage, rawResponse: $rawResponse);
 
-        $this->setBehaviorFor(self::VERIFY, $behavior);
+        $this->setBehaviorFor(ApiMethod::Verify, $behavior);
 
         return $this;
     }
@@ -188,7 +174,7 @@ final class FakeDriver extends Driver
     {
         $behavior = new DriverBehaviorDto(exceptionMessage: $message);
 
-        $this->setBehaviorFor(self::VERIFY, $behavior);
+        $this->setBehaviorFor(ApiMethod::Verify, $behavior);
 
         return $this;
     }
@@ -212,7 +198,7 @@ final class FakeDriver extends Driver
     {
         $behavior = new DriverBehaviorDto(successful: true, rawResponse: $rawResponse);
 
-        $this->setBehaviorFor(self::REVERSE, $behavior);
+        $this->setBehaviorFor(ApiMethod::Reverse, $behavior);
 
         return $this;
     }
@@ -226,7 +212,7 @@ final class FakeDriver extends Driver
     {
         $behavior = new DriverBehaviorDto(successful: false, errorCode: (string) $errorCode, errorMessage: $errorMessage, rawResponse: $rawResponse);
 
-        $this->setBehaviorFor(self::REVERSE, $behavior);
+        $this->setBehaviorFor(ApiMethod::Reverse, $behavior);
 
         return $this;
     }
@@ -238,7 +224,7 @@ final class FakeDriver extends Driver
     {
         $behavior = new DriverBehaviorDto(exceptionMessage: $message);
 
-        $this->setBehaviorFor(self::REVERSE, $behavior);
+        $this->setBehaviorFor(ApiMethod::Reverse, $behavior);
 
         return $this;
     }
@@ -296,7 +282,7 @@ final class FakeDriver extends Driver
      */
     protected function createPayment(string $callbackUrl, int $amount, ?string $description = null, string|int|null $phone = null): void
     {
-        $this->applyBehaviorFor(self::CREATE);
+        $this->applyBehaviorFor(ApiMethod::Create);
     }
 
     /**
@@ -340,7 +326,7 @@ final class FakeDriver extends Driver
             throw new InvalidCallbackDataException($this->invalidCallbackMessage);
         }
 
-        $this->applyBehaviorFor(self::VERIFY);
+        $this->applyBehaviorFor(ApiMethod::Verify);
     }
 
     /**
@@ -348,7 +334,7 @@ final class FakeDriver extends Driver
      */
     protected function reversePayment(): void
     {
-        $this->applyBehaviorFor(self::REVERSE);
+        $this->applyBehaviorFor(ApiMethod::Reverse);
     }
 
     /**
@@ -391,20 +377,20 @@ final class FakeDriver extends Driver
     /**
      * Registers a fake behavior for the given method.
      */
-    private function setBehaviorFor(string $method, DriverBehaviorDto $behavior): void
+    private function setBehaviorFor(ApiMethod $method, DriverBehaviorDto $behavior): void
     {
-        Arr::set($this->behaviors, $method, $behavior);
+        Arr::set($this->behaviors, $method->value, $behavior);
     }
 
     /**
      * Applies the configured fake behavior for the given method.
      */
-    private function applyBehaviorFor(string $method): void
+    private function applyBehaviorFor(ApiMethod $method): void
     {
         $this->ensureBehaviorIsDefined($method);
 
         /** @var DriverBehaviorDto $behavior */
-        $behavior = Arr::get($this->behaviors, $method);
+        $behavior = Arr::get($this->behaviors, $method->value);
 
         if ($behavior->exceptionMessage) {
             $this->throwException($behavior->exceptionMessage);
@@ -421,9 +407,9 @@ final class FakeDriver extends Driver
      *
      * @throws GatewayBehaviorNotDefinedException
      */
-    private function ensureBehaviorIsDefined(string $method): void
+    private function ensureBehaviorIsDefined(ApiMethod $method): void
     {
-        if (! Arr::has($this->behaviors, $method)) {
+        if (! Arr::has($this->behaviors, $method->value)) {
             throw GatewayBehaviorNotDefinedException::make($this->getGateway(), $method);
         }
     }
