@@ -99,6 +99,37 @@ final class PaypingHelper extends AbstractHelper
     }
 
     /**
+     * Response of a verification that was already done before (HTTP 409, metadata.code 110).
+     *
+     * @return array<string,mixed>
+     */
+    public static function alreadyVerifiedResponse(): array
+    {
+        return [
+            'type' => 'https://datatracker.ietf.org/doc/html/rfc7231#section-6.5.8',
+            'title' => 'ConflictException',
+            'status' => 409,
+            'instance' => '/v3/pay/verify',
+            'paypingTraceId' => '0HN50NTIAS004:00000002',
+            'metaData' => [
+                'code' => 110,
+                'message' => [
+                    'Amount' => 1_000,
+                    'PayerWage' => 10,
+                    'BusinessWage' => 10,
+                    'GatewayAmount' => 1_020,
+                    'CardNumber' => '123456******1234',
+                    'CardHashPan' => 'E59FA6241C94B8836E3D03120DF33E80FD988888BBA0A122240C2E7D23B48295',
+                    'ClientRefId' => null,
+                    'PaymentRefId' => 10012,
+                    'Code' => 'd2e353189823079e1e4181772cff5292',
+                    'PayedDate' => '2025-12-10 12:10:08',
+                ],
+            ],
+        ];
+    }
+
+    /**
      * {@inheritdoc}
      */
     public static function successfulCallback(): array

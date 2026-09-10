@@ -225,18 +225,17 @@ it('returns successful response on successful payment verification', function ()
 });
 
 it('returns successful response on subsequence successful payment verification', function (): void {
-    $response = Helper::successfulVerificationResponse();
-    // In the subsequence successful verifications it returns `409` instead of `200` by status `110`
-    Arr::set($response, 'metaData.code', 110);
-
-    fakeHttp($response, 409);
+    // In the subsequence successful verifications it returns `409` with different response body
+    fakeHttp($response = Helper::alreadyVerifiedResponse(), 409);
 
     $payment = Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
 
     expect($payment)
         ->successful()->toBeTrue()
         ->error()->toBeNull()
-        ->getRawResponse()->toBe($response);
+        ->getRawResponse()->toBe($response)
+        ->getRefNumber()->toBe('10012') // From fake already-verified response
+        ->getCardNumber()->toBe('123456******1234'); // From fake already-verified response
 });
 
 it('returns failed response on failed payment verification', function (): void {
