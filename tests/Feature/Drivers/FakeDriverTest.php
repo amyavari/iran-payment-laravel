@@ -7,49 +7,75 @@ use AliYavari\IranPayment\Drivers\FakeDriver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Exceptions\GatewayBehaviorNotDefinedException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
+use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Facades\Payment;
+use AliYavari\IranPayment\Tests\Helpers\BehpardakhtHelper;
+use AliYavari\IranPayment\Tests\Helpers\IdpayHelper;
+use AliYavari\IranPayment\Tests\Helpers\NextpayHelper;
+use AliYavari\IranPayment\Tests\Helpers\PaypingHelper;
+use AliYavari\IranPayment\Tests\Helpers\PepHelper;
+use AliYavari\IranPayment\Tests\Helpers\SadadHelper;
+use AliYavari\IranPayment\Tests\Helpers\SepHelper;
+use AliYavari\IranPayment\Tests\Helpers\ZarinpalHelper;
+use AliYavari\IranPayment\Tests\Helpers\ZibalHelper;
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Config;
 
-dataset('gateway_connections', [
-    'behpardakht' => ['behpardakht', SoapFault::class],
-    'sep' => ['sep', ConnectionException::class],
-    'zarinpal' => ['zarinpal', ConnectionException::class],
-    'idpay' => ['idpay', ConnectionException::class],
-    'pep' => ['pep', ConnectionException::class],
-    'sadad' => ['sadad', ConnectionException::class],
-    'zibal' => ['zibal', ConnectionException::class],
-    'payping' => ['payping', ConnectionException::class],
-    'nextpay' => ['nextpay', ConnectionException::class],
-]);
+dataset(
+    'gateway_connection_exceptions',
+    gatewayFixtures()->map(
+        fn (array $fixture, string $gateway): array => [$gateway, $fixture['connectionException']]
+    )
+);
+
+dataset(
+    'gateway_callbacks',
+    gatewayFixtures()->map(
+        fn (array $fixture, string $gateway): array => [$gateway, $fixture['callback'], $fixture['transactionId']]
+    )
+);
+
+it('makes sure fixture data for every gateway is defined', function (): void {
+    $allPackageGateways = collect(config()->array('iran-payment.gateways'))->keys();
+
+    expect(gatewayFixtures()->keys())
+        ->toEqualCanonicalizing($allPackageGateways);
+});
 
 it('returns a fake instance for the default gateway', function (): void {
-    Config::set('iran-payment.default', 'default_gateway');
+    Config::set('iran-payment.default', 'sep');
 
     Payment::fake();
 
-    $payment = Payment::gateway('default_gateway');
+    $payment = Payment::gateway('sep');
 
     expect($payment)
         ->toBeInstanceOf(FakeDriver::class)
-        ->getGateway()->toBe('default_gateway');
+        ->getGateway()->toBe('sep');
 });
 
 it('returns a fake instance for a specified gateway', function (): void {
-    Payment::fake('specific_gateway');
+    Payment::fake('zibal');
 
-    $payment = Payment::gateway('specific_gateway');
+    $payment = Payment::gateway('zibal');
 
     expect($payment)
         ->toBeInstanceOf(FakeDriver::class)
-        ->getGateway()->toBe('specific_gateway');
+        ->getGateway()->toBe('zibal');
+});
+
+it('throws an exception when faking a gateway without a driver', function (): void {
+    expect(fn (): FakeDriver => Payment::fake('test_gateway'))
+        ->toThrow(BindingResolutionException::class);
 });
 
 it('throws an exception when the create behavior is not defined', function (): void {
     fakeTestGateway();
 
     expect(fn (): PaymentInterface => testGateway()->create(10))
-        ->toThrow(GatewayBehaviorNotDefinedException::class, 'No behavior has been defined for the "create" method on the fake driver "test_gateway".');
+        ->toThrow(GatewayBehaviorNotDefinedException::class, 'No behavior has been defined for the "create" method on the fake driver "zarinpal".');
 });
 
 it('fakes a successful create API response using default data', function (): void {
@@ -108,7 +134,7 @@ it('throws a connection exception on the create API', function (string $gateway,
 
     expect(fn () => Payment::gateway($gateway)->create(10))
         ->toThrow($exceptionType, 'Creation connection failed');
-})->with('gateway_connections');
+})->with('gateway_connection_exceptions');
 
 it('creates payment instance with no callback data', function (): void {
     fakeTestGateway();
@@ -119,14 +145,29 @@ it('creates payment instance with no callback data', function (): void {
         ->getTransactionId()->toBe('123');
 });
 
-it('creates payment instance with callback data', function (): void {
-    fakeTestGateway();
+it('creates payment instance from callback data and return the correct transaction ID', function (string $gateway, array $callbackPayload, string $transactionId): void {
+    Payment::fake($gateway);
 
-    $payment = testGateway()->fromCallback(['key' => '123']);
+    $payment = Payment::gateway($gateway)->fromCallback($callbackPayload);
 
     expect($payment)
-        ->toBeInstanceOf(PaymentInterface::class);
-});
+        ->getTransactionId()->toBe($transactionId);
+})->with('gateway_callbacks');
+
+it('validates callback data like the real driver', function (string $gateway): void {
+    $realException = rescue(
+        fn (): PaymentInterface => Payment::gateway($gateway)->fromCallback([]),
+        fn (Throwable $exception): Throwable => $exception, // Return the caught exception
+        report: false,
+    );
+
+    expect($realException)->toBeInstanceOf(MissingCallbackDataException::class);
+
+    Payment::fake($gateway);
+
+    expect(fn (): PaymentInterface => Payment::gateway($gateway)->fromCallback([]))
+        ->toThrow($realException);
+})->with(gatewayFixtures()->keys());
 
 it('throws invalid callback exception', function (): void {
     fakeTestGateway()->invalidCallback();
@@ -135,11 +176,18 @@ it('throws invalid callback exception', function (): void {
         ->toThrow(InvalidCallbackDataException::class, 'Invalid callback data');
 });
 
+it('throws an exception when invalidCallback is configured without callback data', function (): void {
+    fakeTestGateway()->invalidCallback();
+
+    expect(fn (): PaymentInterface => testGateway()->noCallback('123')->verify([]))
+        ->toThrow(LogicException::class, 'The "invalidCallback" behavior needs callback data. Use "fromCallback()" instead of "noCallback()".');
+});
+
 it('throws an exception when the verify behavior is not defined', function (): void {
     fakeTestGateway();
 
     expect(fn (): PaymentInterface => testGateway(runVerification: true))
-        ->toThrow(GatewayBehaviorNotDefinedException::class, 'No behavior has been defined for the "verify" method on the fake driver "test_gateway".');
+        ->toThrow(GatewayBehaviorNotDefinedException::class, 'No behavior has been defined for the "verify" method on the fake driver "zarinpal".');
 });
 
 it('fakes a successful verify API response', function (): void {
@@ -169,11 +217,11 @@ it('fakes a failed verify API response', function (): void {
 it('throws a connection exception on the verify API', function (string $gateway, string $exceptionType): void {
     Payment::fake($gateway)->failedConnectionVerify();
 
-    $payment = Payment::gateway($gateway)->fromCallback([]);
+    $payment = Payment::gateway($gateway)->noCallback('123');
 
     expect(fn () => $payment->verify([]))
         ->toThrow($exceptionType, 'Verification connection failed');
-})->with('gateway_connections');
+})->with('gateway_connection_exceptions');
 
 it('throws an exception when the reverse behavior is not defined', function (): void {
     fakeTestGateway()->successfulVerify();
@@ -181,7 +229,7 @@ it('throws an exception when the reverse behavior is not defined', function (): 
     $payment = testGateway(runVerification: true);
 
     expect(fn (): PaymentInterface => $payment->reverse())
-        ->toThrow(GatewayBehaviorNotDefinedException::class, 'No behavior has been defined for the "reverse" method on the fake driver "test_gateway".');
+        ->toThrow(GatewayBehaviorNotDefinedException::class, 'No behavior has been defined for the "reverse" method on the fake driver "zarinpal".');
 });
 
 it('fakes a successful reverse API response', function (): void {
@@ -209,11 +257,11 @@ it('fakes a failed reverse API response', function (): void {
 it('throws a connection exception on the reverse API', function (string $gateway, string $exceptionType): void {
     Payment::fake($gateway)->successfulVerify()->failedConnectionReverse();
 
-    $payment = Payment::gateway($gateway)->fromCallback([])->verify([]);
+    $payment = Payment::gateway($gateway)->noCallback('123')->verify([]);
 
     expect(fn () => $payment->reverse())
         ->toThrow($exceptionType, 'Reversal connection failed');
-})->with('gateway_connections');
+})->with('gateway_connection_exceptions');
 
 // ------------
 // Helpers
@@ -221,16 +269,72 @@ it('throws a connection exception on the reverse API', function (string $gateway
 
 function fakeTestGateway(): FakeDriver
 {
-    return Payment::fake('test_gateway');
+    return Payment::fake('zarinpal');
 }
 
 function testGateway(bool $runVerification = false): PaymentInterface
 {
-    $payment = Payment::gateway('test_gateway');
+    $payment = Payment::gateway('zarinpal');
 
     if ($runVerification) {
-        $payment->fromCallback([])->verify([]);
+        $payment->fromCallback(ZarinpalHelper::successfulCallback())->verify([]);
     }
 
     return $payment;
+}
+
+/**
+ * Test fixtures for every gateway. Keys must match the `iran-payment.gateways` config.
+ *
+ * @return Collection<string,array{callback: array<string,mixed>, transactionId: string, connectionException: class-string<Throwable>}>
+ */
+function gatewayFixtures(): Collection
+{
+    return collect([
+        'behpardakht' => [
+            'callback' => BehpardakhtHelper::successfulCallback(),
+            'transactionId' => '123456789012345',
+            'connectionException' => SoapFault::class,
+        ],
+        'sep' => [
+            'callback' => SepHelper::successfulCallback(),
+            'transactionId' => '123456789012345',
+            'connectionException' => ConnectionException::class,
+        ],
+        'zarinpal' => [
+            'callback' => ZarinpalHelper::successfulCallback(),
+            'transactionId' => 'A0000000000000000000000000000wwOGYpd',
+            'connectionException' => ConnectionException::class,
+        ],
+        'idpay' => [
+            'callback' => IdpayHelper::successfulCallback(),
+            'transactionId' => '123456789012345',
+            'connectionException' => ConnectionException::class,
+        ],
+        'pep' => [
+            'callback' => PepHelper::successfulCallback(),
+            'transactionId' => '123456789012345',
+            'connectionException' => ConnectionException::class,
+        ],
+        'sadad' => [
+            'callback' => SadadHelper::successfulCallback(),
+            'transactionId' => '123456789012345',
+            'connectionException' => ConnectionException::class,
+        ],
+        'zibal' => [
+            'callback' => ZibalHelper::successfulCallback(),
+            'transactionId' => '15966442233311',
+            'connectionException' => ConnectionException::class,
+        ],
+        'payping' => [
+            'callback' => PaypingHelper::successfulCallback(),
+            'transactionId' => 'd2e353189823079e1e4181772cff5292',
+            'connectionException' => ConnectionException::class,
+        ],
+        'nextpay' => [
+            'callback' => NextpayHelper::successfulCallback(),
+            'transactionId' => 'f7c07568-c6d1-4bee-87b1-4a9e5ed2e4c1',
+            'connectionException' => ConnectionException::class,
+        ],
+    ]);
 }

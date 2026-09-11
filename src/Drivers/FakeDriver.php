@@ -13,6 +13,9 @@ use AliYavari\IranPayment\Exceptions\GatewayBehaviorNotDefinedException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
+use LogicException;
+use Override;
 use SoapFault;
 
 /**
@@ -81,11 +84,18 @@ final class FakeDriver extends Driver
      */
     private ?string $invalidCallbackMessage = null;
 
+    /**
+     * The real driver instance of the faked gateway.
+     */
+    private readonly Driver $realDriver;
+
     public function __construct(
         private readonly UniqueNumberGenerator $uniqueNumber,
         string $gateway,
     ) {
         $this->gateway = $gateway;
+
+        $this->realDriver = app(__NAMESPACE__.'\\'.Str::studly($gateway).'Driver');
     }
 
     /**
@@ -323,6 +333,10 @@ final class FakeDriver extends Driver
     protected function verifyPayment(array $storedPayload): void
     {
         if ($this->invalidCallbackMessage) {
+            if (! isset($this->callbackPayload)) {
+                throw new LogicException('The "invalidCallback" behavior needs callback data. Use "fromCallback()" instead of "noCallback()".');
+            }
+
             throw new InvalidCallbackDataException($this->invalidCallbackMessage);
         }
 
@@ -342,7 +356,7 @@ final class FakeDriver extends Driver
      */
     protected function prepareFromCallback(): void
     {
-        //
+        $this->transactionId = $this->realDriver->fromCallback($this->callbackPayload->all())->getTransactionId();
     }
 
     /**
@@ -358,7 +372,16 @@ final class FakeDriver extends Driver
      */
     protected function getRequiredCallbackKeys(): array
     {
-        return [];
+        return $this->realDriver->getRequiredCallbackKeys();
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    #[Override]
+    protected function getNullableCallbackKeys(): array
+    {
+        return $this->realDriver->getNullableCallbackKeys();
     }
 
     /**
