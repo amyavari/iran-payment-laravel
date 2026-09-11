@@ -15,6 +15,7 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Override;
 
 /**
  * @internal
@@ -255,6 +256,15 @@ final class PaypingDriver extends Driver
     protected function getRequiredCallbackKeys(): array
     {
         return ['status', 'errorCode', 'data.paymentCode'];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    #[Override]
+    protected function getNullableCallbackKeys(): array
+    {
+        return ['errorCode'];
     }
 
     /**

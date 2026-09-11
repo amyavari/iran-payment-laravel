@@ -156,6 +156,24 @@ it('throws exception when callback lacks required keys', function (string $key):
     'trackId',
 ]);
 
+it('throws exception when a required callback key is blank', function (string $key, mixed $value): void {
+    $callbackPayload = Helper::successfulCallback();
+    Arr::set($callbackPayload, $key, $value);
+
+    expect(fn (): ZibalDriver => Helper::driver()->fromCallback($callbackPayload))
+        ->toThrow(
+            MissingCallbackDataException::class,
+            sprintf('To create zibal gateway instance from callback, "success, status, trackId" are required. "%s" is empty.', $key)
+        );
+})->with([
+    'success',
+    'status',
+    'trackId',
+])->with([
+    'null' => null,
+    'empty string' => '',
+]);
+
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
     fakeHttp();
 

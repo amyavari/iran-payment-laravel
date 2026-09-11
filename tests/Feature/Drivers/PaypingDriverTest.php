@@ -158,6 +158,24 @@ it('throws exception when callback lacks required keys', function (string $key):
     'data.paymentCode',
 ]);
 
+it('throws exception when a required callback key is blank', function (string $key, mixed $value): void {
+    // Failed callback has minimum required keys.
+    $callbackPayload = Helper::failedCallback();
+    Arr::set($callbackPayload, $key, $value);
+
+    expect(fn (): PaypingDriver => Helper::driver()->fromCallback($callbackPayload))
+        ->toThrow(
+            MissingCallbackDataException::class,
+            sprintf('To create payping gateway instance from callback, "status, errorCode, data.paymentCode" are required. "%s" is empty.', $key)
+        );
+})->with([
+    'status',
+    'data.paymentCode',
+])->with([
+    'null' => null,
+    'empty string' => '',
+]);
+
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
     fakeHttp();
 

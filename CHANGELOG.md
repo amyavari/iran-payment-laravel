@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- **Pep** and **IDPay** gateways return `کد پاسخ نامشخص` as the message for unknown status codes, like the other gateways.
+- **Pep** and **IDPay** gateways return the message for unknown status codes, like the other gateways.
+- A `null` or empty value for a required callback key throws a `MissingCallbackDataException`, like a missing key.
+- The fake gateway checks callback keys and throws an exception like the real gateway.
+- `Payment::fake($gateway)` throws a `BindingResolutionException` when `$gateway` is not a real driver.
+- On the fake gateway, `invalidCallback()` throws a `LogicException` when the payment was built with `noCallback()`.
 
 ### Fixed
 
@@ -19,6 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - **Nextpay** `create()` throws a `CannotConvertToTomanException` when the Rial amount is not a multiple of 10.
 - The `currency` config is compared case-insensitively to compare `Toman` and `Rial` correctly.
   **Warning:** if your app set `APP_CURRENCY` to `Toman` in a different letter case than exactly `Toman` (for example `toman` or `TOMAN`), amounts were sent to the gateway as Rial. After the upgrade, the amount sent is ten times bigger, which is the correct amount.
+- The fake gateway `getTransactionId()` returns the correct transaction ID from the callback data after `fromCallback()`.
 
 ## [2.0.1] - 2026-08-22
 

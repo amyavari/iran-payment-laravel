@@ -160,6 +160,25 @@ it('throws exception when callback lacks required keys', function (string $key):
     'ResNum',
 ]);
 
+it('throws exception when a required callback key is blank', function (string $key, mixed $value): void {
+    // Failed callback has minimum required keys; only State, and Status values differ.
+    $callbackPayload = Helper::failedCallback();
+    Arr::set($callbackPayload, $key, $value);
+
+    expect(fn (): SepDriver => Helper::driver()->fromCallback($callbackPayload))
+        ->toThrow(
+            MissingCallbackDataException::class,
+            sprintf('To create sep gateway instance from callback, "State, Status, ResNum" are required. "%s" is empty.', $key)
+        );
+})->with([
+    'State',
+    'Status',
+    'ResNum',
+])->with([
+    'null' => null,
+    'empty string' => '',
+]);
+
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
     fakeHttp();
 

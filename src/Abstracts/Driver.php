@@ -179,6 +179,7 @@ abstract class Driver implements Payment
 
     /**
      * Returns an array of keys that must be present in the callback data.
+     * Their values must not be empty, unless listed in `getNullableCallbackKeys()`.
      *
      * @return array<string>
      */
@@ -431,6 +432,16 @@ abstract class Driver implements Payment
     }
 
     /**
+     * Returns an array of required callback keys whose value may be null.
+     *
+     * @return array<string>
+     */
+    protected function getNullableCallbackKeys(): array
+    {
+        return [];
+    }
+
+    /**
      * Throws an exception if callback data doesn't match with the stored gateway payload.
      *
      * @param  array<string,mixed>  $storedPayload
@@ -548,7 +559,7 @@ abstract class Driver implements Payment
     }
 
     /**
-     * Throws an exception if callback data doesn't have all of the given keys.
+     * Throws an exception if callback data doesn't have all of the given keys or any of them is empty.
      *
      * @throws MissingCallbackDataException
      */
@@ -556,9 +567,17 @@ abstract class Driver implements Payment
     {
         $requiredKeys = $this->getRequiredCallbackKeys();
 
+        $nullableKeys = $this->getNullableCallbackKeys();
+
+        $payload = $this->callbackPayload->dot();
+
         foreach ($requiredKeys as $key) {
-            if (! $this->callbackPayload->dot()->has($key)) {
-                throw MissingCallbackDataException::make($this->getGateway(), $requiredKeys, $key);
+            if (! $payload->has($key)) {
+                throw MissingCallbackDataException::missingKey($this->getGateway(), $requiredKeys, $key);
+            }
+
+            if (blank($payload->get($key)) && ! in_array($key, $nullableKeys, true)) {
+                throw MissingCallbackDataException::emptyValue($this->getGateway(), $requiredKeys, $key);
             }
         }
     }

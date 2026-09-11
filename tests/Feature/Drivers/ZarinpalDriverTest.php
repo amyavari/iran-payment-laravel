@@ -160,6 +160,23 @@ it('throws exception when callback lacks required keys', function (string $key):
     'Status',
 ]);
 
+it('throws exception when a required callback key is blank', function (string $key, mixed $value): void {
+    $callbackPayload = Helper::successfulCallback();
+    Arr::set($callbackPayload, $key, $value);
+
+    expect(fn (): ZarinpalDriver => Helper::driver()->fromCallback($callbackPayload))
+        ->toThrow(
+            MissingCallbackDataException::class,
+            sprintf('To create zarinpal gateway instance from callback, "Authority, Status" are required. "%s" is empty.', $key)
+        );
+})->with([
+    'Authority',
+    'Status',
+])->with([
+    'null' => null,
+    'empty string' => '',
+]);
+
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
     fakeHttp();
 
