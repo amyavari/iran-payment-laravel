@@ -463,7 +463,7 @@ $fake->failedVerify($rawResponse = 'Verification raw response', $errorCode = 0, 
 $fake->failedConnectionVerify($message = 'Verification connection failed');
 ```
 
-**نکته:** درگاه فیک هیچ اعتبارسنجی روی داده‌های درگاه یا اطلاعات callback انجام نمی‌دهد. شما فقط می‌توانید با متد زیر یک exception خطای callback نامعتبر را شبیه‌سازی کنید:
+**نکته:** درگاه فیک مانند درگاه واقعی، کلیدهای callback را بررسی می‌کند، اما نمی‌تواند داده‌های callback را با داده‌های ذخیره‌شده مقایسه کند.شما فقط می‌توانید با متد زیر یک exception خطای callback نامعتبر را شبیه‌سازی کنید:
 
 ```php
 $fake->invalidCallback($message = 'Invalid callback data');

@@ -478,7 +478,7 @@ $fake->failedVerify($rawResponse = 'Verification raw response', $errorCode = 0, 
 $fake->failedConnectionVerify($message = 'Verification connection failed');
 ```
 
-**Note:** The fake gateway does not validate gateway payloads or callback data. You can only simulate an invalid callback exception by explicitly forcing it:
+**Note:** The fake gateway checks callback keys like the real gateway. But it doesn't compare callback data with the stored gateway payload. You can only simulate an invalid callback exception by explicitly forcing it:
 
 ```php
 $fake->invalidCallback($message = 'Invalid callback data');
