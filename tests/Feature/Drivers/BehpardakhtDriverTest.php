@@ -322,7 +322,10 @@ it('communicates with sandbox environment for payment verification when configur
 });
 
 it('reverses the payment', function (): void {
-    Helper::fakeSoap(Helper::successfulReversalResponse());
+    Helper::fakeSoap(
+        firstResponse: Helper::successfulVerificationResponse(),
+        secondResponse: Helper::successfulReversalResponse()
+    );
 
     Helper::callGatewayFor(ApiMethod::Reverse);
 
@@ -339,7 +342,10 @@ it('reverses the payment', function (): void {
 });
 
 it('returns successful response on successful payment reversal', function (): void {
-    Helper::fakeSoap($response = Helper::successfulReversalResponse());
+    Helper::fakeSoap(
+        firstResponse: Helper::successfulVerificationResponse(),
+        secondResponse: $response = Helper::successfulReversalResponse()
+    );
 
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
@@ -350,7 +356,10 @@ it('returns successful response on successful payment reversal', function (): vo
 });
 
 it('returns failed response on failed payment reversal', function (): void {
-    Helper::fakeSoap($response = Helper::failedResponse());
+    Helper::fakeSoap(
+        firstResponse: Helper::successfulVerificationResponse(),
+        secondResponse: $response = Helper::failedResponse()
+    );
 
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
@@ -361,7 +370,10 @@ it('returns failed response on failed payment reversal', function (): void {
 });
 
 it('communicates with sandbox environment for payment reversal when configured', function (): void {
-    Helper::fakeSoap(Helper::successfulReversalResponse());
+    Helper::fakeSoap(
+        firstResponse: Helper::successfulVerificationResponse(),
+        secondResponse: Helper::successfulReversalResponse()
+    );
 
     Config::set('iran-payment.use_sandbox', true);
 

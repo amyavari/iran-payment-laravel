@@ -23,11 +23,13 @@ final class BehpardakhtHelper extends AbstractHelper
     }
 
     /**
-     * {@inheritdoc}
+     * Fake the SOAP responses
      */
-    public static function fakeSoap(string $response = ''): void
+    public static function fakeSoap(string $firstResponse = '', ?string $secondResponse = null): void
     {
-        Soap::fake($response);
+        $responses = is_null($secondResponse) ? [$firstResponse] : [$firstResponse, $secondResponse];
+
+        Soap::fake(...$responses);
     }
 
     /**

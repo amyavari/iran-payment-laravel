@@ -20,9 +20,12 @@ final class Soap implements SoapInterface
 
     private array $args;
 
-    public function __construct(
-        private readonly mixed $response
-    ) {}
+    private array $responses;
+
+    public function __construct(mixed ...$responses)
+    {
+        $this->responses = $responses === [] ? [''] : $responses;
+    }
 
     /**
      * {@inheritdoc}
@@ -42,7 +45,9 @@ final class Soap implements SoapInterface
         $this->method = $method;
         $this->args = $args;
 
-        return $this->response;
+        return count($this->responses) === 1
+             ? $this->responses[0]  // Keep returning the last response for any extra call
+             : array_shift($this->responses);
     }
 
     /**

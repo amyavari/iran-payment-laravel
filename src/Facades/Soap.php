@@ -22,9 +22,14 @@ use Illuminate\Support\Facades\Facade;
  */
 final class Soap extends Facade
 {
-    public static function fake(mixed $response): void
+    /**
+     * Fake the SOAP responses in the given order.
+     *
+     * The last response is returned again for any extra call.
+     */
+    public static function fake(mixed ...$responses): void
     {
-        self::swap(new FakeSoap($response));
+        self::swap(new FakeSoap(...$responses));
     }
 
     /**
