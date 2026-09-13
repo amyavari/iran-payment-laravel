@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use AliYavari\IranPayment\Drivers\ZarinpalDriver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+use AliYavari\IranPayment\Enums\ApiMethod;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Tests\Helpers\ZarinpalHelper as Helper;
@@ -18,7 +19,7 @@ beforeEach(function (): void {
 it('calls payment creation API with minimum passed data and config callback URL', function (): void {
     fakeHttp(Helper::successfulCreationResponse());
 
-    Helper::driver()->create(1_000);
+    Helper::callGatewayFor(ApiMethod::Create);
 
     $request = getRecordedHttpRequest();
 
@@ -70,7 +71,7 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 it('returns successful response on successful payment creation', function (): void {
     fakeHttp($response = Helper::successfulCreationResponse());
 
-    $payment = Helper::driver()->create(1_000);
+    $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -81,7 +82,7 @@ it('returns successful response on successful payment creation', function (): vo
 it('returns failed response on failed payment creation', function (): void {
     fakeHttp($response = Helper::failedResponse());
 
-    $payment = Helper::driver()->create(1_000);
+    $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -92,7 +93,7 @@ it('returns failed response on failed payment creation', function (): void {
 it('returns authority in the gateway response as transaction ID', function (): void {
     fakeHttp(Helper::successfulCreationResponse());
 
-    $payment = Helper::driver()->create(1_000);
+    $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
         ->getTransactionId()->toBe('A0000000000000000000000000000wwOGYpd'); // From fake creation response
@@ -101,7 +102,7 @@ it('returns authority in the gateway response as transaction ID', function (): v
 it('returns gateway payload needed to verify payment on successful payment creation', function (): void {
     fakeHttp(Helper::successfulCreationResponse());
 
-    $payment = Helper::driver()->create(1_000);
+    $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
         ->getGatewayPayload()->toBe([
@@ -113,7 +114,7 @@ it('returns gateway payload needed to verify payment on successful payment creat
 it('returns gateway redirect data on successful payment creation', function (): void {
     fakeHttp(Helper::successfulCreationResponse());
 
-    $payment = Helper::driver()->create(1_000);
+    $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment->getRedirectData())
         ->toBeInstanceOf(PaymentRedirectDto::class)
@@ -128,7 +129,7 @@ it('communicates with sandbox environment for payment creation when configured',
 
     Config::set('iran-payment.use_sandbox', true);
 
-    $payment = Helper::driver()->create(1_000);
+    $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     $request = getRecordedHttpRequest();
 
@@ -201,9 +202,9 @@ it('does not verify payment when callback status is not successful', function ()
 
     $callbackPayload = Helper::failedCallback();
 
-    $payment = Helper::driver()
-        ->fromCallback($callbackPayload)
-        ->verify(Helper::gatewayPayload());
+    $payment = Helper::driver()->fromCallback($callbackPayload);
+
+    Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -216,7 +217,7 @@ it('does not verify payment when callback status is not successful', function ()
 it('verifies payment when callback is successful and matches stored payload', function (): void {
     fakeHttp(Helper::successfulVerificationResponse());
 
-    Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
+    Helper::callGatewayFor(ApiMethod::Verify);
 
     $request = getRecordedHttpRequest();
 
@@ -234,7 +235,7 @@ it('verifies payment when callback is successful and matches stored payload', fu
 it('returns successful response on successful payment verification', function (): void {
     fakeHttp($response = Helper::successfulVerificationResponse());
 
-    $payment = Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
+    $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -248,7 +249,7 @@ it('returns successful response on subsequence successful payment verification',
 
     fakeHttp($response);
 
-    $payment = Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
+    $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -259,7 +260,7 @@ it('returns successful response on subsequence successful payment verification',
 it('returns failed response on failed payment verification', function (): void {
     fakeHttp($response = Helper::failedResponse());
 
-    $payment = Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
+    $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -272,7 +273,7 @@ it('communicates with sandbox environment for payment verification when configur
 
     Config::set('iran-payment.use_sandbox', true);
 
-    Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
+    Helper::callGatewayFor(ApiMethod::Verify);
 
     $request = getRecordedHttpRequest();
 
@@ -283,7 +284,7 @@ it('communicates with sandbox environment for payment verification when configur
 it('returns card number and reference ID from successful verification', function (): void {
     fakeHttp(Helper::successfulVerificationResponse());
 
-    $payment = Helper::verifiedPayment();
+    $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
         ->getRefNumber()->toBe('201') // From fake verification response
@@ -296,7 +297,7 @@ it('reverses the payment', function (): void {
         secondResponse: Helper::successfulReversalResponse()
     );
 
-    Helper::verifiedPayment()->reverse();
+    Helper::callGatewayFor(ApiMethod::Reverse);
 
     $request = getRecordedHttpRequest();
 
@@ -316,7 +317,7 @@ it('returns successful response on successful payment reversal', function (): vo
         secondResponse: $response = Helper::successfulReversalResponse()
     );
 
-    $payment = Helper::verifiedPayment()->reverse();
+    $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -330,7 +331,7 @@ it('returns failed response on failed payment reversal', function (): void {
         secondResponse: $response = Helper::failedResponse()
     );
 
-    $payment = Helper::verifiedPayment()->reverse();
+    $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -346,7 +347,7 @@ it('communicates with sandbox environment for payment reversal when configured',
 
     Config::set('iran-payment.use_sandbox', true);
 
-    Helper::verifiedPayment()->reverse();
+    Helper::callGatewayFor(ApiMethod::Reverse);
 
     $request = getRecordedHttpRequest();
 
@@ -367,7 +368,7 @@ it('verifies normally with no callback data', function (): void {
 
     $payment = Helper::driver()->noCallback('A0000000000000000000000000000wwOGYpd');
 
-    $payment->verify(Helper::gatewayPayload());
+    Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     Http::assertSentCount(1);
 });
@@ -378,9 +379,10 @@ it('reverses normally with no callback data', function (): void {
         secondResponse: Helper::successfulReversalResponse()
     );
 
-    $payment = Helper::driver()->noCallback('A0000000000000000000000000000wwOGYpd')->verify(Helper::gatewayPayload());
+    $payment = Helper::driver()->noCallback('A0000000000000000000000000000wwOGYpd');
+    Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
-    $payment->reverse();
+    Helper::callGatewayFor(ApiMethod::Reverse, $payment);
 
     Http::assertSentCount(2); // Verification and reversal
 });

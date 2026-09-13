@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use AliYavari\IranPayment\Drivers\NextpayDriver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
+use AliYavari\IranPayment\Enums\ApiMethod;
 use AliYavari\IranPayment\Exceptions\CannotConvertToTomanException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
@@ -21,7 +22,7 @@ it('calls payment creation API with minimum passed data and config callback URL'
     fakeHttp(Helper::successfulCreationResponse());
     mockUniqueNumberGenerator('123456789012345');
 
-    Helper::driver()->create(10_000);
+    Helper::callGatewayFor(ApiMethod::Create);
 
     $request = getRecordedHttpRequest();
 
@@ -33,7 +34,7 @@ it('calls payment creation API with minimum passed data and config callback URL'
     expect($request->data())
         ->api_key->toBe('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
         ->order_id->toBe('123456789012345')
-        ->amount->toBe(1_000) // Toman
+        ->amount->toBe(1_000)
         ->callback_uri->toBe('http://callback.test') // config's callback URL
         ->not->toHaveKeys(['customer_phone', 'payer_desc']);
 });
@@ -72,7 +73,7 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 it('returns successful response on successful payment creation', function (): void {
     fakeHttp($response = Helper::successfulCreationResponse());
 
-    $payment = Helper::driver()->create(10_000);
+    $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -83,7 +84,7 @@ it('returns successful response on successful payment creation', function (): vo
 it('returns failed response on failed payment creation', function (): void {
     fakeHttp($response = Helper::failedResponse());
 
-    $payment = Helper::driver()->create(10_000);
+    $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -94,7 +95,7 @@ it('returns failed response on failed payment creation', function (): void {
 it('returns trans_id in the gateway response as transaction ID', function (): void {
     fakeHttp(Helper::successfulCreationResponse());
 
-    $payment = Helper::driver()->create(1_000);
+    $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
         ->getTransactionId()->toBe('f7c07568-c6d1-4bee-87b1-4a9e5ed2e4c1'); // From fake creation response
@@ -104,20 +105,20 @@ it('returns gateway payload needed to verify payment on successful payment creat
     fakeHttp(Helper::successfulCreationResponse());
     mockUniqueNumberGenerator('123456789012345');
 
-    $payment = Helper::driver()->create(10_000);
+    $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
         ->getGatewayPayload()->toBe([
             'order_id' => '123456789012345',
             'transaction_id' => 'f7c07568-c6d1-4bee-87b1-4a9e5ed2e4c1', // From fake creation response
-            'amount' => 1_000, // Toman
+            'amount' => 1_000,
         ]);
 });
 
 it('returns gateway redirect data on successful payment creation', function (): void {
     fakeHttp(Helper::successfulCreationResponse());
 
-    $payment = Helper::driver()->create(10_000);
+    $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment->getRedirectData())
         ->toBeInstanceOf(PaymentRedirectDto::class)
@@ -132,16 +133,18 @@ it('throws an exception for payment creation when configured to use sandbox', fu
 
     Config::set('iran-payment.use_sandbox', true);
 
-    expect(fn (): NextpayDriver => Helper::driver()->create(10_000))
+    expect(fn (): NextpayDriver => Helper::callGatewayFor(ApiMethod::Create))
         ->toThrow(SandboxNotSupportedException::class, 'Nextpay gateway does not support the sandbox environment.');
 
     Http::assertNothingSent();
 });
 
 it('throws an exception for payment creation when the Rial amount is not a multiple of 10', function (): void {
+    Config::set('iran-payment.currency', 'Rial');
+
     fakeHttp();
 
-    expect(fn (): NextpayDriver => Helper::driver()->create(1_005)) // Default currency is Rial
+    expect(fn (): NextpayDriver => Helper::driver()->create(1_005))
         ->toThrow(CannotConvertToTomanException::class, 'Nextpay gateway only supports Toman, so the Rial amount must be a multiple of 10. "1005" given.');
 
     Http::assertNothingSent();
@@ -205,7 +208,7 @@ it('throws exception when stored payload and callback data do not match', functi
 it('verifies payment when callback matches stored payload', function (): void {
     fakeHttp(Helper::successfulVerificationResponse());
 
-    Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
+    Helper::callGatewayFor(ApiMethod::Verify);
 
     $request = getRecordedHttpRequest();
 
@@ -223,7 +226,7 @@ it('verifies payment when callback matches stored payload', function (): void {
 it('returns successful response on successful payment verification', function (): void {
     fakeHttp($response = Helper::successfulVerificationResponse());
 
-    $payment = Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
+    $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -234,7 +237,7 @@ it('returns successful response on successful payment verification', function ()
 it('returns failed response on failed payment verification', function (): void {
     fakeHttp($response = Helper::failedResponse());
 
-    $payment = Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload());
+    $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -247,7 +250,7 @@ it('throws an exception for payment verification when configured to use sandbox'
 
     Config::set('iran-payment.use_sandbox', true);
 
-    expect(fn (): NextpayDriver => Helper::driverFromSuccessfulCallback()->verify(Helper::gatewayPayload()))
+    expect(fn (): NextpayDriver => Helper::callGatewayFor(ApiMethod::Verify))
         ->toThrow(SandboxNotSupportedException::class, 'Nextpay gateway does not support the sandbox environment.');
 
     Http::assertNothingSent();
@@ -256,7 +259,7 @@ it('throws an exception for payment verification when configured to use sandbox'
 it('returns card number and reference ID from successful verification', function (): void {
     fakeHttp(Helper::successfulVerificationResponse());
 
-    $payment = Helper::verifiedPayment();
+    $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
         ->getRefNumber()->toBe('141196584609') // From fake verification response
@@ -269,7 +272,7 @@ it('reverses the payment', function (): void {
         secondResponse: Helper::successfulReversalResponse()
     );
 
-    Helper::verifiedPayment()->reverse();
+    Helper::callGatewayFor(ApiMethod::Reverse);
 
     $request = getRecordedHttpRequest();
 
@@ -291,7 +294,7 @@ it('returns successful response on successful payment reversal', function (): vo
         secondResponse: $response = Helper::successfulReversalResponse()
     );
 
-    $payment = Helper::verifiedPayment()->reverse();
+    $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
         ->successful()->toBeTrue()
@@ -305,7 +308,7 @@ it('returns failed response on failed payment reversal', function (): void {
         secondResponse: $response = Helper::failedResponse()
     );
 
-    $payment = Helper::verifiedPayment()->reverse();
+    $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
         ->successful()->toBeFalse()
@@ -316,11 +319,11 @@ it('returns failed response on failed payment reversal', function (): void {
 it('throws an exception for payment reversal when configured to use sandbox', function (): void {
     fakeHttp(Helper::successfulVerificationResponse());
 
-    $payment = Helper::verifiedPayment();
+    $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     Config::set('iran-payment.use_sandbox', true);
 
-    expect(fn (): NextpayDriver => $payment->reverse())
+    expect(fn (): NextpayDriver => Helper::callGatewayFor(ApiMethod::Reverse, $payment))
         ->toThrow(SandboxNotSupportedException::class, 'Nextpay gateway does not support the sandbox environment.');
 
     Http::assertSentCount(1); // Only verification, before set to sandbox
@@ -339,7 +342,7 @@ it('verifies normally with no callback data', function (): void {
 
     $payment = Helper::driver()->noCallback('f7c07568-c6d1-4bee-87b1-4a9e5ed2e4c1');
 
-    $payment->verify(Helper::gatewayPayload());
+    Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     Http::assertSentCount(1);
 });
@@ -350,9 +353,10 @@ it('reverses normally with no callback data', function (): void {
         secondResponse: Helper::successfulReversalResponse()
     );
 
-    $payment = Helper::driver()->noCallback('f7c07568-c6d1-4bee-87b1-4a9e5ed2e4c1')->verify(Helper::gatewayPayload());
+    $payment = Helper::driver()->noCallback('f7c07568-c6d1-4bee-87b1-4a9e5ed2e4c1');
+    Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
-    $payment->reverse();
+    Helper::callGatewayFor(ApiMethod::Reverse, $payment);
 
     Http::assertSentCount(2); // Verification and reversal
 });

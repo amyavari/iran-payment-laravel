@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace AliYavari\IranPayment\Tests\Helpers;
 
 use AliYavari\IranPayment\Contracts\Payment;
+use AliYavari\IranPayment\Enums\ApiMethod;
+use LogicException;
 
 /**
  * Provide a contract and shared functionality for driver test helpers.
@@ -72,18 +74,34 @@ abstract class AbstractHelper
     abstract public static function gatewayPayload(): array;
 
     /**
-     * Initialize the driver instance using data from a successful callback.
+     * Call the gateway API for the given method and return the payment instance.
+     *
+     * Note: Without a payment, this method follows the happy path. For other paths,
+     * pass your own payment instance.
      */
-    final public static function driverFromSuccessfulCallback(): Payment
+    final public static function callGatewayFor(ApiMethod $call, ?Payment $payment = null): Payment
     {
-        return static::driver()->fromCallback(static::successfulCallback());
+        $payment ??= self::paymentReadyFor($call);
+
+        return match ($call) {
+            ApiMethod::Create => $payment->create(1_000),
+            ApiMethod::Verify => $payment->verify(static::gatewayPayload()),
+            ApiMethod::Reverse => $payment->reverse(),
+
+            default => throw new LogicException(
+                sprintf('The method "%s" is not a valid API call.', $call->value)
+            ),
+        };
     }
 
-    /**
-     * Get a verified payment instance by executing the verification flow.
-     */
-    final public static function verifiedPayment(): Payment
+    private static function paymentReadyFor(ApiMethod $call): Payment
     {
-        return self::driverFromSuccessfulCallback()->verify(static::gatewayPayload());
+        return match ($call) {
+            ApiMethod::Create => static::driver(),
+            ApiMethod::Verify => static::driver()->fromCallback(static::successfulCallback()),
+            ApiMethod::Reverse => static::driver()->fromCallback(static::successfulCallback())->verify(static::gatewayPayload()),
+
+            default => static::driver(),
+        };
     }
 }
