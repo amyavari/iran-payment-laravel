@@ -89,9 +89,9 @@ final class SadadHelper extends AbstractHelper
     public static function successfulCallback(): array
     {
         return [
-            'ResCode' => 0,
-            'OrderId' => 123456789012345,
-            'SwitchResCod' => 1,
+            'ResCode' => '0',
+            'OrderId' => '123456789012345',
+            'SwitchResCod' => '1',
             'Token' => 'kjslflnvda13464sdv13a',
             'HashedCardNo' => 'ashdlf46463',
             'PrimaryAccNo' => '123456******1234',
@@ -105,9 +105,9 @@ final class SadadHelper extends AbstractHelper
     public static function failedCallback(): array
     {
         return [
-            'ResCode' => -1,
-            'OrderId' => 123456789012345,
-            'SwitchResCod' => 1,
+            'ResCode' => '-1',
+            'OrderId' => '123456789012345',
+            'SwitchResCod' => '1',
             'Token' => 'kjslflnvda13464sdv13a',
         ];
     }

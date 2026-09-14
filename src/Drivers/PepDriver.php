@@ -49,9 +49,9 @@ final class PepDriver extends Driver
     /**
      * Raw response from the last API call.
      *
-     * @var array<string,mixed>
+     * @var array<string,mixed>|string
      */
-    private array $rawResponse;
+    private string|array $rawResponse;
 
     /**
      * Transaction ID
@@ -139,7 +139,7 @@ final class PepDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    protected function getDriverRawResponse(): array
+    protected function getDriverRawResponse(): string|array
     {
         return $this->rawResponse;
     }
@@ -297,12 +297,13 @@ final class PepDriver extends Driver
             return;
         }
 
-        $this->rawResponse = Http::baseUrl($this->toHttps($this->baseUrl))
+        $response = Http::baseUrl($this->toHttps($this->baseUrl))
             ->withToken($token)
             ->withHeader('Referer', URL::current())
             ->post($url, $data)
-            ->throwIfServerError()
-            ->json();
+            ->throwIfServerError();
+
+        $this->rawResponse = $this->decodeResponse($response);
 
         $this->setApiStatusCode();
     }
@@ -341,7 +342,7 @@ final class PepDriver extends Driver
      */
     private function setApiStatusCode(): void
     {
-        $this->apiStatusCode = (int) Arr::get($this->rawResponse, 'resultCode');
+        $this->apiStatusCode = $this->asInt($this->rawResponse, 'resultCode');
     }
 
     /**
@@ -567,7 +568,7 @@ final class PepDriver extends Driver
      */
     private function isFailedPaymentBasedOnCallback(): bool
     {
-        return $this->callbackPayload->get('status') === 'failed';
+        return $this->callbackPayload->get('status') !== 'success';
     }
 
     /**

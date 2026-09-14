@@ -35,9 +35,9 @@ final class NextpayDriver extends Driver
     /**
      * Raw response from the last API call.
      *
-     * @var array<string,mixed>
+     * @var array<string,mixed>|string
      */
-    private array $rawResponse;
+    private string|array $rawResponse;
 
     /**
      * Transaction ID
@@ -183,7 +183,7 @@ final class NextpayDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    protected function getDriverRawResponse(): array
+    protected function getDriverRawResponse(): string|array
     {
         return $this->rawResponse;
     }
@@ -306,10 +306,11 @@ final class NextpayDriver extends Driver
     {
         $this->guardAgainstSandbox();
 
-        $this->rawResponse = Http::baseUrl(self::GATEWAY_BASE_URL)
+        $response = Http::baseUrl(self::GATEWAY_BASE_URL)
             ->post($method, $this->withCredentials($data))
-            ->throwIfServerError()
-            ->json();
+            ->throwIfServerError();
+
+        $this->rawResponse = $this->decodeResponse($response);
 
         $this->setApiStatusCode();
     }
@@ -332,7 +333,7 @@ final class NextpayDriver extends Driver
      */
     private function setApiStatusCode(): void
     {
-        $this->apiStatusCode = Arr::get($this->rawResponse, 'code');
+        $this->apiStatusCode = $this->asInt($this->rawResponse, 'code');
     }
 
     /**

@@ -112,7 +112,7 @@ final class IdpayDriver extends Driver
      */
     protected function getDriverStatusMessage(): string
     {
-        return $this->apiStatusMessage;
+        return $this->getInvalidErrorCodeMessage() ?? $this->apiStatusMessage;
     }
 
     /**
@@ -296,11 +296,11 @@ final class IdpayDriver extends Driver
     {
         $this->apiIsSuccessful = $response->successful();
 
-        $this->rawResponse = $response->json();
+        $this->rawResponse = $this->decodeResponse($response);
 
         if (! $this->apiIsSuccessful) {
-            $this->apiStatusCode = Arr::get($this->rawResponse, 'error_code');
-            $this->apiStatusMessage = Arr::get($this->rawResponse, 'error_message');
+            $this->apiStatusCode = $this->asErrorCode($this->rawResponse, 'error_code');
+            $this->apiStatusMessage = $this->asErrorMessage($this->rawResponse, 'error_message');
         }
     }
 
@@ -327,7 +327,7 @@ final class IdpayDriver extends Driver
     {
         $this->apiIsSuccessful = false;
 
-        $this->apiStatusCode = (int) $this->callbackPayload->get('status');
+        $this->apiStatusCode = $this->asInt($this->callbackPayload->all(), 'status');
         $this->apiStatusMessage = $this->getCallbackStatusMessage();
 
         $this->rawResponse = $this->callbackPayload->all();
@@ -358,10 +358,10 @@ final class IdpayDriver extends Driver
      */
     private function setVerificationStatus(): void
     {
-        $this->apiStatusCode = (int) Arr::get($this->rawResponse, 'status');
+        $this->apiStatusCode = $this->asInt($this->rawResponse, 'status');
         $this->apiStatusMessage = $this->getCallbackStatusMessage();
 
-        $this->apiIsSuccessful = $this->apiStatusCode >= 100;
+        $this->apiIsSuccessful = in_array($this->apiStatusCode, [100, 101, 200], true);
     }
 
     /**

@@ -183,7 +183,7 @@ final class SadadDriver extends Driver
     protected function prepareFromCallback(): void
     {
         $this->transactionId = (string) $this->callbackPayload->get('OrderId');
-        $this->apiStatusCode = (int) $this->callbackPayload->get('ResCode');
+        $this->apiStatusCode = $this->asInt($this->callbackPayload->all(), 'ResCode');
     }
 
     /**
@@ -288,10 +288,11 @@ final class SadadDriver extends Driver
     {
         $this->guardAgainstSandbox();
 
-        $this->rawResponse = Http::baseUrl(self::GATEWAY_BASE_URL)
+        $response = Http::baseUrl(self::GATEWAY_BASE_URL)
             ->post($method, $data)
-            ->throwIfServerError()
-            ->json();
+            ->throwIfServerError();
+
+        $this->rawResponse = $this->decodeResponse($response);
 
         $this->setApiStatusCode();
     }
@@ -301,7 +302,7 @@ final class SadadDriver extends Driver
      */
     private function setApiStatusCode(): void
     {
-        $this->apiStatusCode = (int) Arr::get($this->rawResponse, 'ResCode');
+        $this->apiStatusCode = $this->asInt($this->rawResponse, 'ResCode');
     }
 
     /**
@@ -378,7 +379,7 @@ final class SadadDriver extends Driver
      */
     private function isFailedPaymentBasedOnCallback(): bool
     {
-        return ((int) $this->callbackPayload->get('ResCode')) !== 0;
+        return $this->asInt($this->callbackPayload->all(), 'ResCode') !== 0;
     }
 
     /**
@@ -386,8 +387,8 @@ final class SadadDriver extends Driver
      */
     private function setPaymentStatusBasedOnCallback(): void
     {
-        $this->apiStatusCode = (int) $this->callbackPayload->get('ResCode');
         $this->rawResponse = $this->callbackPayload->all();
+        $this->apiStatusCode = $this->asInt($this->rawResponse, 'ResCode');
     }
 
     /**

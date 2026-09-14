@@ -112,7 +112,8 @@ final class PaypingDriver extends Driver
      */
     protected function getDriverStatusMessage(): string
     {
-        return InternalErrorCode::getMessage($this->apiStatusCode)
+        return $this->getInvalidErrorCodeMessage()
+            ?? InternalErrorCode::getMessage($this->apiStatusCode)
             ?? $this->getGatewayMessage();
     }
 
@@ -156,7 +157,7 @@ final class PaypingDriver extends Driver
         $this->ensureCallbackDataMatchesPayload($storedPayload, $keyMapper);
 
         $data = [
-            'paymentRefId' => $this->callbackPayload->dot()->get('data.paymentRefId'),
+            'paymentRefId' => (int) $this->callbackPayload->dot()->get('data.paymentRefId'),
             'paymentCode' => $this->callbackPayload->dot()->get('data.paymentCode'),
             'amount' => Arr::get($storedPayload, 'amount'),
         ];
@@ -176,7 +177,7 @@ final class PaypingDriver extends Driver
         }
 
         $data = [
-            'paymentRefId' => $this->callbackPayload->dot()->get('data.paymentRefId'),
+            'paymentRefId' => (int) $this->callbackPayload->dot()->get('data.paymentRefId'),
             'paymentCode' => $this->callbackPayload->dot()->get('data.paymentCode'),
         ];
 
@@ -289,14 +290,17 @@ final class PaypingDriver extends Driver
      */
     private function parseResponse(Response $response): void
     {
-        $this->rawResponse = $response->json();
+        $this->rawResponse = $this->decodeResponse($response);
 
-        $this->apiStatusCode = (int) Arr::get($this->rawResponse, 'metaData.code');
+        $isHttpSuccessful = $response->status() === 200;
+
+        $this->apiStatusCode = ! $isHttpSuccessful
+            ? $this->asErrorCode($this->rawResponse, 'metaData.code')
+            : 0; // Just to fill the place!
 
         $this->alreadyVerified = $this->isAlreadyVerified($response);
 
-        $this->apiIsSuccessful = $response->status() === 200
-                              || $this->alreadyVerified;
+        $this->apiIsSuccessful = $isHttpSuccessful || $this->alreadyVerified;
     }
 
     /**
@@ -358,7 +362,7 @@ final class PaypingDriver extends Driver
      */
     private function isFailedPaymentBasedOnCallback(): bool
     {
-        return $this->callbackPayload->get('status') !== 1;
+        return $this->asInt($this->callbackPayload->all(), 'status') !== 1;
     }
 
     /**
@@ -368,8 +372,9 @@ final class PaypingDriver extends Driver
     {
         $this->apiIsSuccessful = false;
 
-        $this->apiStatusCode = $this->callbackPayload->get('errorCode');
         $this->rawResponse = $this->callbackPayload->all();
+
+        $this->apiStatusCode = $this->asErrorCode($this->rawResponse, 'errorCode');
     }
 
     /**

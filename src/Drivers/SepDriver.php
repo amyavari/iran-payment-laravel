@@ -44,7 +44,7 @@ final class SepDriver extends Driver
     /**
      * Status code returned by the last API call.
      */
-    private string $apiStatusCode;
+    private int $apiStatusCode;
 
     /**
      * Status message returned by the last API call.
@@ -118,7 +118,7 @@ final class SepDriver extends Driver
      */
     protected function getDriverStatusCode(): string
     {
-        return $this->apiStatusCode;
+        return (string) $this->apiStatusCode;
     }
 
     /**
@@ -126,7 +126,7 @@ final class SepDriver extends Driver
      */
     protected function getDriverStatusMessage(): string
     {
-        return $this->apiStatusMessage;
+        return $this->getInvalidErrorCodeMessage() ?? $this->apiStatusMessage;
     }
 
     /**
@@ -135,7 +135,7 @@ final class SepDriver extends Driver
     protected function isSuccessful(): bool
     {
         if ($this->isWithoutCallback()) {
-            return $this->isWithoutCallbackSuccessful((int) $this->apiStatusCode);
+            return $this->isWithoutCallbackSuccessful($this->apiStatusCode);
         }
 
         return $this->apiIsSuccessful;
@@ -288,7 +288,7 @@ final class SepDriver extends Driver
     {
         $response = collect($this->rawResponse);
 
-        $this->apiIsSuccessful = $response->get('status') === 1;
+        $this->apiIsSuccessful = $this->asInt($this->rawResponse, 'status') === 1;
 
         if ($this->apiIsSuccessful) {
             $this->token = $response->get('token');
@@ -296,8 +296,8 @@ final class SepDriver extends Driver
             return;
         }
 
-        $this->apiStatusCode = $response->get('errorCode');
-        $this->apiStatusMessage = $response->get('errorDesc');
+        $this->apiStatusCode = $this->asErrorCode($this->rawResponse, 'errorCode');
+        $this->apiStatusMessage = $this->asErrorMessage($this->rawResponse, 'errorDesc');
     }
 
     /**
@@ -314,7 +314,7 @@ final class SepDriver extends Driver
     private function setFailedPaymentBasedOnCallback(): void
     {
         $this->apiIsSuccessful = false;
-        $this->apiStatusCode = (string) $this->callbackPayload->get('Status');
+        $this->apiStatusCode = $this->asErrorCode($this->callbackPayload->all(), 'Status');
         $this->apiStatusMessage = $this->getCallbackMessage($this->callbackPayload->get('State'));
         $this->rawResponse = $this->callbackPayload->all();
     }
@@ -353,9 +353,10 @@ final class SepDriver extends Driver
             $url .= "/{$method}";
         }
 
-        $this->rawResponse = Http::post($url, $data)
-            ->throwIfServerError()
-            ->json();
+        $response = Http::post($url, $data)
+            ->throwIfServerError();
+
+        $this->rawResponse = $this->decodeResponse($response);
     }
 
     /**
@@ -363,9 +364,9 @@ final class SepDriver extends Driver
      */
     private function parseFollowUpResponse(): void
     {
-        $this->apiIsSuccessful = Arr::get($this->rawResponse, 'Success');
-        $this->apiStatusCode = (string) Arr::get($this->rawResponse, 'ResultCode');
-        $this->apiStatusMessage = Arr::get($this->rawResponse, 'ResultDescription');
+        $this->apiIsSuccessful = $this->asBool($this->rawResponse, 'Success');
+        $this->apiStatusCode = $this->asErrorCode($this->rawResponse, 'ResultCode');
+        $this->apiStatusMessage = $this->asErrorMessage($this->rawResponse, 'ResultDescription');
     }
 
     /**
@@ -392,8 +393,8 @@ final class SepDriver extends Driver
         $this->apiIsSuccessful = Arr::get($storedPayload, 'amount') === Arr::get($this->rawResponse, 'TransactionDetail.OrginalAmount');
 
         if (! $this->apiIsSuccessful) {
-            $this->apiStatusCode = (string) InternalErrorCode::InvalidAmount->value;
-            $this->apiStatusMessage = InternalErrorCode::getMessage((int) $this->apiStatusCode);
+            $this->apiStatusCode = InternalErrorCode::InvalidAmount->value;
+            $this->apiStatusMessage = InternalErrorCode::getMessage($this->apiStatusCode);
         }
     }
 
@@ -402,8 +403,8 @@ final class SepDriver extends Driver
      */
     private function setPaymentStatusForNoCallback(ApiMethod $method): void
     {
-        $this->apiStatusCode = (string) $this->withoutCallbackStatusCode($method);
-        $this->apiStatusMessage = InternalErrorCode::getMessage((int) $this->apiStatusCode);
+        $this->apiStatusCode = $this->withoutCallbackStatusCode($method);
+        $this->apiStatusMessage = InternalErrorCode::getMessage($this->apiStatusCode);
         $this->rawResponse = $this->withoutCallbackRawResponse();
     }
 }

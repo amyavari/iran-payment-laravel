@@ -6,6 +6,7 @@ use AliYavari\IranPayment\Drivers\ZibalDriver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Enums\ApiMethod;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
+use AliYavari\IranPayment\Exceptions\InvalidGatewayDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Tests\Helpers\ZibalHelper as Helper;
 use Illuminate\Support\Arr;
@@ -211,6 +212,18 @@ it('does not verify payment when callback status is not successful', function ()
     Http::assertNothingSent();
 });
 
+it('does not verify payment when callback status is unknown', function (): void {
+    $callbackPayload = Helper::successfulCallback();
+    Arr::set($callbackPayload, 'success', '2');
+
+    $payment = Helper::driver()->fromCallback($callbackPayload);
+
+    Helper::callGatewayFor(ApiMethod::Verify, $payment);
+
+    expect($payment)
+        ->successful()->toBeFalse();
+});
+
 it('verifies payment when callback is successful and matches stored payload', function (): void {
     fakeHttp(Helper::successfulVerificationResponse());
 
@@ -347,3 +360,83 @@ it('returns failed response on the payment reversal with no callback data', func
 
     Http::assertSentCount(1); // Only verification is sent.
 });
+
+it('returns the internal error code when the callback status is invalid', function (): void {
+    fakeHttp();
+
+    $callbackPayload = Helper::failedCallback();
+    Arr::set($callbackPayload, 'status', 'abc');
+
+    $payment = Helper::driver()->fromCallback($callbackPayload);
+
+    Helper::callGatewayFor(ApiMethod::Verify, $payment);
+
+    expect($payment)
+        ->successful()->toBeFalse()
+        ->error()->toContain('9400')
+        ->error()->toContain('Expected "status" to be of type "int" for the zibal gateway, "abc" given.');
+
+    Http::assertNothingSent();
+});
+
+it('throws exception when the API result code is invalid', function (ApiMethod $call, mixed $value, string $given): void {
+    $response = match ($call) {
+        ApiMethod::Create => Helper::successfulCreationResponse(),
+        ApiMethod::Verify => Helper::successfulVerificationResponse(),
+    };
+    Arr::set($response, 'result', $value);
+
+    fakeHttp($response);
+
+    expect(fn (): ZibalDriver => Helper::callGatewayFor($call))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "result" to be of type "int" for the zibal gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'creation' => ApiMethod::Create,
+    'verification' => ApiMethod::Verify,
+])->with([
+    'missing value' => [null, 'null'],
+    'non-numeric value' => ['abc', 'abc'],
+]);
+
+it('throws exception when the API returns a non-JSON response', function (ApiMethod $call): void {
+    $response = 'Service is not available';
+
+    fakeHttp($response);
+
+    expect(fn (): ZibalDriver => Helper::callGatewayFor($call))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    'Expected "result" to be of type "int" for the zibal gateway, "null" given.'
+                ),
+        );
+})->with([
+    'creation' => ApiMethod::Create,
+    'verification' => ApiMethod::Verify,
+]);
+
+it('throws exception when the verification status is invalid', function (mixed $value, string $given): void {
+    $response = Helper::successfulVerificationResponse();
+    Arr::set($response, 'status', $value);
+
+    fakeHttp($response);
+
+    expect(fn (): ZibalDriver => Helper::callGatewayFor(ApiMethod::Verify))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "status" to be of type "int" for the zibal gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'non-numeric value' => ['abc', 'abc'],
+]);

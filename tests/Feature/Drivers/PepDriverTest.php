@@ -6,6 +6,7 @@ use AliYavari\IranPayment\Drivers\PepDriver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Enums\ApiMethod;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
+use AliYavari\IranPayment\Exceptions\InvalidGatewayDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Exceptions\SandboxNotSupportedException;
 use AliYavari\IranPayment\Tests\Helpers\PepHelper as Helper;
@@ -406,6 +407,18 @@ it('does not verify payment when callback status is not successful', function ()
     Http::assertNothingSent();
 });
 
+it('does not verify payment when callback status is unknown', function (): void {
+    $callbackPayload = Helper::successfulCallback();
+    Arr::set($callbackPayload, 'status', 'unknown');
+
+    $payment = Helper::driver()->fromCallback($callbackPayload);
+
+    Helper::callGatewayFor(ApiMethod::Verify, $payment);
+
+    expect($payment)
+        ->successful()->toBeFalse();
+});
+
 it('sets failed response on failed getting token on payment verification', function (): void {
     fakeHttp($response = Helper::failedResponse());
 
@@ -671,3 +684,53 @@ it('reverses normally with no callback data', function (): void {
 
     Http::assertSentCount(3); // getToken, verification and reversal
 });
+
+it('throws exception when the API status code is invalid', function (ApiMethod $call, mixed $value, string $given): void {
+    $response = match ($call) {
+        ApiMethod::Create => Helper::successfulCreationResponse(),
+        ApiMethod::Verify => Helper::successfulVerificationResponse(),
+        ApiMethod::Reverse => Helper::successfulReversalResponse(),
+    };
+    Arr::set($response, 'resultCode', $value);
+
+    $call === ApiMethod::Reverse
+        ? fakeHttp(Helper::successfulGetTokenResponse(), secondResponse: Helper::successfulVerificationResponse())->push($response)
+        : fakeHttp(Helper::successfulGetTokenResponse(), secondResponse: $response);
+
+    expect(fn (): PepDriver => Helper::callGatewayFor($call))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "resultCode" to be of type "int" for the pep gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'creation' => ApiMethod::Create,
+    'verification' => ApiMethod::Verify,
+    'reversal' => ApiMethod::Reverse,
+])->with([
+    'missing value' => [null, 'null'],
+    'non-numeric value' => ['abc', 'abc'],
+]);
+
+it('throws exception when the API returns a non-JSON response', function (ApiMethod $call): void {
+    $response = 'Service is not available';
+
+    $call === ApiMethod::Reverse
+        ? fakeHttp(Helper::successfulGetTokenResponse(), secondResponse: Helper::successfulVerificationResponse())->push($response)
+        : fakeHttp(Helper::successfulGetTokenResponse(), secondResponse: $response);
+
+    expect(fn (): PepDriver => Helper::callGatewayFor($call))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    'Expected "resultCode" to be of type "int" for the pep gateway, "null" given.'
+                ),
+        );
+})->with([
+    'creation' => ApiMethod::Create,
+    'verification' => ApiMethod::Verify,
+    'reversal' => ApiMethod::Reverse,
+]);

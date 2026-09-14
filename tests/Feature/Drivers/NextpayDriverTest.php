@@ -7,6 +7,7 @@ use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Enums\ApiMethod;
 use AliYavari\IranPayment\Exceptions\CannotConvertToTomanException;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
+use AliYavari\IranPayment\Exceptions\InvalidGatewayDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Exceptions\SandboxNotSupportedException;
 use AliYavari\IranPayment\Tests\Helpers\NextpayHelper as Helper;
@@ -360,3 +361,53 @@ it('reverses normally with no callback data', function (): void {
 
     Http::assertSentCount(2); // Verification and reversal
 });
+
+it('throws exception when the API status code is invalid', function (ApiMethod $call, mixed $value, string $given): void {
+    $response = match ($call) {
+        ApiMethod::Create => Helper::successfulCreationResponse(),
+        ApiMethod::Verify => Helper::successfulVerificationResponse(),
+        ApiMethod::Reverse => Helper::successfulReversalResponse(),
+    };
+    Arr::set($response, 'code', $value);
+
+    $call === ApiMethod::Reverse
+        ? fakeHttp(Helper::successfulVerificationResponse(), secondResponse: $response)
+        : fakeHttp($response);
+
+    expect(fn (): NextpayDriver => Helper::callGatewayFor($call))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "code" to be of type "int" for the nextpay gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'creation' => ApiMethod::Create,
+    'verification' => ApiMethod::Verify,
+    'reversal' => ApiMethod::Reverse,
+])->with([
+    'missing value' => [null, 'null'],
+    'non-numeric value' => ['abc', 'abc'],
+]);
+
+it('throws exception when the API returns a non-JSON response', function (ApiMethod $call): void {
+    $response = 'Service is not available';
+
+    $call === ApiMethod::Reverse
+        ? fakeHttp(Helper::successfulVerificationResponse(), secondResponse: $response)
+        : fakeHttp($response);
+
+    expect(fn (): NextpayDriver => Helper::callGatewayFor($call))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    'Expected "code" to be of type "int" for the nextpay gateway, "null" given.'
+                ),
+        );
+})->with([
+    'creation' => ApiMethod::Create,
+    'verification' => ApiMethod::Verify,
+    'reversal' => ApiMethod::Reverse,
+]);

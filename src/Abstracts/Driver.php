@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AliYavari\IranPayment\Abstracts;
 
+use AliYavari\IranPayment\Concerns\CastsGatewayData;
 use AliYavari\IranPayment\Concerns\FormatsPhoneNumber;
 use AliYavari\IranPayment\Concerns\ManagesModel;
 use AliYavari\IranPayment\Contracts\Payment;
@@ -17,6 +18,7 @@ use AliYavari\IranPayment\Exceptions\MissingGatewayPayloadException;
 use AliYavari\IranPayment\Exceptions\PaymentAlreadyVerifiedException;
 use AliYavari\IranPayment\Models\Payment as PaymentModel;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -28,7 +30,7 @@ use Illuminate\Support\Str;
  */
 abstract class Driver implements Payment
 {
-    use FormatsPhoneNumber, ManagesModel;
+    use CastsGatewayData, FormatsPhoneNumber, ManagesModel;
 
     /**
      * Explicit gateway key defined by the concrete driver, if needed.
@@ -456,6 +458,16 @@ abstract class Driver implements Payment
                 throw InvalidCallbackDataException::make($callbackKey, $storedKey);
             }
         }
+    }
+
+    /**
+     * Decode the API response if it is JSON or return the raw body.
+     *
+     * @return array<string,mixed>|string
+     */
+    protected function decodeResponse(Response $response): array|string
+    {
+        return $response->json() ?? $response->body();
     }
 
     /**

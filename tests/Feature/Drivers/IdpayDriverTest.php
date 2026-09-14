@@ -6,6 +6,7 @@ use AliYavari\IranPayment\Drivers\IdpayDriver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Enums\ApiMethod;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
+use AliYavari\IranPayment\Exceptions\InvalidGatewayDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Tests\Helpers\IdpayHelper as Helper;
 use Illuminate\Support\Arr;
@@ -369,3 +370,95 @@ it('returns failed response on the payment reversal with no callback data', func
 
     Http::assertSentCount(1); // Only verification is sent.
 });
+
+it('throws exception when the verification status is invalid', function (mixed $value, string $given): void {
+    $response = Helper::successfulVerificationResponse();
+    Arr::set($response, 'status', $value);
+
+    fakeHttp($response);
+
+    expect(fn (): IdpayDriver => Helper::callGatewayFor(ApiMethod::Verify))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "status" to be of type "int" for the idpay gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'non-numeric value' => ['abc', 'abc'],
+]);
+
+it('throws exception when the callback status is invalid', function (): void {
+    fakeHttp();
+
+    $callbackPayload = Helper::failedCallback();
+    Arr::set($callbackPayload, 'status', 'abc');
+
+    $payment = Helper::driver()->fromCallback($callbackPayload);
+
+    expect(fn (): IdpayDriver => Helper::callGatewayFor(ApiMethod::Verify, $payment))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $callbackPayload])
+                ->getMessage()->toBe(
+                    'Expected "status" to be of type "int" for the idpay gateway, "abc" given.'
+                ),
+        );
+
+    Http::assertNothingSent();
+});
+
+it('returns the internal error code when the API error code is invalid', function (ApiMethod $call, mixed $value, string $given): void {
+    $response = Helper::failedResponse();
+    Arr::set($response, 'error_code', $value);
+
+    fakeHttp($response, 406);
+
+    $payment = Helper::callGatewayFor($call);
+
+    expect($payment)
+        ->successful()->toBeFalse()
+        ->error()->toContain('9400')
+        ->error()->toContain(sprintf('Expected "error_code" to be of type "int" for the idpay gateway, "%s" given.', $given))
+        ->getRawResponse()->toBe($response);
+})->with([
+    'creation' => ApiMethod::Create,
+    'verification' => ApiMethod::Verify,
+])->with([
+    'missing value' => [null, 'null'],
+    'non-numeric value' => ['abc', 'abc'],
+]);
+
+it('returns the gateway error code with a fallback message when the API error message is invalid', function (ApiMethod $call): void {
+    $response = Helper::failedResponse();
+    Arr::set($response, 'error_message', null);
+
+    fakeHttp($response, 406);
+
+    $payment = Helper::callGatewayFor($call);
+
+    expect($payment)
+        ->successful()->toBeFalse()
+        ->error()->toContain('32') // From fake failed response
+        ->error()->toContain('Expected "error_message" to be of type "string" for the idpay gateway, "null" given.');
+})->with([
+    'creation' => ApiMethod::Create,
+    'verification' => ApiMethod::Verify,
+]);
+
+it('returns the internal error code when the API returns a non-JSON response', function (ApiMethod $call): void {
+    fakeHttp('Service is not available', 406);
+
+    $payment = Helper::callGatewayFor($call);
+
+    expect($payment)
+        ->successful()->toBeFalse()
+        ->error()->toContain('9400')
+        ->error()->toContain('Expected "error_code" to be of type "int" for the idpay gateway, "null" given.')
+        ->getRawResponse()->toBe('Service is not available');
+})->with([
+    'creation' => ApiMethod::Create,
+    'verification' => ApiMethod::Verify,
+]);

@@ -6,6 +6,7 @@ use AliYavari\IranPayment\Drivers\SadadDriver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Enums\ApiMethod;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
+use AliYavari\IranPayment\Exceptions\InvalidGatewayDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Exceptions\SandboxNotSupportedException;
 use AliYavari\IranPayment\Tests\Helpers\SadadHelper as Helper;
@@ -371,3 +372,64 @@ it('returns failed response on the payment reversal with no callback data', func
 
     Http::assertSentCount(1); // Only verification is sent.
 });
+
+it('throws exception when the callback status code is invalid', function (): void {
+    fakeHttp();
+
+    $callbackPayload = Helper::failedCallback();
+    Arr::set($callbackPayload, 'ResCode', 'abc');
+
+    expect(fn (): SadadDriver => Helper::driver()->fromCallback($callbackPayload))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $callbackPayload])
+                ->getMessage()->toBe(
+                    'Expected "ResCode" to be of type "int" for the sadad gateway, "abc" given.'
+                ),
+        );
+
+    Http::assertNothingSent();
+});
+
+it('throws exception when the API status code is invalid', function (ApiMethod $call, mixed $value, string $given): void {
+    $response = match ($call) {
+        ApiMethod::Create => Helper::successfulCreationResponse(),
+        ApiMethod::Verify => Helper::successfulVerificationResponse(),
+    };
+    Arr::set($response, 'ResCode', $value);
+
+    fakeHttp($response);
+
+    expect(fn (): SadadDriver => Helper::callGatewayFor($call))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "ResCode" to be of type "int" for the sadad gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'creation' => ApiMethod::Create,
+    'verification' => ApiMethod::Verify,
+])->with([
+    'missing value' => [null, 'null'],
+    'non-numeric value' => ['abc', 'abc'],
+]);
+
+it('throws exception when the API returns a non-JSON response', function (ApiMethod $call): void {
+    $response = 'Service is not available';
+
+    fakeHttp($response);
+
+    expect(fn (): SadadDriver => Helper::callGatewayFor($call))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    'Expected "ResCode" to be of type "int" for the sadad gateway, "null" given.'
+                ),
+        );
+})->with([
+    'creation' => ApiMethod::Create,
+    'verification' => ApiMethod::Verify,
+]);

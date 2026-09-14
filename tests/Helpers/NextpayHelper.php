@@ -89,7 +89,7 @@ final class NextpayHelper extends AbstractHelper
         return [
             'trans_id' => 'f7c07568-c6d1-4bee-87b1-4a9e5ed2e4c1',
             'order_id' => '1234567890',
-            'amount' => 1_000,
+            'amount' => '1000',
         ];
     }
 

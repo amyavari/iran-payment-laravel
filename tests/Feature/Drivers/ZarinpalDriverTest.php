@@ -6,6 +6,7 @@ use AliYavari\IranPayment\Drivers\ZarinpalDriver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Enums\ApiMethod;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
+use AliYavari\IranPayment\Exceptions\InvalidGatewayDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Tests\Helpers\ZarinpalHelper as Helper;
 use Illuminate\Support\Arr;
@@ -214,6 +215,18 @@ it('does not verify payment when callback status is not successful', function ()
     Http::assertNothingSent();
 });
 
+it('does not verify payment when callback status is unknown', function (): void {
+    $callbackPayload = Helper::successfulCallback();
+    Arr::set($callbackPayload, 'Status', 'UNKNOWN');
+
+    $payment = Helper::driver()->fromCallback($callbackPayload);
+
+    Helper::callGatewayFor(ApiMethod::Verify, $payment);
+
+    expect($payment)
+        ->successful()->toBeFalse();
+});
+
 it('verifies payment when callback is successful and matches stored payload', function (): void {
     fakeHttp(Helper::successfulVerificationResponse());
 
@@ -386,3 +399,69 @@ it('reverses normally with no callback data', function (): void {
 
     Http::assertSentCount(2); // Verification and reversal
 });
+
+it('throws exception when the API status code is invalid', function (ApiMethod $call): void {
+    $response = match ($call) {
+        ApiMethod::Create => Helper::successfulCreationResponse(),
+        ApiMethod::Verify => Helper::successfulVerificationResponse(),
+        ApiMethod::Reverse => Helper::successfulReversalResponse(),
+    };
+    Arr::set($response, 'data.code', 'abc');
+
+    $call === ApiMethod::Reverse
+        ? fakeHttp(Helper::successfulVerificationResponse(), secondResponse: $response)
+        : fakeHttp($response);
+
+    expect(fn (): ZarinpalDriver => Helper::callGatewayFor($call))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    'Expected "data.code" to be of type "int" for the zarinpal gateway, "abc" given.'
+                ),
+        );
+})->with([
+    'creation' => ApiMethod::Create,
+    'verification' => ApiMethod::Verify,
+    'reversal' => ApiMethod::Reverse,
+]);
+
+it('returns the internal error code when the API error code is invalid', function (ApiMethod $call, mixed $value, string $given): void {
+    $response = Helper::failedResponse();
+    Arr::set($response, 'errors.code', $value);
+
+    $call === ApiMethod::Reverse
+        ? fakeHttp(Helper::successfulVerificationResponse(), secondResponse: $response)
+        : fakeHttp($response);
+
+    $payment = Helper::callGatewayFor($call);
+
+    expect($payment)
+        ->successful()->toBeFalse()
+        ->error()->toContain('9400')
+        ->error()->toContain(sprintf('Expected "errors.code" to be of type "int" for the zarinpal gateway, "%s" given.', $given));
+})->with([
+    'creation' => ApiMethod::Create,
+    'verification' => ApiMethod::Verify,
+    'reversal' => ApiMethod::Reverse,
+])->with([
+    'missing value' => [null, 'null'],
+    'non-numeric value' => ['abc', 'abc'],
+]);
+
+it('returns the internal error code when the API returns a non-JSON response', function (ApiMethod $call): void {
+    $call === ApiMethod::Reverse
+        ? fakeHttp(Helper::successfulVerificationResponse(), secondResponse: 'Service is not available')
+        : fakeHttp('Service is not available');
+
+    $payment = Helper::callGatewayFor($call);
+
+    expect($payment)
+        ->successful()->toBeFalse()
+        ->error()->toContain('9400')
+        ->error()->toContain('Expected "errors.code" to be of type "int" for the zarinpal gateway, "null" given.');
+})->with([
+    'creation' => ApiMethod::Create,
+    'verification' => ApiMethod::Verify,
+    'reversal' => ApiMethod::Reverse,
+]);

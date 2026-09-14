@@ -312,7 +312,11 @@ final class BehpardakhtDriver extends Driver
      */
     private function setApiStatusCode(): void
     {
-        $this->apiStatusCode = Str::of($this->rawResponse)->before(',')->toInteger();
+        $body = [
+            'ResCode' => Str::before($this->rawResponse, ','),
+        ];
+
+        $this->apiStatusCode = $this->asInt($body, 'ResCode', $this->rawResponse);
     }
 
     /**
@@ -450,8 +454,8 @@ final class BehpardakhtDriver extends Driver
      */
     private function setPaymentStatusBasedOnCallback(): void
     {
-        $this->apiStatusCode = (int) $this->callbackPayload->get('ResCode');
         $this->rawResponse = $this->callbackPayload->all();
+        $this->apiStatusCode = $this->asInt($this->rawResponse, 'ResCode');
     }
 
     /**
@@ -468,7 +472,7 @@ final class BehpardakhtDriver extends Driver
             'userPassword' => $this->password,
             'orderId' => (int) $this->transactionId,
             'saleOrderId' => (int) $this->transactionId,
-            'saleReferenceId' => $this->callbackPayload->get('SaleReferenceId'),
+            'saleReferenceId' => (int) $this->callbackPayload->get('SaleReferenceId'),
         ];
     }
 }

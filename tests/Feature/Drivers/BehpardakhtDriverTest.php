@@ -6,6 +6,7 @@ use AliYavari\IranPayment\Drivers\BehpardakhtDriver;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Enums\ApiMethod;
 use AliYavari\IranPayment\Exceptions\InvalidCallbackDataException;
+use AliYavari\IranPayment\Exceptions\InvalidGatewayDataException;
 use AliYavari\IranPayment\Exceptions\MissingCallbackDataException;
 use AliYavari\IranPayment\Facades\Soap;
 use AliYavari\IranPayment\Tests\Helpers\BehpardakhtHelper as Helper;
@@ -220,17 +221,16 @@ it('returns card number and reference ID from successful callback', function ():
         ->getCardNumber()->toBe('1234-*-*-1234'); // From fake callback
 });
 
-it('returns empty string as card number and reference ID when not provided in the callback', function (): void {
+it('returns empty string as card number when not provided in the callback', function (): void {
     Helper::fakeSoap(Helper::successfulVerificationResponse());
 
-    $callbackPayload = Arr::except(Helper::successfulCallback(), ['SaleReferenceId', 'CardHolderPan']);
+    $callbackPayload = Arr::except(Helper::successfulCallback(), 'CardHolderPan');
 
     $payment = Helper::driver()->fromCallback($callbackPayload);
 
     Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
-        ->getRefNumber()->toBe('')
         ->getCardNumber()->toBe('');
 });
 
@@ -417,6 +417,48 @@ it('returns successful reversal with no callback data', function (): void {
         ->successful()->toBeTrue()
         ->error()->toBeNull()
         ->getRawResponse()->toBe('No API is called.');
+
+    Soap::assertNothingSent();
+});
+
+it('throws exception when the API status code is invalid', function (ApiMethod $call, string $response): void {
+    $call === ApiMethod::Reverse
+        ? Helper::fakeSoap(Helper::successfulVerificationResponse(), secondResponse: $response)
+        : Helper::fakeSoap($response);
+
+    expect(fn (): BehpardakhtDriver => Helper::callGatewayFor($call))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "ResCode" to be of type "int" for the behpardakht gateway, "%s" given.', $response)
+                ),
+        );
+})->with([
+    'creation' => ApiMethod::Create,
+    'verification' => ApiMethod::Verify,
+    'reversal' => ApiMethod::Reverse,
+])->with([
+    'missing value' => '',
+    'non-numeric value' => 'abc',
+]);
+
+it('throws exception when the callback status code is invalid', function (): void {
+    Helper::fakeSoap();
+
+    $callbackPayload = Helper::failedCallback();
+    Arr::set($callbackPayload, 'ResCode', 'abc');
+
+    $payment = Helper::driver()->fromCallback($callbackPayload);
+
+    expect(fn (): BehpardakhtDriver => Helper::callGatewayFor(ApiMethod::Verify, $payment))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $callbackPayload])
+                ->getMessage()->toBe(
+                    'Expected "ResCode" to be of type "int" for the behpardakht gateway, "abc" given.'
+                ),
+        );
 
     Soap::assertNothingSent();
 });

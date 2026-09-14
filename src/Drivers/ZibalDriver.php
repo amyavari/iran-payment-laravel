@@ -92,7 +92,8 @@ final class ZibalDriver extends Driver
      */
     protected function getDriverStatusMessage(): string
     {
-        return InternalErrorCode::getMessage($this->apiStatusCode)
+        return $this->getInvalidErrorCodeMessage()
+            ?? InternalErrorCode::getMessage($this->apiStatusCode)
             ?? $this->getGatewayMessage();
     }
 
@@ -288,10 +289,11 @@ final class ZibalDriver extends Driver
      */
     private function execute(string $url, Collection $data): void
     {
-        $this->rawResponse = Http::baseUrl(self::GATEWAY_BASE_URL)
+        $response = Http::baseUrl(self::GATEWAY_BASE_URL)
             ->post($url, $this->withCredentials($data))
-            ->throwIfServerError()
-            ->json();
+            ->throwIfServerError();
+
+        $this->rawResponse = $this->decodeResponse($response);
 
         $this->setApiStatusCode();
     }
@@ -301,7 +303,7 @@ final class ZibalDriver extends Driver
      */
     private function setApiStatusCode(): void
     {
-        $this->apiStatusCode = (int) Arr::get($this->rawResponse, 'result');
+        $this->apiStatusCode = $this->asInt($this->rawResponse, 'result');
     }
 
     /**
@@ -330,7 +332,7 @@ final class ZibalDriver extends Driver
      */
     private function isFailedPaymentBasedOnCallback(): bool
     {
-        return $this->callbackPayload->get('success') === '0';
+        return $this->callbackPayload->get('success') !== '1';
     }
 
     /**
@@ -338,7 +340,7 @@ final class ZibalDriver extends Driver
      */
     private function setPaymentStatusBasedOnCallback(): void
     {
-        $this->apiStatusCode = (int) $this->callbackPayload->get('status');
+        $this->apiStatusCode = $this->asErrorCode($this->callbackPayload->all(), 'status');
         $this->rawResponse = $this->callbackPayload->all();
     }
 
@@ -347,7 +349,7 @@ final class ZibalDriver extends Driver
      */
     private function setVerificationStatus(): void
     {
-        $this->apiStatusCode = (int) Arr::get($this->rawResponse, 'status');
+        $this->apiStatusCode = $this->asInt($this->rawResponse, 'status');
     }
 
     /**
