@@ -778,3 +778,49 @@ it('throws exception when the API returns a non-JSON response', function (ApiMet
     'verification' => ApiMethod::Verify,
     'reversal' => ApiMethod::Reverse,
 ]);
+
+it('throws exception when the creation URL ID is invalid', function (mixed $value, string $given): void {
+    $response = Helper::successfulCreationResponse();
+    Arr::set($response, 'data.urlId', $value);
+
+    fakeHttp(
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: $response,
+    );
+
+    expect(fn (): PepDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "data.urlId" to be of type "string" for the pep gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'blank value' => ['', ''],
+    'non-castable value' => [[], '[]'],
+]);
+
+it('throws exception when the creation payment URL is invalid', function (mixed $value, string $given): void {
+    $response = Helper::successfulCreationResponse();
+    Arr::set($response, 'data.url', $value);
+
+    fakeHttp(
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: $response,
+    );
+
+    expect(fn (): PepDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "data.url" to be of type "string" for the pep gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'blank value' => ['', ''],
+    'non-castable value' => [[], '[]'],
+]);

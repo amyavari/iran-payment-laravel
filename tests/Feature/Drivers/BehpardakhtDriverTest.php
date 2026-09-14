@@ -462,3 +462,42 @@ it('throws exception when the callback status code is invalid', function (): voi
 
     Soap::assertNothingSent();
 });
+
+it('throws exception when the creation reference ID is invalid', function (string $response, string $given): void {
+    Helper::fakeSoap($response);
+
+    expect(fn (): BehpardakhtDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "RefId" to be of type "string" for the behpardakht gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => ['0', 'null'],
+    'blank value' => ['0,', ''],
+]);
+
+it('throws exception when the callback sale reference ID is not numeric', function (mixed $value, string $given): void {
+    Helper::fakeSoap(Helper::successfulVerificationResponse());
+
+    $callbackPayload = Helper::successfulCallback();
+    Arr::set($callbackPayload, 'SaleReferenceId', $value);
+
+    $payment = Helper::driver()->fromCallback($callbackPayload);
+
+    expect(fn (): BehpardakhtDriver => $payment->verify(Helper::gatewayPayload()))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $callbackPayload])
+                ->getMessage()->toBe(
+                    sprintf('Expected "SaleReferenceId" to be of type "int" for the behpardakht gateway, "%s" given.', $given)
+                ),
+        );
+
+    Soap::assertNothingSent();
+})->with([
+    'missing value' => [null, 'null'],
+    'non-numeric value' => ['abc', 'abc'],
+]);

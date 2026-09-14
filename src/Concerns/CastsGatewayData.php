@@ -45,6 +45,25 @@ trait CastsGatewayData
     }
 
     /**
+     * Get a field from the gateway data as a string, or throw an exception if it is not a non-empty string, integer or float.
+     *
+     * @param  array<string,mixed>|string  $body
+     * @param  array<string,mixed>|string|null  $rawBody  The raw body for the exception, when `$body` is built from it.
+     *
+     * @throws InvalidGatewayDataException
+     */
+    protected function asString(array|string $body, string $field, array|string|null $rawBody = null): string
+    {
+        $value = $this->getFieldValue($body, $field);
+
+        if (! is_scalar($value) || is_bool($value) || blank($value)) {
+            throw InvalidGatewayDataException::make($this->getGateway(), $field, 'string', $value, $rawBody ?? $body);
+        }
+
+        return (string) $value;
+    }
+
+    /**
      * Get a field from the gateway data as a boolean, or throw an exception if it is not a boolean.
      *
      * @param  array<string,mixed>|string  $body

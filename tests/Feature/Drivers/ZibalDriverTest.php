@@ -478,3 +478,37 @@ it('throws exception when the verification status is invalid', function (mixed $
     'missing value' => [null, 'null'],
     'non-numeric value' => ['abc', 'abc'],
 ]);
+
+it('throws exception when the creation track ID is not numeric', function (mixed $value, string $given): void {
+    $response = Helper::successfulCreationResponse();
+    Arr::set($response, 'trackId', $value);
+
+    fakeHttp($response);
+
+    expect(fn (): ZibalDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "trackId" to be of type "int" for the zibal gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'non-numeric value' => ['abc', 'abc'],
+]);
+
+it('returns the creation track ID as an integer when it is a numeric string', function (): void {
+    $response = Helper::successfulCreationResponse();
+    Arr::set($response, 'trackId', '15966442233311');
+
+    fakeHttp($response);
+
+    $payment = Helper::callGatewayFor(ApiMethod::Create);
+
+    expect($payment)
+        ->getGatewayPayload()->toBe([
+            'trackId' => 15_966_442_233_311,
+            'amount' => 1_000,
+        ]);
+});

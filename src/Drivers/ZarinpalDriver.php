@@ -290,7 +290,7 @@ final class ZarinpalDriver extends Driver
      */
     private function setTransactionId(): void
     {
-        $this->transactionId = Arr::get($this->rawResponse, 'data.authority');
+        $this->transactionId = $this->asString($this->rawResponse, 'data.authority');
     }
 
     /**

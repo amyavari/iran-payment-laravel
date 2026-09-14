@@ -614,3 +614,23 @@ it('returns the internal error code when the callback status is invalid', functi
 
     Http::assertNothingSent();
 });
+
+it('throws exception when the creation token is invalid', function (mixed $value, string $given): void {
+    $response = Helper::successfulCreationResponse();
+    Arr::set($response, 'token', $value);
+
+    fakeHttp($response);
+
+    expect(fn (): SepDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "token" to be of type "string" for the sep gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'blank value' => ['', ''],
+    'non-castable value' => [[], '[]'],
+]);

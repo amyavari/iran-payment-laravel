@@ -286,18 +286,24 @@ final class SepDriver extends Driver
      */
     private function parseCreationResponse(): void
     {
-        $response = collect($this->rawResponse);
-
         $this->apiIsSuccessful = $this->asInt($this->rawResponse, 'status') === 1;
 
         if ($this->apiIsSuccessful) {
-            $this->token = $response->get('token');
+            $this->setToken();
 
             return;
         }
 
         $this->apiStatusCode = $this->asErrorCode($this->rawResponse, 'errorCode');
         $this->apiStatusMessage = $this->asErrorMessage($this->rawResponse, 'errorDesc');
+    }
+
+    /**
+     * Set the token required to redirect the user to the payment page.
+     */
+    private function setToken(): void
+    {
+        $this->token = $this->asString($this->rawResponse, 'token');
     }
 
     /**

@@ -423,3 +423,23 @@ it('throws exception when the API returns a non-JSON response', function (ApiMet
     'verification' => ApiMethod::Verify,
     'reversal' => ApiMethod::Reverse,
 ]);
+
+it('throws exception when the creation transaction ID is invalid', function (mixed $value, string $given): void {
+    $response = Helper::successfulCreationResponse();
+    Arr::set($response, 'trans_id', $value);
+
+    fakeHttp($response);
+
+    expect(fn (): NextpayDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "trans_id" to be of type "string" for the nextpay gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'blank value' => ['', ''],
+    'non-castable value' => [[], '[]'],
+]);

@@ -310,7 +310,7 @@ final class SadadDriver extends Driver
      */
     private function setToken(): void
     {
-        $this->token = Arr::get($this->rawResponse, 'Token');
+        $this->token = $this->asString($this->rawResponse, 'Token');
     }
 
     /**

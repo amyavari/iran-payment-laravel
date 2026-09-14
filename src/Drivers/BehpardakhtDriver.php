@@ -266,7 +266,9 @@ final class BehpardakhtDriver extends Driver
 
         $this->execute('bpPayRequest', $data->all());
 
-        $this->setRefId();
+        if ($this->isSuccessful()) {
+            $this->setRefId();
+        }
     }
 
     /**
@@ -324,7 +326,11 @@ final class BehpardakhtDriver extends Driver
      */
     private function setRefId(): void
     {
-        $this->refId = (string) Str::of($this->rawResponse)->after(',');
+        $body = [
+            'RefId' => Str::contains($this->rawResponse, ',') ? Str::after($this->rawResponse, ',') : null,
+        ];
+
+        $this->refId = $this->asString($body, 'RefId', $this->rawResponse);
     }
 
     /**
@@ -472,7 +478,7 @@ final class BehpardakhtDriver extends Driver
             'userPassword' => $this->password,
             'orderId' => (int) $this->transactionId,
             'saleOrderId' => (int) $this->transactionId,
-            'saleReferenceId' => (int) $this->callbackPayload->get('SaleReferenceId'),
+            'saleReferenceId' => $this->asInt($this->callbackPayload->all(), 'SaleReferenceId'),
         ];
     }
 }

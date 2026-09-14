@@ -68,6 +68,11 @@ final class PepDriver extends Driver
      */
     private string $urlId;
 
+    /**
+     * URL of the payment page returned by the gateway.
+     */
+    private string $paymentUrl;
+
     public function __construct(
         private readonly string $baseUrl,
         private readonly string $terminalNumber,
@@ -108,6 +113,7 @@ final class PepDriver extends Driver
 
         if ($this->successful()) {
             $this->setUrlId();
+            $this->setPaymentUrl();
         }
     }
 
@@ -235,9 +241,7 @@ final class PepDriver extends Driver
      */
     protected function getDriverRedirectData(): PaymentRedirectDto
     {
-        $url = Arr::get($this->rawResponse, 'data.url');
-
-        return new PaymentRedirectDto($url, 'GET', payload: []);
+        return new PaymentRedirectDto($this->paymentUrl, 'GET', payload: []);
     }
 
     /**
@@ -350,7 +354,15 @@ final class PepDriver extends Driver
      */
     private function setUrlId(): void
     {
-        $this->urlId = Arr::get($this->rawResponse, 'data.urlId');
+        $this->urlId = $this->asString($this->rawResponse, 'data.urlId');
+    }
+
+    /**
+     * Set the URL of the payment page.
+     */
+    private function setPaymentUrl(): void
+    {
+        $this->paymentUrl = $this->asString($this->rawResponse, 'data.url');
     }
 
     /**

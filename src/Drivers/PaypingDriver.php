@@ -60,6 +60,11 @@ final class PaypingDriver extends Driver
     private int $amount;
 
     /**
+     * URL of the payment page returned by the gateway.
+     */
+    private string $paymentUrl;
+
+    /**
      * Determine whether the last API call reported the payment as already verified.
      */
     private bool $alreadyVerified = false;
@@ -95,7 +100,8 @@ final class PaypingDriver extends Driver
         $this->execute('pay', $data);
 
         if ($this->apiIsSuccessful) {
-            $this->transactionId = Arr::get($this->rawResponse, 'paymentCode');
+            $this->setTransactionId();
+            $this->setPaymentUrl();
         }
     }
 
@@ -186,6 +192,12 @@ final class PaypingDriver extends Driver
         ];
 
         $this->execute('pay/reverse', $data);
+
+        if ($this->apiIsSuccessful) {
+            // The reversal reply carries no status field, so this read is the only proof
+            // that the gateway answered with a real reversal receipt.
+            $this->asInt($this->rawResponse, 'paymentRefId');
+        }
     }
 
     /**
@@ -230,9 +242,7 @@ final class PaypingDriver extends Driver
      */
     protected function getDriverRedirectData(): PaymentRedirectDto
     {
-        $url = Arr::get($this->rawResponse, 'url');
-
-        return new PaymentRedirectDto($url, 'GET', payload: []);
+        return new PaymentRedirectDto($this->paymentUrl, 'GET', payload: []);
     }
 
     /**
@@ -314,6 +324,22 @@ final class PaypingDriver extends Driver
     {
         return $response->status() === 409
             && $this->apiStatusCode === 110;
+    }
+
+    /**
+     * Parse the creation API response and set the transaction ID.
+     */
+    private function setTransactionId(): void
+    {
+        $this->transactionId = $this->asString($this->rawResponse, 'paymentCode');
+    }
+
+    /**
+     * Set the URL of the payment page.
+     */
+    private function setPaymentUrl(): void
+    {
+        $this->paymentUrl = $this->asString($this->rawResponse, 'url');
     }
 
     /**

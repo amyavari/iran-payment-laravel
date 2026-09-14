@@ -471,3 +471,23 @@ it('throws exception when the API returns a non-JSON response', function (ApiMet
     'creation' => ApiMethod::Create,
     'verification' => ApiMethod::Verify,
 ]);
+
+it('throws exception when the creation token is invalid', function (mixed $value, string $given): void {
+    $response = Helper::successfulCreationResponse();
+    Arr::set($response, 'Token', $value);
+
+    fakeHttp($response);
+
+    expect(fn (): SadadDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "Token" to be of type "string" for the sadad gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'blank value' => ['', ''],
+    'non-castable value' => [[], '[]'],
+]);

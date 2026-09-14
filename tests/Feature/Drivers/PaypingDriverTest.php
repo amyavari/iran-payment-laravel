@@ -601,3 +601,86 @@ it('returns the internal error code when the API returns a non-JSON response', f
     'verification' => ApiMethod::Verify,
     'reversal' => ApiMethod::Reverse,
 ]);
+
+it('throws exception when the creation payment code is invalid', function (mixed $value, string $given): void {
+    $response = Helper::successfulCreationResponse();
+    Arr::set($response, 'paymentCode', $value);
+
+    fakeHttp($response, 200);
+
+    expect(fn (): PaypingDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "paymentCode" to be of type "string" for the payping gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'blank value' => ['', ''],
+    'non-castable value' => [[], '[]'],
+]);
+
+it('throws exception when the creation payment URL is invalid', function (mixed $value, string $given): void {
+    $response = Helper::successfulCreationResponse();
+    Arr::set($response, 'url', $value);
+
+    fakeHttp($response, 200);
+
+    expect(fn (): PaypingDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "url" to be of type "string" for the payping gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'blank value' => ['', ''],
+    'non-castable value' => [[], '[]'],
+]);
+
+it('throws exception when the creation API returns a non-JSON response', function (): void {
+    fakeHttp($response = 'Service is not available', 200);
+
+    expect(fn (): PaypingDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    'Expected "paymentCode" to be of type "string" for the payping gateway, "null" given.'
+                ),
+        );
+});
+
+it('throws exception when the reversal API returns a non-JSON response', function (): void {
+    fakeHttp(
+        firstResponse: Helper::successfulVerificationResponse(),
+        secondResponse: $response = 'Service is not available',
+    );
+
+    expect(fn (): PaypingDriver => Helper::callGatewayFor(ApiMethod::Reverse))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    'Expected "paymentRefId" to be of type "int" for the payping gateway, "null" given.'
+                ),
+        );
+});
+
+it('does not check the payment reference ID on failed payment reversal', function (): void {
+    fakeHttp(
+        firstResponse: Helper::successfulVerificationResponse(),
+        secondResponse: $response = Helper::failedResponse(),
+        secondStatus: 400,
+    );
+
+    $payment = Helper::callGatewayFor(ApiMethod::Reverse);
+
+    expect($payment)
+        ->successful()->toBeFalse()
+        ->getRawResponse()->toBe($response);
+});

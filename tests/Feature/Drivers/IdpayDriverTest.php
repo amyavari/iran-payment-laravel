@@ -500,3 +500,43 @@ it('returns the internal error code when the API returns a non-JSON response', f
     'creation' => ApiMethod::Create,
     'verification' => ApiMethod::Verify,
 ]);
+
+it('throws exception when the creation ID is invalid', function (mixed $value, string $given): void {
+    $response = Helper::successfulCreationResponse();
+    Arr::set($response, 'id', $value);
+
+    fakeHttp($response, 201);
+
+    expect(fn (): IdpayDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "id" to be of type "string" for the idpay gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'blank value' => ['', ''],
+    'non-castable value' => [[], '[]'],
+]);
+
+it('throws exception when the creation payment link is invalid', function (mixed $value, string $given): void {
+    $response = Helper::successfulCreationResponse();
+    Arr::set($response, 'link', $value);
+
+    fakeHttp($response, 201);
+
+    expect(fn (): IdpayDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "link" to be of type "string" for the idpay gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'blank value' => ['', ''],
+    'non-castable value' => [[], '[]'],
+]);

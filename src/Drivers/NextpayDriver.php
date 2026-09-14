@@ -341,6 +341,6 @@ final class NextpayDriver extends Driver
      */
     private function setTransactionId(): void
     {
-        $this->transactionId = Arr::get($this->rawResponse, 'trans_id');
+        $this->transactionId = $this->asString($this->rawResponse, 'trans_id');
     }
 }

@@ -311,7 +311,7 @@ final class ZibalDriver extends Driver
      */
     private function setTransactionId(): void
     {
-        $this->transactionId = Arr::get($this->rawResponse, 'trackId');
+        $this->transactionId = $this->asInt($this->rawResponse, 'trackId');
     }
 
     /**

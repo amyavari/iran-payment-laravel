@@ -63,6 +63,11 @@ final class IdpayDriver extends Driver
      */
     private string $id;
 
+    /**
+     * URL of the payment page returned by the gateway.
+     */
+    private string $paymentUrl;
+
     public function __construct(
         private readonly string $callbackUrl,
         private readonly string $apiKey,
@@ -96,6 +101,7 @@ final class IdpayDriver extends Driver
 
         if ($this->apiIsSuccessful) {
             $this->setId();
+            $this->setPaymentUrl();
         }
     }
 
@@ -229,9 +235,7 @@ final class IdpayDriver extends Driver
      */
     protected function getDriverRedirectData(): PaymentRedirectDto
     {
-        $url = Arr::get($this->rawResponse, 'link');
-
-        return new PaymentRedirectDto($url, 'GET', payload: []);
+        return new PaymentRedirectDto($this->paymentUrl, 'GET', payload: []);
     }
 
     /**
@@ -309,7 +313,15 @@ final class IdpayDriver extends Driver
      */
     private function setId(): void
     {
-        $this->id = Arr::get($this->rawResponse, 'id');
+        $this->id = $this->asString($this->rawResponse, 'id');
+    }
+
+    /**
+     * Set the URL of the payment page.
+     */
+    private function setPaymentUrl(): void
+    {
+        $this->paymentUrl = $this->asString($this->rawResponse, 'link');
     }
 
     /**
