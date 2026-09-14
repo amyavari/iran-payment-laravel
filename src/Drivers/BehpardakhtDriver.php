@@ -59,7 +59,7 @@ final class BehpardakhtDriver extends Driver
     /**
      * Transaction ID
      */
-    private ?string $transactionId = null;
+    private string $transactionId;
 
     /**
      * Amount of the payment in Rial.

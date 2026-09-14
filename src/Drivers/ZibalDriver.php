@@ -38,7 +38,7 @@ final class ZibalDriver extends Driver
     /**
      * Transaction ID
      */
-    private ?int $transactionId = null;
+    private string $transactionId;
 
     /**
      * Amount of the payment in Rial.
@@ -131,7 +131,7 @@ final class ZibalDriver extends Driver
         $this->ensureCallbackDataMatchesPayload($storedPayload, $keyMapper);
 
         $data = collect([
-            'trackId' => $this->transactionId,
+            'trackId' => (int) $this->transactionId,
         ]);
 
         $this->execute('v1/verify', $data);
@@ -165,7 +165,7 @@ final class ZibalDriver extends Driver
      */
     protected function prepareFromCallback(): void
     {
-        $this->transactionId = (int) $this->callbackPayload->get('trackId');
+        $this->transactionId = (string) $this->callbackPayload->get('trackId');
     }
 
     /**
@@ -173,7 +173,7 @@ final class ZibalDriver extends Driver
      */
     protected function prepareWithoutCallback(string $transactionId): void
     {
-        $this->transactionId = (int) $transactionId;
+        $this->transactionId = $transactionId;
 
         $this->callbackPayload = collect([
             'success' => '1',
@@ -187,7 +187,7 @@ final class ZibalDriver extends Driver
      */
     protected function getDriverTransactionId(): string
     {
-        return (string) $this->transactionId;
+        return $this->transactionId;
     }
 
     /**
@@ -311,7 +311,8 @@ final class ZibalDriver extends Driver
      */
     private function setTransactionId(): void
     {
-        $this->transactionId = $this->asInt($this->rawResponse, 'trackId');
+        // The gateway's track ID is numeric, so it is validated as an integer,
+        $this->transactionId = (string) $this->asInt($this->rawResponse, 'trackId');
     }
 
     /**
