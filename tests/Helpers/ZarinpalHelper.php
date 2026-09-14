@@ -121,7 +121,7 @@ final class ZarinpalHelper extends AbstractHelper
     {
         return [
             'authority' => 'A0000000000000000000000000000wwOGYpd',
-            'amount' => '1000',
+            'amount' => 1_000,
         ];
     }
 }

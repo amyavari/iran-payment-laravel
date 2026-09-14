@@ -224,6 +224,18 @@ it('verifies payment when callback matches stored payload', function (): void {
         ->amount->toBe(1_000); // From fake payload
 });
 
+it('sends the stored amount as an integer when it is a numeric string', function (): void {
+    fakeHttp(Helper::successfulVerificationResponse());
+
+    $payload = Helper::gatewayPayload();
+    Arr::set($payload, 'amount', '1000');
+
+    Helper::paymentReadyFor(ApiMethod::Verify)->verify($payload);
+
+    expect(getRecordedHttpRequest()->data())
+        ->amount->toBe(1_000);
+});
+
 it('returns successful response on successful payment verification', function (): void {
     fakeHttp($response = Helper::successfulVerificationResponse());
 

@@ -398,7 +398,7 @@ final class SadadDriver extends Driver
      */
     private function validateVerifiedAmount(array $storedPayload): void
     {
-        $isAmountValid = Arr::get($storedPayload, 'amount') === (int) Arr::get($this->rawResponse, 'Amount');
+        $isAmountValid = (int) Arr::get($storedPayload, 'amount') === $this->asInt($this->rawResponse, 'Amount');
 
         if (! $isAmountValid) {
             $this->apiStatusCode = InternalErrorCode::InvalidAmount->value;

@@ -115,7 +115,7 @@ final class IdpayHelper extends AbstractHelper
         return [
             'order_id' => '123456789012345',
             'id' => 'd2e353189823079e1e4181772cff5292',
-            'amount' => '1000',
+            'amount' => 1_000,
         ];
     }
 }

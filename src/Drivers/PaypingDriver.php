@@ -159,10 +159,14 @@ final class PaypingDriver extends Driver
         $data = [
             'paymentRefId' => (int) $this->callbackPayload->dot()->get('data.paymentRefId'),
             'paymentCode' => $this->callbackPayload->dot()->get('data.paymentCode'),
-            'amount' => Arr::get($storedPayload, 'amount'),
+            'amount' => (int) Arr::get($storedPayload, 'amount'),
         ];
 
         $this->execute('pay/verify', $data);
+
+        if ($this->apiIsSuccessful) {
+            $this->validateVerifiedAmount($storedPayload);
+        }
     }
 
     /**
@@ -310,6 +314,22 @@ final class PaypingDriver extends Driver
     {
         return $response->status() === 409
             && $this->apiStatusCode === 110;
+    }
+
+    /**
+     * Validate if the paid amount matches the creation amount.
+     *
+     * @param  array<string,mixed>  $storedPayload
+     */
+    private function validateVerifiedAmount(array $storedPayload): void
+    {
+        $key = $this->alreadyVerified ? 'metaData.message.Amount' : 'amount';
+
+        $this->apiIsSuccessful = (int) Arr::get($storedPayload, 'amount') === $this->asInt($this->rawResponse, $key);
+
+        if (! $this->apiIsSuccessful) {
+            $this->apiStatusCode = InternalErrorCode::InvalidAmount->value;
+        }
     }
 
     /**

@@ -274,6 +274,44 @@ it('returns failed response on successful payment verification with invalid amou
         ->getRawResponse()->toBe($response);
 });
 
+it('returns successful response on payment verification when the stored and verified amounts have different types', function (mixed $verifiedAmount, mixed $storedAmount): void {
+    $response = Helper::successfulVerificationResponse();
+    Arr::set($response, 'TransactionDetail.OrginalAmount', $verifiedAmount);
+
+    $payload = Helper::gatewayPayload();
+    Arr::set($payload, 'amount', $storedAmount);
+
+    fakeHttp($response);
+
+    $payment = Helper::paymentReadyFor(ApiMethod::Verify)->verify($payload);
+
+    expect($payment)
+        ->successful()->toBeTrue()
+        ->error()->toBeNull();
+})->with([
+    'verified amount as string' => ['1000', 1_000],
+    'stored amount as string' => [1_000, '1000'],
+]);
+
+it('throws exception when the verified amount is not numeric', function (mixed $value, string $given): void {
+    $response = Helper::successfulVerificationResponse();
+    Arr::set($response, 'TransactionDetail.OrginalAmount', $value);
+
+    fakeHttp($response);
+
+    expect(fn (): SepDriver => Helper::callGatewayFor(ApiMethod::Verify))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "TransactionDetail.OrginalAmount" to be of type "int" for the sep gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'non-numeric value' => ['abc', 'abc'],
+]);
+
 it('returns failed response on failed payment verification', function (): void {
     fakeHttp($response = Helper::failedResponse('verify'));
 

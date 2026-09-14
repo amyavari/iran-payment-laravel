@@ -390,7 +390,7 @@ final class SepDriver extends Driver
      */
     private function validateVerifiedAmount(array $storedPayload): void
     {
-        $this->apiIsSuccessful = Arr::get($storedPayload, 'amount') === Arr::get($this->rawResponse, 'TransactionDetail.OrginalAmount');
+        $this->apiIsSuccessful = (int) Arr::get($storedPayload, 'amount') === $this->asInt($this->rawResponse, 'TransactionDetail.OrginalAmount');
 
         if (! $this->apiIsSuccessful) {
             $this->apiStatusCode = InternalErrorCode::InvalidAmount->value;

@@ -245,6 +245,18 @@ it('verifies payment when callback is successful and matches stored payload', fu
         ->amount->toBe(1_000); // From fake payload
 });
 
+it('sends the stored amount as an integer when it is a numeric string', function (): void {
+    fakeHttp(Helper::successfulVerificationResponse(), 200);
+
+    $payload = Helper::gatewayPayload();
+    Arr::set($payload, 'amount', '1000');
+
+    Helper::paymentReadyFor(ApiMethod::Verify)->verify($payload);
+
+    expect(getRecordedHttpRequest()->data())
+        ->amount->toBe(1_000);
+});
+
 it('returns successful response on successful payment verification', function (): void {
     fakeHttp($response = Helper::successfulVerificationResponse(), 200);
 
@@ -268,6 +280,108 @@ it('returns successful response on subsequence successful payment verification',
         ->getRawResponse()->toBe($response)
         ->getRefNumber()->toBe('10012') // From fake already-verified response
         ->getCardNumber()->toBe('123456******1234'); // From fake already-verified response
+});
+
+it('returns failed response on successful payment verification with invalid amount', function (): void {
+    $response = Helper::successfulVerificationResponse();
+    Arr::set($response, 'amount', 2_000);
+
+    fakeHttp($response, 200);
+
+    $payment = Helper::callGatewayFor(ApiMethod::Verify);
+
+    expect($payment)
+        ->successful()->toBeFalse()
+        ->error()->toContain('9300')->toContain('مبلغ پرداخت شده نامعتبر است')
+        ->getRawResponse()->toBe($response);
+});
+
+it('returns failed response on subsequence successful payment verification with invalid amount', function (): void {
+    $response = Helper::alreadyVerifiedResponse();
+    Arr::set($response, 'metaData.message.Amount', 2_000);
+
+    fakeHttp($response, 409);
+
+    $payment = Helper::callGatewayFor(ApiMethod::Verify);
+
+    expect($payment)
+        ->successful()->toBeFalse()
+        ->error()->toContain('9300')->toContain('مبلغ پرداخت شده نامعتبر است')
+        ->getRawResponse()->toBe($response);
+});
+
+it('returns successful response on payment verification when the stored and verified amounts have different types', function (mixed $verifiedAmount, mixed $storedAmount): void {
+    $response = Helper::successfulVerificationResponse();
+    Arr::set($response, 'amount', $verifiedAmount);
+
+    $payload = Helper::gatewayPayload();
+    Arr::set($payload, 'amount', $storedAmount);
+
+    fakeHttp($response, 200);
+
+    $payment = Helper::paymentReadyFor(ApiMethod::Verify)->verify($payload);
+
+    expect($payment)
+        ->successful()->toBeTrue()
+        ->error()->toBeNull();
+})->with([
+    'verified amount as string' => ['1000', 1_000],
+    'stored amount as string' => [1_000, '1000'],
+]);
+
+it('throws exception when the verified amount is not numeric', function (mixed $value, string $given): void {
+    $response = Helper::successfulVerificationResponse();
+    Arr::set($response, 'amount', $value);
+
+    fakeHttp($response, 200);
+
+    expect(fn (): PaypingDriver => Helper::callGatewayFor(ApiMethod::Verify))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "amount" to be of type "int" for the payping gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'non-numeric value' => ['abc', 'abc'],
+]);
+
+it('throws exception when the subsequence verified amount is not numeric', function (mixed $value, string $given): void {
+    $response = Helper::alreadyVerifiedResponse();
+    Arr::set($response, 'metaData.message.Amount', $value);
+
+    fakeHttp($response, 409);
+
+    expect(fn (): PaypingDriver => Helper::callGatewayFor(ApiMethod::Verify))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "metaData.message.Amount" to be of type "int" for the payping gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'non-numeric value' => ['abc', 'abc'],
+]);
+
+it('does not validate the amount on payment reversal', function (): void {
+    $response = Helper::successfulReversalResponse();
+    Arr::set($response, 'amount', 2_000);
+
+    fakeHttp(
+        firstResponse: Helper::successfulVerificationResponse(),
+        secondResponse: $response,
+    );
+
+    $payment = Helper::callGatewayFor(ApiMethod::Reverse);
+
+    expect($payment)
+        ->successful()->toBeTrue()
+        ->error()->toBeNull()
+        ->getRawResponse()->toBe($response);
 });
 
 it('returns failed response on failed payment verification', function (): void {

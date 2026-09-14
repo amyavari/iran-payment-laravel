@@ -199,7 +199,7 @@ final class NextpayDriver extends Driver
 
         $this->ensureCallbackDataMatchesPayload($storedPayload, $keyMapper);
 
-        $this->amount = Arr::get($storedPayload, 'amount'); // Required for payment reversal.
+        $this->amount = (int) Arr::get($storedPayload, 'amount'); // Required for payment reversal.
 
         $data = collect([
             'trans_id' => $this->transactionId,

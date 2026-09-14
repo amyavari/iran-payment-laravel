@@ -48,7 +48,7 @@ final class ZarinpalDriver extends Driver
     /**
      * Amount of the payment in Rial.
      */
-    private string $amount;
+    private int $amount;
 
     public function __construct(
         private readonly string $callbackUrl,
@@ -68,7 +68,7 @@ final class ZarinpalDriver extends Driver
      */
     protected function createPayment(string $callbackUrl, int $amount, ?string $description = null, string|int|null $phone = null): void
     {
-        $this->amount = (string) $amount;
+        $this->amount = $amount;
 
         $data = collect([
             'merchant_id' => $this->merchantId,
@@ -143,7 +143,7 @@ final class ZarinpalDriver extends Driver
         $data = [
             'merchant_id' => $this->merchantId,
             'authority' => $this->transactionId,
-            'amount' => Arr::get($storedPayload, 'amount'),
+            'amount' => (int) Arr::get($storedPayload, 'amount'),
         ];
 
         $this->execute('verify', $data);

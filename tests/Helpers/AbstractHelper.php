@@ -94,7 +94,13 @@ abstract class AbstractHelper
         };
     }
 
-    private static function paymentReadyFor(ApiMethod $call): Payment
+    /**
+     * Get a payment instance that is ready for the given API call.
+     *
+     * It runs the calls that the given one requires first, so the driver's
+     * call order is satisfied. It always follows the happy path.
+     */
+    final public static function paymentReadyFor(ApiMethod $call): Payment
     {
         return match ($call) {
             ApiMethod::Create => static::driver(),

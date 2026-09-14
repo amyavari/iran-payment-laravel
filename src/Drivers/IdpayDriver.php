@@ -56,7 +56,7 @@ final class IdpayDriver extends Driver
     /**
      * Amount of the payment in Rial.
      */
-    private string $amount;
+    private int $amount;
 
     /**
      * Payment unique ID returned by the gateway, required for verification
@@ -82,7 +82,7 @@ final class IdpayDriver extends Driver
      */
     protected function createPayment(string $callbackUrl, int $amount, ?string $description = null, string|int|null $phone = null): void
     {
-        $this->amount = (string) $amount;
+        $this->amount = $amount;
 
         $data = collect([
             'order_id' => $this->generateOrderId(),
@@ -371,7 +371,7 @@ final class IdpayDriver extends Driver
      */
     private function validateVerifiedAmount(array $storedPayload): void
     {
-        $this->apiIsSuccessful = Arr::get($storedPayload, 'amount') === Arr::get($this->rawResponse, 'amount');
+        $this->apiIsSuccessful = (int) Arr::get($storedPayload, 'amount') === $this->asInt($this->rawResponse, 'amount');
 
         if (! $this->apiIsSuccessful) {
             $this->apiStatusCode = InternalErrorCode::InvalidAmount->value;

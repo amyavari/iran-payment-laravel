@@ -31,7 +31,7 @@ it('calls payment creation API with minimum passed data and config callback URL'
 
     expect($request->data())
         ->merchant_id->toBe('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
-        ->amount->toBe('1000')
+        ->amount->toBe(1_000)
         ->currency->toBe('IRR')
         ->description->toBe('')
         ->callback_url->toBe('http://callback.test') // config's callback URL
@@ -108,7 +108,7 @@ it('returns gateway payload needed to verify payment on successful payment creat
     expect($payment)
         ->getGatewayPayload()->toBe([
             'authority' => 'A0000000000000000000000000000wwOGYpd', // From fake creation response
-            'amount' => '1000',
+            'amount' => 1_000,
         ]);
 });
 
@@ -241,8 +241,20 @@ it('verifies payment when callback is successful and matches stored payload', fu
 
     expect($request->data())
         ->merchant_id->toBe('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
-        ->amount->toBe('1000') // From fake payload
+        ->amount->toBe(1_000) // From fake payload
         ->authority->toBe('A0000000000000000000000000000wwOGYpd'); // From fake callback
+});
+
+it('sends the stored amount as an integer when it is a numeric string', function (): void {
+    fakeHttp(Helper::successfulVerificationResponse());
+
+    $payload = Helper::gatewayPayload();
+    Arr::set($payload, 'amount', '1000');
+
+    Helper::paymentReadyFor(ApiMethod::Verify)->verify($payload);
+
+    expect(getRecordedHttpRequest()->data())
+        ->amount->toBe(1_000);
 });
 
 it('returns successful response on successful payment verification', function (): void {

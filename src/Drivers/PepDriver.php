@@ -587,7 +587,7 @@ final class PepDriver extends Driver
      */
     private function validateVerifiedAmount(array $storedPayload): void
     {
-        $isAmountValid = Arr::get($storedPayload, 'amount') === Arr::get($this->rawResponse, 'data.amount');
+        $isAmountValid = (int) Arr::get($storedPayload, 'amount') === $this->asInt($this->rawResponse, 'data.amount');
 
         if (! $isAmountValid) {
             $this->apiStatusCode = InternalErrorCode::InvalidAmount->value;
