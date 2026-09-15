@@ -111,7 +111,7 @@ final class BehpardakhtDriver extends Driver
      */
     protected function getDriverRefNumber(): string
     {
-        return (string) $this->callbackPayload->get('SaleReferenceId', '');
+        return (string) $this->callbackPayload->get('SaleReferenceId');
     }
 
     /**
@@ -119,7 +119,7 @@ final class BehpardakhtDriver extends Driver
      */
     protected function getDriverCardNumber(): string
     {
-        return $this->callbackPayload->get('CardHolderPan', '');
+        return (string) $this->callbackPayload->get('CardHolderPan');
     }
 
     /**

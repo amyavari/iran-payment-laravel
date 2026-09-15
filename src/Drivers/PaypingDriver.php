@@ -262,7 +262,7 @@ final class PaypingDriver extends Driver
     {
         $key = $this->alreadyVerified ? 'metaData.message.CardNumber' : 'cardNumber';
 
-        return Arr::get($this->rawResponse, $key);
+        return (string) Arr::get($this->rawResponse, $key);
     }
 
     /**

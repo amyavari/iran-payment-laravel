@@ -403,6 +403,8 @@ it('updates the successful payment in the database when the gateway payload is n
         'transaction_id' => $driver->getTransactionId(),
         'status' => PaymentStatus::Successful,
         'error' => null,
+        'ref_number' => '123456', // Set by TestDriver
+        'card_number' => '1234-***-4567', // Set by TestDriver
         'verified_at' => '2025-12-10 18:30:20',
         'reversed_at' => null,
         'raw_responses' => json_encode([
@@ -425,6 +427,8 @@ it('updates the failed payment in the database when the gateway payload is not p
         'transaction_id' => $driver->getTransactionId(),
         'status' => PaymentStatus::Failed,
         'error' => $driver->error(),
+        'ref_number' => null,
+        'card_number' => null,
         'verified_at' => '2025-12-10 18:30:20',
         'reversed_at' => null,
         'raw_responses' => json_encode([
@@ -448,6 +452,8 @@ it('stores a failed payment status when the gateway throws an invalid callback d
         'transaction_id' => $driver->getTransactionId(),
         'status' => PaymentStatus::Failed,
         'error' => 'Gateway exception error message',
+        'ref_number' => null,
+        'card_number' => null,
         'verified_at' => '2025-12-10 18:30:20',
         'reversed_at' => null,
         'raw_responses' => json_encode([
@@ -574,6 +580,8 @@ it('reverses the payment and updates it in the database if it was stored interna
         'transaction_id' => $driver->getTransactionId(),
         'status' => PaymentStatus::Successful,
         'error' => null,
+        'ref_number' => '123456', // Set by TestDriver
+        'card_number' => '1234-***-4567', // Set by TestDriver
         'reversed_at' => '2025-12-10 18:30:30',
         'raw_responses' => json_encode([
             'create_20251210183010' => 'create raw response', // Set by TestDriver

@@ -105,6 +105,8 @@ trait ManagesModel
         $this->updatePaymentIfExists(ApiMethod::Verify, [
             'status' => $this->successful() ? PaymentStatus::Successful : PaymentStatus::Failed,
             'error' => $this->error(),
+            'ref_number' => $this->getRefNumber(),
+            'card_number' => $this->getCardNumber(),
             'verified_at' => now(),
         ]);
     }

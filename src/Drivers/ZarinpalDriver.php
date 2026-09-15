@@ -223,7 +223,7 @@ final class ZarinpalDriver extends Driver
      */
     protected function getDriverCardNumber(): string
     {
-        return Arr::get($this->rawResponse, 'data.card_pan');
+        return (string) Arr::get($this->rawResponse, 'data.card_pan');
     }
 
     /**

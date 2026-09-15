@@ -278,7 +278,7 @@ final class NextpayDriver extends Driver
      */
     protected function getDriverRefNumber(): string
     {
-        return Arr::get($this->rawResponse, 'Shaparak_Ref_Id');
+        return (string) Arr::get($this->rawResponse, 'Shaparak_Ref_Id');
     }
 
     /**
@@ -286,7 +286,7 @@ final class NextpayDriver extends Driver
      */
     protected function getDriverCardNumber(): string
     {
-        return Arr::get($this->rawResponse, 'card_holder');
+        return (string) Arr::get($this->rawResponse, 'card_holder');
     }
 
     /**

@@ -249,7 +249,7 @@ final class PepDriver extends Driver
      */
     protected function getDriverRefNumber(): string
     {
-        return Arr::get($this->rawResponse, 'data.referenceNumber');
+        return (string) Arr::get($this->rawResponse, 'data.referenceNumber');
     }
 
     /**
@@ -257,7 +257,7 @@ final class PepDriver extends Driver
      */
     protected function getDriverCardNumber(): string
     {
-        return Arr::get($this->rawResponse, 'data.maskedCardNumber');
+        return (string) Arr::get($this->rawResponse, 'data.maskedCardNumber');
     }
 
     /**
