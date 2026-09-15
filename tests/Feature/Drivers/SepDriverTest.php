@@ -269,12 +269,10 @@ it('throws exception when a required callback key is blank', function (string $k
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
     fakeHttp();
 
-    $callbackPayload = Helper::successfulCallback();
-
     $payload = Helper::gatewayPayload();
     Arr::set($payload, $payloadKey, '123'); // Change payload value for the given key so it no longer matches
 
-    $payment = Helper::driver()->fromCallback($callbackPayload);
+    $payment = Helper::driver()->fromCallback(Helper::successfulCallback());
 
     expect(fn (): SepDriver => $payment->verify($payload))
         ->toThrow(

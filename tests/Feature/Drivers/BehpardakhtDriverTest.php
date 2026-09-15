@@ -316,7 +316,7 @@ it('throws exception when the callback sale reference ID is not numeric', functi
 
     $payment = Helper::driver()->fromCallback($callbackPayload);
 
-    expect(fn (): BehpardakhtDriver => $payment->verify(Helper::gatewayPayload()))
+    expect(fn (): BehpardakhtDriver => Helper::callGatewayFor(ApiMethod::Verify, $payment))
         ->toThrow(
             fn (InvalidGatewayDataException $exception) => expect($exception)
                 ->context()->toBe(['body' => $callbackPayload])
