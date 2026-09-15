@@ -193,9 +193,9 @@ it('throws exception when callback lacks required keys', function (string $key):
         );
 
 })->with([
-    'status',
-    'errorCode',
-    'data.paymentCode',
+    'status' => ['key' => 'status'],
+    'errorCode' => ['key' => 'errorCode'],
+    'data.paymentCode' => ['key' => 'data.paymentCode'],
 ]);
 
 it('throws exception when a required callback key is blank', function (string $key, mixed $value): void {
@@ -209,11 +209,11 @@ it('throws exception when a required callback key is blank', function (string $k
             sprintf('To create payping gateway instance from callback, "status, errorCode, data.paymentCode" are required. "%s" is empty.', $key)
         );
 })->with([
-    'status',
-    'data.paymentCode',
+    'status' => ['key' => 'status'],
+    'data.paymentCode' => ['key' => 'data.paymentCode'],
 ])->with([
-    'null' => null,
-    'empty string' => '',
+    'null' => ['value' => null],
+    'empty string' => ['value' => ''],
 ]);
 
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
@@ -232,7 +232,7 @@ it('throws exception when stored payload and successful callback data do not mat
 
     Http::assertNothingSent();
 })->with([
-    ['payment_code', 'data.paymentCode'],
+    'data.paymentCode' => ['payloadKey' => 'payment_code', 'callbackKey' => 'data.paymentCode'],
 ]);
 
 it('does not verify payment when callback status is not successful', function (): void {
@@ -301,8 +301,8 @@ it('returns the internal error code when the callback error code is invalid', fu
 
     Http::assertNothingSent();
 })->with([
-    'blank value' => ['', ''],
-    'non-numeric value' => ['abc', 'abc'],
+    'blank value' => ['value' => '', 'given' => ''],
+    'non-numeric value' => ['value' => 'abc', 'given' => 'abc'],
 ]);
 
 it('verifies payment when callback is successful and matches stored payload', function (): void {
@@ -374,8 +374,8 @@ it('returns successful response on payment verification when the stored and veri
         ->successful()->toBeTrue()
         ->error()->toBeNull();
 })->with([
-    'verified amount as string' => ['1000', 1_000],
-    'stored amount as string' => [1_000, '1000'],
+    'verified amount as string' => ['verifiedAmount' => '1000', 'storedAmount' => 1_000],
+    'stored amount as string' => ['verifiedAmount' => 1_000, 'storedAmount' => '1000'],
 ]);
 
 it('returns failed response on successful payment verification with invalid amount', function (): void {

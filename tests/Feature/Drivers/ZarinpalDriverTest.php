@@ -167,8 +167,8 @@ it('throws exception when callback lacks required keys', function (string $key):
             sprintf('To create zarinpal gateway instance from callback, "Authority, Status" are required. "%s" is missing.', $key)
         );
 })->with([
-    'Authority',
-    'Status',
+    'Authority' => ['key' => 'Authority'],
+    'Status' => ['key' => 'Status'],
 ]);
 
 it('throws exception when a required callback key is blank', function (string $key, mixed $value): void {
@@ -181,11 +181,11 @@ it('throws exception when a required callback key is blank', function (string $k
             sprintf('To create zarinpal gateway instance from callback, "Authority, Status" are required. "%s" is empty.', $key)
         );
 })->with([
-    'Authority',
-    'Status',
+    'Authority' => ['key' => 'Authority'],
+    'Status' => ['key' => 'Status'],
 ])->with([
-    'null' => null,
-    'empty string' => '',
+    'null' => ['value' => null],
+    'empty string' => ['value' => ''],
 ]);
 
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
@@ -204,7 +204,7 @@ it('throws exception when stored payload and successful callback data do not mat
 
     Http::assertNothingSent();
 })->with([
-    ['authority', 'Authority'],
+    'Authority' => ['payloadKey' => 'authority', 'callbackKey' => 'Authority'],
 ]);
 
 it('does not verify payment when callback status is not successful', function (): void {

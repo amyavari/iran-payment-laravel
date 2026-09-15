@@ -177,7 +177,7 @@ it('throws exception when callback lacks required keys', function (string $key):
             sprintf('To create nextpay gateway instance from callback, "trans_id" are required. "%s" is missing.', $key)
         );
 })->with([
-    'trans_id',
+    'trans_id' => ['key' => 'trans_id'],
 ]);
 
 it('throws exception when a required callback key is blank', function (string $key, mixed $value): void {
@@ -190,10 +190,10 @@ it('throws exception when a required callback key is blank', function (string $k
             sprintf('To create nextpay gateway instance from callback, "trans_id" are required. "%s" is empty.', $key)
         );
 })->with([
-    'trans_id',
+    'trans_id' => ['key' => 'trans_id'],
 ])->with([
-    'null' => null,
-    'empty string' => '',
+    'null' => ['value' => null],
+    'empty string' => ['value' => ''],
 ]);
 
 it('throws exception when stored payload and callback data do not match', function (string $payloadKey, string $callbackKey): void {
@@ -212,7 +212,7 @@ it('throws exception when stored payload and callback data do not match', functi
 
     Http::assertNothingSent();
 })->with([
-    ['transaction_id', 'trans_id'],
+    'trans_id' => ['payloadKey' => 'transaction_id', 'callbackKey' => 'trans_id'],
 ]);
 
 it('verifies payment when callback matches stored payload', function (): void {

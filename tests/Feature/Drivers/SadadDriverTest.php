@@ -189,8 +189,8 @@ it('throws exception when callback lacks required keys', function (string $key):
             sprintf('To create sadad gateway instance from callback, "OrderId, ResCode" are required. "%s" is missing.', $key)
         );
 })->with([
-    'OrderId',
-    'ResCode',
+    'OrderId' => ['key' => 'OrderId'],
+    'ResCode' => ['key' => 'ResCode'],
 ]);
 
 it('throws exception when a required callback key is blank', function (string $key, mixed $value): void {
@@ -204,11 +204,11 @@ it('throws exception when a required callback key is blank', function (string $k
             sprintf('To create sadad gateway instance from callback, "OrderId, ResCode" are required. "%s" is empty.', $key)
         );
 })->with([
-    'OrderId',
-    'ResCode',
+    'OrderId' => ['key' => 'OrderId'],
+    'ResCode' => ['key' => 'ResCode'],
 ])->with([
-    'null' => null,
-    'empty string' => '',
+    'null' => ['value' => null],
+    'empty string' => ['value' => ''],
 ]);
 
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
@@ -227,7 +227,7 @@ it('throws exception when stored payload and successful callback data do not mat
 
     Http::assertNothingSent();
 })->with([
-    ['orderId', 'OrderId'],
+    'OrderId' => ['payloadKey' => 'orderId', 'callbackKey' => 'OrderId'],
 ]);
 
 it('does not verify payment when callback status is not successful', function (): void {
@@ -322,8 +322,8 @@ it('returns successful response on payment verification when the stored and veri
         ->successful()->toBeTrue()
         ->error()->toBeNull();
 })->with([
-    'verified amount as string' => ['1000', 1_000],
-    'stored amount as string' => [1_000, '1000'],
+    'verified amount as string' => ['verifiedAmount' => '1000', 'storedAmount' => 1_000],
+    'stored amount as string' => ['verifiedAmount' => 1_000, 'storedAmount' => '1000'],
 ]);
 
 it('returns failed response on successful payment verification with invalid amount', function (): void {

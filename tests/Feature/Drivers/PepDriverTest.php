@@ -18,6 +18,12 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\URL;
 
+dataset('base_urls', [
+    'base.url' => ['baseUrl' => 'base.url'],
+    'http://base.url' => ['baseUrl' => 'http://base.url'],
+    'https://base.url' => ['baseUrl' => 'https://base.url'],
+]);
+
 beforeEach(function (): void {
     $this->cacheKey = 'iran_payment_pep_token';
 
@@ -52,11 +58,7 @@ it('always calls HTTPS of base URL for getting token', function (string $baseUrl
 
     expect($request)
         ->url()->toBe('https://base.url/token/getToken');
-})->with([
-    'base.url',
-    'http://base.url',
-    'https://base.url',
-]);
+})->with('base_urls');
 
 it('puts token into the cache on successful getting token', function (): void {
     fakeHttp(Helper::successfulGetTokenResponse());
@@ -219,11 +221,7 @@ it('always calls HTTPS of base URL for payment creation', function (string $base
 
     expect($request)
         ->url()->toBe('https://base.url/api/payment/purchase');
-})->with([
-    'base.url',
-    'http://base.url',
-    'https://base.url',
-]);
+})->with('base_urls');
 
 it('calls payment creation API with full passed data', function (): void {
     fakeHttp(
@@ -381,8 +379,8 @@ it('throws exception when callback lacks required keys', function (string $key):
             sprintf('To create pep gateway instance from callback, "status, invoiceId" are required. "%s" is missing.', $key)
         );
 })->with([
-    'status',
-    'invoiceId',
+    'status' => ['key' => 'status'],
+    'invoiceId' => ['key' => 'invoiceId'],
 ]);
 
 it('throws exception when a required callback key is blank', function (string $key, mixed $value): void {
@@ -395,11 +393,11 @@ it('throws exception when a required callback key is blank', function (string $k
             sprintf('To create pep gateway instance from callback, "status, invoiceId" are required. "%s" is empty.', $key)
         );
 })->with([
-    'status',
-    'invoiceId',
+    'status' => ['key' => 'status'],
+    'invoiceId' => ['key' => 'invoiceId'],
 ])->with([
-    'null' => null,
-    'empty string' => '',
+    'null' => ['value' => null],
+    'empty string' => ['value' => ''],
 ]);
 
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
@@ -418,7 +416,7 @@ it('throws exception when stored payload and successful callback data do not mat
 
     Http::assertNothingSent();
 })->with([
-    ['invoice', 'invoiceId'],
+    'invoiceId' => ['payloadKey' => 'invoice', 'callbackKey' => 'invoiceId'],
 ]);
 
 it('does not verify payment when callback status is not successful', function (): void {
@@ -499,11 +497,7 @@ it('always calls HTTPS of base URL for payment verification', function (string $
 
     expect($request)
         ->url()->toBe('https://base.url/api/payment/verify-payment');
-})->with([
-    'base.url',
-    'http://base.url',
-    'https://base.url',
-]);
+})->with('base_urls');
 
 it('returns successful response on successful payment verification', function (): void {
     fakeHttp(
@@ -537,8 +531,8 @@ it('returns successful response on payment verification when the stored and veri
         ->successful()->toBeTrue()
         ->error()->toBeNull();
 })->with([
-    'verified amount as string' => ['1000', 1_000],
-    'stored amount as string' => [1_000, '1000'],
+    'verified amount as string' => ['verifiedAmount' => '1000', 'storedAmount' => 1_000],
+    'stored amount as string' => ['verifiedAmount' => 1_000, 'storedAmount' => '1000'],
 ]);
 
 it('returns failed response on successful payment verification with invalid amount', function (): void {
@@ -687,11 +681,7 @@ it('always calls HTTPS of base URL for payment reversal', function (string $base
 
     expect($request)
         ->url()->toBe('https://base.url/api/payment/reverse-transactions');
-})->with([
-    'base.url',
-    'http://base.url',
-    'https://base.url',
-]);
+})->with('base_urls');
 
 it('returns successful response on successful payment reversal', function (): void {
     fakeHttp(

@@ -161,8 +161,8 @@ it('throws exception when the creation reference ID is invalid', function (strin
                 ),
         );
 })->with([
-    'missing value' => ['0', 'null'],
-    'blank value' => ['0,', ''],
+    'missing value' => ['response' => '0', 'given' => 'null'],
+    'blank value' => ['response' => '0,', 'given' => ''],
 ]);
 
 it('communicates with sandbox environment for payment creation when configured', function (): void {
@@ -196,9 +196,9 @@ it('throws exception when callback lacks required keys', function (string $key):
             sprintf('To create behpardakht gateway instance from callback, "RefId, ResCode, SaleOrderId" are required. "%s" is missing.', $key)
         );
 })->with([
-    'RefId',
-    'ResCode',
-    'SaleOrderId',
+    'RefId' => ['key' => 'RefId'],
+    'ResCode' => ['key' => 'ResCode'],
+    'SaleOrderId' => ['key' => 'SaleOrderId'],
 ]);
 
 it('throws exception when a required callback key is blank', function (string $key, mixed $value): void {
@@ -212,12 +212,12 @@ it('throws exception when a required callback key is blank', function (string $k
             sprintf('To create behpardakht gateway instance from callback, "RefId, ResCode, SaleOrderId" are required. "%s" is empty.', $key)
         );
 })->with([
-    'RefId',
-    'ResCode',
-    'SaleOrderId',
+    'RefId' => ['key' => 'RefId'],
+    'ResCode' => ['key' => 'ResCode'],
+    'SaleOrderId' => ['key' => 'SaleOrderId'],
 ])->with([
-    'null' => null,
-    'empty string' => '',
+    'null' => ['value' => null],
+    'empty string' => ['value' => ''],
 ]);
 
 it('returns card number and reference ID from successful callback', function (): void {
@@ -259,9 +259,9 @@ it('throws exception when stored payload and successful callback data do not mat
 
     Soap::assertNothingSent();
 })->with([
-    ['orderId', 'SaleOrderId'],
-    ['amount', 'FinalAmount'],
-    ['refId', 'RefId'],
+    'SaleOrderId' => ['payloadKey' => 'orderId', 'callbackKey' => 'SaleOrderId'],
+    'FinalAmount' => ['payloadKey' => 'amount', 'callbackKey' => 'FinalAmount'],
+    'RefId' => ['payloadKey' => 'refId', 'callbackKey' => 'RefId'],
 ]);
 
 it('does not verify payment when callback status is not successful', function (): void {
