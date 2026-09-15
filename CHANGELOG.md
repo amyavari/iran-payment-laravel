@@ -40,6 +40,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - **Nextpay** `verify()` threw a `TypeError` when the stored `amount` was a numeric string.
 - A non-JSON gateway response threw a `TypeError`. The body is now kept as text in `getRawResponse()` or in the exception context.
 - Auto-store did not save `ref_number` and `card_number` after verification.
+- Missing primary key on the `payments.id` column.
+  Existing installations must add it with their own migration:
+  `Schema::table('payments', fn (Blueprint $table) => $table->primary('id'));`
+- The `payments.amount` column is now an unsigned big integer, so `SUM`/`AVG` and range filters work.
+  Existing installations must change the column with their own migration:
+  `Schema::table('payments', fn (Blueprint $table) => $table->unsignedBigInteger('amount')->change());`
+  On PostgreSQL use a raw statement instead:
+  `DB::statement('ALTER TABLE payments ALTER COLUMN amount TYPE BIGINT USING amount::bigint');`
 
 ## [2.0.1] - 2026-08-22
 
