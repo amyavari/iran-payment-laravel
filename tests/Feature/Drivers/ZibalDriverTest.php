@@ -440,10 +440,7 @@ it('returns failed response on the payment reversal with no callback data', func
 });
 
 it('throws exception when the API result code is invalid', function (ApiMethod $call, mixed $value, string $given): void {
-    $response = match ($call) {
-        ApiMethod::Create => Helper::successfulCreationResponse(),
-        ApiMethod::Verify => Helper::successfulVerificationResponse(),
-    };
+    $response = Helper::successfulResponseFor($call);
     Arr::set($response, 'result', $value);
 
     fakeHttp($response);

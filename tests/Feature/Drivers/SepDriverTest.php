@@ -521,10 +521,7 @@ it('returns successful reversal with no callback data', function (): void {
 });
 
 it('throws exception when the follow-up API success flag is invalid', function (ApiMethod $call, mixed $value, string $given): void {
-    $response = match ($call) {
-        ApiMethod::Verify => Helper::successfulVerificationResponse(),
-        ApiMethod::Reverse => Helper::successfulReversalResponse(),
-    };
+    $response = Helper::successfulResponseFor($call);
     Arr::set($response, 'Success', $value);
 
     $call === ApiMethod::Reverse

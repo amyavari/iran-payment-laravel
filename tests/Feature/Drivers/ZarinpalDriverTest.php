@@ -426,11 +426,7 @@ it('reverses normally with no callback data', function (): void {
 });
 
 it('throws exception when the API status code is invalid', function (ApiMethod $call): void {
-    $response = match ($call) {
-        ApiMethod::Create => Helper::successfulCreationResponse(),
-        ApiMethod::Verify => Helper::successfulVerificationResponse(),
-        ApiMethod::Reverse => Helper::successfulReversalResponse(),
-    };
+    $response = Helper::successfulResponseFor($call);
     Arr::set($response, 'data.code', 'abc');
 
     $call === ApiMethod::Reverse
