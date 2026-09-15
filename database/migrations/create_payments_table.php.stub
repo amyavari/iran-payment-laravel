@@ -14,10 +14,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('payments', function (Blueprint $table) {
-            $table->uuid('id');
+            $table->uuid('id')->primary();
             $table->string('transaction_id')->unique();
             $table->morphs('payable');
-            $table->string('amount');
+            $table->unsignedBigInteger('amount');
             $table->string('gateway');
             $table->string('status');
             $table->json('gateway_payload');
