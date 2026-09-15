@@ -75,14 +75,7 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 
     expect($request->data())
         ->CardHolderIdentity->toBe('09123456789');
-})->with([
-    'With country code' => 989123456789,
-    'Without country code, with first zero' => '09123456789',
-    'Without country code, and first zero' => 9123456789,
-    'With country code, and first plus' => '+989123456789',
-    'With country code and first zero' => 9809123456789,
-    'With country code, first zero and first plus' => '+9809123456789',
-]);
+})->with('gateway_phone_number_formats');
 
 it('signs the necessary input data', function (): void {
     fakeHttp(Helper::successfulCreationResponse());
@@ -165,11 +158,7 @@ it('throws exception when the creation token is invalid', function (mixed $value
                     sprintf('Expected "Token" to be of type "string" for the sadad gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'blank value' => ['', ''],
-    'non-castable value' => [[], '[]'],
-]);
+})->with('invalid_string_field_values');
 
 it('throws an exception for payment creation when configured to use sandbox', function (): void {
     fakeHttp();
@@ -365,10 +354,7 @@ it('throws exception when the verified amount is not numeric', function (mixed $
                     sprintf('Expected "Amount" to be of type "int" for the sadad gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('invalid_numeric_field_values');
 
 it('returns failed response on failed payment verification', function (): void {
     fakeHttp($response = Helper::failedResponse('verify'));
@@ -480,13 +466,8 @@ it('throws exception when the API status code is invalid', function (ApiMethod $
                     sprintf('Expected "ResCode" to be of type "int" for the sadad gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-])->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('gateway_creation_and_verification_methods')
+    ->with('invalid_numeric_field_values');
 
 it('throws exception when the API returns a non-JSON response', function (ApiMethod $call): void {
     $response = 'Service is not available';
@@ -501,7 +482,4 @@ it('throws exception when the API returns a non-JSON response', function (ApiMet
                     'Expected "ResCode" to be of type "int" for the sadad gateway, "null" given.'
                 ),
         );
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-]);
+})->with('gateway_creation_and_verification_methods');

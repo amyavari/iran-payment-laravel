@@ -60,14 +60,7 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 
     expect($request->data())
         ->metadata->mobile->toBe('09123456789');
-})->with([
-    'With country code' => 989123456789,
-    'Without country code, with first zero' => '09123456789',
-    'Without country code, and first zero' => 9123456789,
-    'With country code, and first plus' => '+989123456789',
-    'With country code and first zero' => 9809123456789,
-    'With country code, first zero and first plus' => '+9809123456789',
-]);
+})->with('gateway_phone_number_formats');
 
 it('returns successful response on successful payment creation', function (): void {
     fakeHttp($response = Helper::successfulCreationResponse());
@@ -139,11 +132,7 @@ it('throws exception when the creation authority is invalid', function (mixed $v
                     sprintf('Expected "data.authority" to be of type "string" for the zarinpal gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'blank value' => ['', ''],
-    'non-castable value' => [[], '[]'],
-]);
+})->with('invalid_string_field_values');
 
 it('communicates with sandbox environment for payment creation when configured', function (): void {
     fakeHttp(Helper::successfulCreationResponse());
@@ -464,11 +453,7 @@ it('throws exception when the API status code is invalid', function (ApiMethod $
                     'Expected "data.code" to be of type "int" for the zarinpal gateway, "abc" given.'
                 ),
         );
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-    'reversal' => ApiMethod::Reverse,
-]);
+})->with('gateway_api_methods');
 
 it('returns the internal error code when the API error code is invalid', function (ApiMethod $call, mixed $value, string $given): void {
     $response = Helper::failedResponse();
@@ -484,14 +469,8 @@ it('returns the internal error code when the API error code is invalid', functio
         ->successful()->toBeFalse()
         ->error()->toContain('9400')
         ->error()->toContain(sprintf('Expected "errors.code" to be of type "int" for the zarinpal gateway, "%s" given.', $given));
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-    'reversal' => ApiMethod::Reverse,
-])->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('gateway_api_methods')
+    ->with('invalid_numeric_field_values');
 
 it('returns the internal error code when the API returns a non-JSON response', function (ApiMethod $call): void {
     $call === ApiMethod::Reverse
@@ -504,8 +483,4 @@ it('returns the internal error code when the API returns a non-JSON response', f
         ->successful()->toBeFalse()
         ->error()->toContain('9400')
         ->error()->toContain('Expected "errors.code" to be of type "int" for the zarinpal gateway, "null" given.');
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-    'reversal' => ApiMethod::Reverse,
-]);
+})->with('gateway_api_methods');

@@ -70,14 +70,7 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 
     expect(Soap::getArguments(0))
         ->mobileNo->toBe('989123456789');
-})->with([
-    'With country code' => 989123456789,
-    'Without country code, with first zero' => '09123456789',
-    'Without country code, and first zero' => 9123456789,
-    'With country code, and first plus' => '+989123456789',
-    'With country code and first zero' => 9809123456789,
-    'With country code, first zero and first plus' => '+9809123456789',
-]);
+})->with('gateway_phone_number_formats');
 
 it('returns successful response on successful payment creation', function (): void {
     Helper::fakeSoap($response = Helper::successfulCreationResponse());
@@ -326,10 +319,7 @@ it('throws exception when the callback sale reference ID is not numeric', functi
         );
 
     Soap::assertNothingSent();
-})->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('invalid_numeric_field_values');
 
 it('verifies payment when callback is successful and matches stored payload', function (): void {
     Helper::fakeSoap(Helper::successfulVerificationResponse());
@@ -493,11 +483,8 @@ it('throws exception when the API status code is invalid', function (ApiMethod $
                     sprintf('Expected "ResCode" to be of type "int" for the behpardakht gateway, "%s" given.', $response)
                 ),
         );
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-    'reversal' => ApiMethod::Reverse,
-])->with([
-    'missing value' => '',
-    'non-numeric value' => 'abc',
-]);
+})->with('gateway_api_methods')
+    ->with([
+        'missing value' => ['response' => ''],
+        'non-numeric value' => ['response' => 'abc'],
+    ]);

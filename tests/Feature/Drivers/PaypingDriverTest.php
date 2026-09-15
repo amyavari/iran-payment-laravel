@@ -60,14 +60,7 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 
     expect($request->data())
         ->payerIdentity->toBe('09123456789');
-})->with([
-    'With country code' => 989123456789,
-    'Without country code, with first zero' => '09123456789',
-    'Without country code, and first zero' => 9123456789,
-    'With country code, and first plus' => '+989123456789',
-    'With country code and first zero' => 9809123456789,
-    'With country code, first zero and first plus' => '+9809123456789',
-]);
+})->with('gateway_phone_number_formats');
 
 it('returns successful response on successful payment creation', function (): void {
     fakeHttp($response = Helper::successfulCreationResponse(), 200);
@@ -139,11 +132,7 @@ it('throws exception when the creation payment code is invalid', function (mixed
                     sprintf('Expected "paymentCode" to be of type "string" for the payping gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'blank value' => ['', ''],
-    'non-castable value' => [[], '[]'],
-]);
+})->with('invalid_string_field_values');
 
 it('throws exception when the creation payment URL is invalid', function (mixed $value, string $given): void {
     $response = Helper::successfulCreationResponse();
@@ -159,11 +148,7 @@ it('throws exception when the creation payment URL is invalid', function (mixed 
                     sprintf('Expected "url" to be of type "string" for the payping gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'blank value' => ['', ''],
-    'non-castable value' => [[], '[]'],
-]);
+})->with('invalid_string_field_values');
 
 it('throws exception when the creation API returns a non-JSON response', function (): void {
     fakeHttp($response = 'Service is not available', 200);
@@ -435,10 +420,7 @@ it('throws exception when the verified amount is not numeric', function (mixed $
                     sprintf('Expected "amount" to be of type "int" for the payping gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('invalid_numeric_field_values');
 
 it('throws exception when the subsequence verified amount is not numeric', function (mixed $value, string $given): void {
     $response = Helper::alreadyVerifiedResponse();
@@ -454,10 +436,7 @@ it('throws exception when the subsequence verified amount is not numeric', funct
                     sprintf('Expected "metaData.message.Amount" to be of type "int" for the payping gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('invalid_numeric_field_values');
 
 it('returns failed response on failed payment verification', function (): void {
     fakeHttp($response = Helper::failedResponse(), 400);
@@ -689,14 +668,8 @@ it('returns the internal error code when the API error code is invalid', functio
         ->successful()->toBeFalse()
         ->error()->toContain('9400')
         ->error()->toContain(sprintf('Expected "metaData.code" to be of type "int" for the payping gateway, "%s" given.', $given));
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-    'reversal' => ApiMethod::Reverse,
-])->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('gateway_api_methods')
+    ->with('invalid_numeric_field_values');
 
 it('returns the internal error code when the API returns a non-JSON response', function (ApiMethod $call): void {
     $response = 'Service is not available';
@@ -712,8 +685,4 @@ it('returns the internal error code when the API returns a non-JSON response', f
         ->error()->toContain('9400')
         ->error()->toContain('Expected "metaData.code" to be of type "int" for the payping gateway, "null" given.')
         ->getRawResponse()->toBe($response);
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-    'reversal' => ApiMethod::Reverse,
-]);
+})->with('gateway_api_methods');

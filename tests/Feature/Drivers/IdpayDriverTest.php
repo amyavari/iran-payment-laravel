@@ -70,14 +70,7 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 
     expect($request->data())
         ->phone->toBe('09123456789');
-})->with([
-    'With country code' => 989123456789,
-    'Without country code, with first zero' => '09123456789',
-    'Without country code, and first zero' => 9123456789,
-    'With country code, and first plus' => '+989123456789',
-    'With country code and first zero' => 9809123456789,
-    'With country code, first zero and first plus' => '+9809123456789',
-]);
+})->with('gateway_phone_number_formats');
 
 it('returns successful response on successful payment creation', function (): void {
     fakeHttp($response = Helper::successfulCreationResponse(), 201);
@@ -141,11 +134,7 @@ it('throws exception when the creation ID is invalid', function (mixed $value, s
                     sprintf('Expected "id" to be of type "string" for the idpay gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'blank value' => ['', ''],
-    'non-castable value' => [[], '[]'],
-]);
+})->with('invalid_string_field_values');
 
 it('throws exception when the creation payment link is invalid', function (mixed $value, string $given): void {
     $response = Helper::successfulCreationResponse();
@@ -161,11 +150,7 @@ it('throws exception when the creation payment link is invalid', function (mixed
                     sprintf('Expected "link" to be of type "string" for the idpay gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'blank value' => ['', ''],
-    'non-castable value' => [[], '[]'],
-]);
+})->with('invalid_string_field_values');
 
 it('communicates with sandbox environment for payment creation when configured', function (): void {
     fakeHttp(Helper::successfulCreationResponse(), 201);
@@ -369,10 +354,7 @@ it('throws exception when the verified amount is not numeric', function (mixed $
                     sprintf('Expected "amount" to be of type "int" for the idpay gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('invalid_numeric_field_values');
 
 it('returns failed response on payment verification when HTTP status is not successful', function (): void {
     fakeHttp($response = Helper::failedResponse(), 406);
@@ -413,10 +395,7 @@ it('throws exception when the verification status is invalid', function (mixed $
                     sprintf('Expected "status" to be of type "int" for the idpay gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('invalid_numeric_field_values');
 
 it('communicates with sandbox environment for payment verification when configured', function (): void {
     fakeHttp(Helper::successfulVerificationResponse(), 200);
@@ -513,13 +492,8 @@ it('returns the internal error code when the API error code is invalid', functio
         ->error()->toContain('9400')
         ->error()->toContain(sprintf('Expected "error_code" to be of type "int" for the idpay gateway, "%s" given.', $given))
         ->getRawResponse()->toBe($response);
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-])->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('gateway_creation_and_verification_methods')
+    ->with('invalid_numeric_field_values');
 
 it('returns the gateway error code with a fallback message when the API error message is invalid', function (ApiMethod $call): void {
     $response = Helper::failedResponse();
@@ -533,10 +507,7 @@ it('returns the gateway error code with a fallback message when the API error me
         ->successful()->toBeFalse()
         ->error()->toContain('32') // From fake failed response
         ->error()->toContain('Expected "error_message" to be of type "string" for the idpay gateway, "null" given.');
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-]);
+})->with('gateway_creation_and_verification_methods');
 
 it('returns the internal error code when the API returns a non-JSON response', function (ApiMethod $call): void {
     fakeHttp('Service is not available', 406);
@@ -548,7 +519,4 @@ it('returns the internal error code when the API returns a non-JSON response', f
         ->error()->toContain('9400')
         ->error()->toContain('Expected "error_code" to be of type "int" for the idpay gateway, "null" given.')
         ->getRawResponse()->toBe('Service is not available');
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-]);
+})->with('gateway_creation_and_verification_methods');
