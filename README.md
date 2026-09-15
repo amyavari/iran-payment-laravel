@@ -148,6 +148,8 @@ $payment = Payment::gateway(string $gateway)->callbackUrl(string $callbackUrl)->
 
 **Note:** For the `$gateway`, refer to the `gateway Key` column in the [List of Available Payment Gateways](#list-of-available-payment-gateways).
 
+**Note:** `create()` throws an `InvalidGatewayDataException` when the gateway response has a missing or invalid value that the package needs. No payment record is stored. The raw gateway body is in the exception context.
+
 ### Checking API Call Status
 
 In all calls to a gateway’s API (all methods in this package), you can check the latest status and response using the following methods:
@@ -162,6 +164,8 @@ $payment->error();          // string|null
 // Get the raw gateway response (useful for debugging)
 $payment->getRawResponse(); // string|array
 ```
+
+**Note:** If the gateway sends an invalid error code or error message, the call fails with the internal error code `9400`, and `error()` names the invalid field.
 
 ### Storing Payment Data
 
@@ -337,6 +341,7 @@ $payment
 - To get `$callbackPayload`, this package provides basic `FormRequest` classes to validate callback data.
   These classes are located in `AliYavari\IranPayment\Requests\<Gateway>Request`. See [Form Request classes](#form-request-classes)
 - If auto-reverse is enabled, the [Checking API Call Status](#checking-api-call-status) applies to **verification**.
+- `verify()` and `reverse()` throw an `InvalidGatewayDataException` when the gateway response or the callback has a missing or invalid value that decides the result. The stored payment record is not updated, and the raw gateway body is in the exception context.
 
 #### Successful Payment Details
 
