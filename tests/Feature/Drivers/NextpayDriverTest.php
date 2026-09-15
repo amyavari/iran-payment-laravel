@@ -129,17 +129,6 @@ it('returns gateway redirect data on successful payment creation', function (): 
         ->headers->toBe([]);
 });
 
-it('throws an exception for payment creation when configured to use sandbox', function (): void {
-    fakeHttp();
-
-    Config::set('iran-payment.use_sandbox', true);
-
-    expect(fn (): NextpayDriver => Helper::callGatewayFor(ApiMethod::Create))
-        ->toThrow(SandboxNotSupportedException::class, 'Nextpay gateway does not support the sandbox environment.');
-
-    Http::assertNothingSent();
-});
-
 it('throws an exception for payment creation when the Rial amount is not a multiple of 10', function (): void {
     Config::set('iran-payment.currency', 'Rial');
 
@@ -147,6 +136,37 @@ it('throws an exception for payment creation when the Rial amount is not a multi
 
     expect(fn (): NextpayDriver => Helper::driver()->create(1_005))
         ->toThrow(CannotConvertToTomanException::class, 'Nextpay gateway only supports Toman, so the Rial amount must be a multiple of 10. "1005" given.');
+
+    Http::assertNothingSent();
+});
+
+it('throws exception when the creation transaction ID is invalid', function (mixed $value, string $given): void {
+    $response = Helper::successfulCreationResponse();
+    Arr::set($response, 'trans_id', $value);
+
+    fakeHttp($response);
+
+    expect(fn (): NextpayDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "trans_id" to be of type "string" for the nextpay gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'blank value' => ['', ''],
+    'non-castable value' => [[], '[]'],
+]);
+
+it('throws an exception for payment creation when configured to use sandbox', function (): void {
+    fakeHttp();
+
+    Config::set('iran-payment.use_sandbox', true);
+
+    expect(fn (): NextpayDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(SandboxNotSupportedException::class, 'Nextpay gateway does not support the sandbox environment.');
 
     Http::assertNothingSent();
 });
@@ -422,24 +442,4 @@ it('throws exception when the API returns a non-JSON response', function (ApiMet
     'creation' => ApiMethod::Create,
     'verification' => ApiMethod::Verify,
     'reversal' => ApiMethod::Reverse,
-]);
-
-it('throws exception when the creation transaction ID is invalid', function (mixed $value, string $given): void {
-    $response = Helper::successfulCreationResponse();
-    Arr::set($response, 'trans_id', $value);
-
-    fakeHttp($response);
-
-    expect(fn (): NextpayDriver => Helper::callGatewayFor(ApiMethod::Create))
-        ->toThrow(
-            fn (InvalidGatewayDataException $exception) => expect($exception)
-                ->context()->toBe(['body' => $response])
-                ->getMessage()->toBe(
-                    sprintf('Expected "trans_id" to be of type "string" for the nextpay gateway, "%s" given.', $given)
-                ),
-        );
-})->with([
-    'missing value' => [null, 'null'],
-    'blank value' => ['', ''],
-    'non-castable value' => [[], '[]'],
 ]);

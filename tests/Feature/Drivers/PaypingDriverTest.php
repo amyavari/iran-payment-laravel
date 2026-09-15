@@ -125,6 +125,59 @@ it('returns gateway redirect data on successful payment creation', function (): 
         ->headers->toBe([]);
 });
 
+it('throws exception when the creation payment code is invalid', function (mixed $value, string $given): void {
+    $response = Helper::successfulCreationResponse();
+    Arr::set($response, 'paymentCode', $value);
+
+    fakeHttp($response, 200);
+
+    expect(fn (): PaypingDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "paymentCode" to be of type "string" for the payping gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'blank value' => ['', ''],
+    'non-castable value' => [[], '[]'],
+]);
+
+it('throws exception when the creation payment URL is invalid', function (mixed $value, string $given): void {
+    $response = Helper::successfulCreationResponse();
+    Arr::set($response, 'url', $value);
+
+    fakeHttp($response, 200);
+
+    expect(fn (): PaypingDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "url" to be of type "string" for the payping gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'blank value' => ['', ''],
+    'non-castable value' => [[], '[]'],
+]);
+
+it('throws exception when the creation API returns a non-JSON response', function (): void {
+    fakeHttp($response = 'Service is not available', 200);
+
+    expect(fn (): PaypingDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    'Expected "paymentCode" to be of type "string" for the payping gateway, "null" given.'
+                ),
+        );
+});
+
 it('throws an exception for payment creation when configured to use sandbox', function (): void {
     fakeHttp();
 
@@ -226,6 +279,47 @@ it('does not verify payment when callback status is unknown', function (): void 
         ->successful()->toBeFalse();
 });
 
+it('throws exception when the callback status is invalid', function (): void {
+    fakeHttp();
+
+    $callbackPayload = Helper::successfulCallback();
+    Arr::set($callbackPayload, 'status', 'abc');
+
+    $payment = Helper::driver()->fromCallback($callbackPayload);
+
+    expect(fn (): PaypingDriver => Helper::callGatewayFor(ApiMethod::Verify, $payment))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $callbackPayload])
+                ->getMessage()->toBe(
+                    'Expected "status" to be of type "int" for the payping gateway, "abc" given.'
+                ),
+        );
+
+    Http::assertNothingSent();
+});
+
+it('returns the internal error code when the callback error code is invalid', function (mixed $value, string $given): void {
+    fakeHttp();
+
+    $callbackPayload = Helper::failedCallback();
+    Arr::set($callbackPayload, 'errorCode', $value);
+
+    $payment = Helper::driver()->fromCallback($callbackPayload);
+
+    Helper::callGatewayFor(ApiMethod::Verify, $payment);
+
+    expect($payment)
+        ->successful()->toBeFalse()
+        ->error()->toContain('9400')
+        ->error()->toContain(sprintf('Expected "errorCode" to be of type "int" for the payping gateway, "%s" given.', $given));
+
+    Http::assertNothingSent();
+})->with([
+    'blank value' => ['', ''],
+    'non-numeric value' => ['abc', 'abc'],
+]);
+
 it('verifies payment when callback is successful and matches stored payload', function (): void {
     fakeHttp(Helper::successfulVerificationResponse(), 200);
 
@@ -282,6 +376,25 @@ it('returns successful response on subsequence successful payment verification',
         ->getCardNumber()->toBe('123456******1234'); // From fake already-verified response
 });
 
+it('returns successful response on payment verification when the stored and verified amounts have different types', function (mixed $verifiedAmount, mixed $storedAmount): void {
+    $response = Helper::successfulVerificationResponse();
+    Arr::set($response, 'amount', $verifiedAmount);
+
+    $payload = Helper::gatewayPayload();
+    Arr::set($payload, 'amount', $storedAmount);
+
+    fakeHttp($response, 200);
+
+    $payment = Helper::paymentReadyFor(ApiMethod::Verify)->verify($payload);
+
+    expect($payment)
+        ->successful()->toBeTrue()
+        ->error()->toBeNull();
+})->with([
+    'verified amount as string' => ['1000', 1_000],
+    'stored amount as string' => [1_000, '1000'],
+]);
+
 it('returns failed response on successful payment verification with invalid amount', function (): void {
     $response = Helper::successfulVerificationResponse();
     Arr::set($response, 'amount', 2_000);
@@ -309,25 +422,6 @@ it('returns failed response on subsequence successful payment verification with 
         ->error()->toContain('9300')->toContain('مبلغ پرداخت شده نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
-
-it('returns successful response on payment verification when the stored and verified amounts have different types', function (mixed $verifiedAmount, mixed $storedAmount): void {
-    $response = Helper::successfulVerificationResponse();
-    Arr::set($response, 'amount', $verifiedAmount);
-
-    $payload = Helper::gatewayPayload();
-    Arr::set($payload, 'amount', $storedAmount);
-
-    fakeHttp($response, 200);
-
-    $payment = Helper::paymentReadyFor(ApiMethod::Verify)->verify($payload);
-
-    expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull();
-})->with([
-    'verified amount as string' => ['1000', 1_000],
-    'stored amount as string' => [1_000, '1000'],
-]);
 
 it('throws exception when the verified amount is not numeric', function (mixed $value, string $given): void {
     $response = Helper::successfulVerificationResponse();
@@ -366,23 +460,6 @@ it('throws exception when the subsequence verified amount is not numeric', funct
     'missing value' => [null, 'null'],
     'non-numeric value' => ['abc', 'abc'],
 ]);
-
-it('does not validate the amount on payment reversal', function (): void {
-    $response = Helper::successfulReversalResponse();
-    Arr::set($response, 'amount', 2_000);
-
-    fakeHttp(
-        firstResponse: Helper::successfulVerificationResponse(),
-        secondResponse: $response,
-    );
-
-    $payment = Helper::callGatewayFor(ApiMethod::Reverse);
-
-    expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
-        ->getRawResponse()->toBe($response);
-});
 
 it('returns failed response on failed payment verification', function (): void {
     fakeHttp($response = Helper::failedResponse(), 400);
@@ -451,6 +528,23 @@ it('returns successful response on successful payment reversal', function (): vo
         ->getRawResponse()->toBe($response);
 });
 
+it('does not validate the amount on payment reversal', function (): void {
+    $response = Helper::successfulReversalResponse();
+    Arr::set($response, 'amount', 2_000);
+
+    fakeHttp(
+        firstResponse: Helper::successfulVerificationResponse(),
+        secondResponse: $response,
+    );
+
+    $payment = Helper::callGatewayFor(ApiMethod::Reverse);
+
+    expect($payment)
+        ->successful()->toBeTrue()
+        ->error()->toBeNull()
+        ->getRawResponse()->toBe($response);
+});
+
 it('returns failed response on failed payment reversal', function (): void {
     fakeHttp(
         firstResponse: Helper::successfulVerificationResponse(),
@@ -464,6 +558,36 @@ it('returns failed response on failed payment reversal', function (): void {
         ->successful()->toBeFalse()
         ->error()->toContain('102')->toContain('درگاه پرداخت فعال برای پذیرنده یافت نشد')
         ->getRawResponse()->toBe($response);
+});
+
+it('does not check the payment reference ID on failed payment reversal', function (): void {
+    fakeHttp(
+        firstResponse: Helper::successfulVerificationResponse(),
+        secondResponse: $response = Helper::failedResponse(),
+        secondStatus: 400,
+    );
+
+    $payment = Helper::callGatewayFor(ApiMethod::Reverse);
+
+    expect($payment)
+        ->successful()->toBeFalse()
+        ->getRawResponse()->toBe($response);
+});
+
+it('throws exception when the reversal API returns a non-JSON response', function (): void {
+    fakeHttp(
+        firstResponse: Helper::successfulVerificationResponse(),
+        secondResponse: $response = 'Service is not available',
+    );
+
+    expect(fn (): PaypingDriver => Helper::callGatewayFor(ApiMethod::Reverse))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    'Expected "paymentRefId" to be of type "int" for the payping gateway, "null" given.'
+                ),
+        );
 });
 
 it('throws an exception for payment reversal when configured to use sandbox', function (): void {
@@ -518,47 +642,6 @@ it('returns successful reversal with no callback data', function (): void {
     Http::assertNothingSent();
 });
 
-it('throws exception when the callback status is invalid', function (): void {
-    fakeHttp();
-
-    $callbackPayload = Helper::successfulCallback();
-    Arr::set($callbackPayload, 'status', 'abc');
-
-    $payment = Helper::driver()->fromCallback($callbackPayload);
-
-    expect(fn (): PaypingDriver => Helper::callGatewayFor(ApiMethod::Verify, $payment))
-        ->toThrow(
-            fn (InvalidGatewayDataException $exception) => expect($exception)
-                ->context()->toBe(['body' => $callbackPayload])
-                ->getMessage()->toBe(
-                    'Expected "status" to be of type "int" for the payping gateway, "abc" given.'
-                ),
-        );
-
-    Http::assertNothingSent();
-});
-
-it('returns the internal error code when the callback error code is invalid', function (mixed $value, string $given): void {
-    fakeHttp();
-
-    $callbackPayload = Helper::failedCallback();
-    Arr::set($callbackPayload, 'errorCode', $value);
-
-    $payment = Helper::driver()->fromCallback($callbackPayload);
-
-    Helper::callGatewayFor(ApiMethod::Verify, $payment);
-
-    expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9400')
-        ->error()->toContain(sprintf('Expected "errorCode" to be of type "int" for the payping gateway, "%s" given.', $given));
-
-    Http::assertNothingSent();
-})->with([
-    'blank value' => ['', ''],
-    'non-numeric value' => ['abc', 'abc'],
-]);
-
 it('returns the internal error code when the API error code is invalid', function (ApiMethod $call, mixed $value, string $given): void {
     $response = Helper::failedResponse();
     Arr::set($response, 'metaData.code', $value);
@@ -601,86 +684,3 @@ it('returns the internal error code when the API returns a non-JSON response', f
     'verification' => ApiMethod::Verify,
     'reversal' => ApiMethod::Reverse,
 ]);
-
-it('throws exception when the creation payment code is invalid', function (mixed $value, string $given): void {
-    $response = Helper::successfulCreationResponse();
-    Arr::set($response, 'paymentCode', $value);
-
-    fakeHttp($response, 200);
-
-    expect(fn (): PaypingDriver => Helper::callGatewayFor(ApiMethod::Create))
-        ->toThrow(
-            fn (InvalidGatewayDataException $exception) => expect($exception)
-                ->context()->toBe(['body' => $response])
-                ->getMessage()->toBe(
-                    sprintf('Expected "paymentCode" to be of type "string" for the payping gateway, "%s" given.', $given)
-                ),
-        );
-})->with([
-    'missing value' => [null, 'null'],
-    'blank value' => ['', ''],
-    'non-castable value' => [[], '[]'],
-]);
-
-it('throws exception when the creation payment URL is invalid', function (mixed $value, string $given): void {
-    $response = Helper::successfulCreationResponse();
-    Arr::set($response, 'url', $value);
-
-    fakeHttp($response, 200);
-
-    expect(fn (): PaypingDriver => Helper::callGatewayFor(ApiMethod::Create))
-        ->toThrow(
-            fn (InvalidGatewayDataException $exception) => expect($exception)
-                ->context()->toBe(['body' => $response])
-                ->getMessage()->toBe(
-                    sprintf('Expected "url" to be of type "string" for the payping gateway, "%s" given.', $given)
-                ),
-        );
-})->with([
-    'missing value' => [null, 'null'],
-    'blank value' => ['', ''],
-    'non-castable value' => [[], '[]'],
-]);
-
-it('throws exception when the creation API returns a non-JSON response', function (): void {
-    fakeHttp($response = 'Service is not available', 200);
-
-    expect(fn (): PaypingDriver => Helper::callGatewayFor(ApiMethod::Create))
-        ->toThrow(
-            fn (InvalidGatewayDataException $exception) => expect($exception)
-                ->context()->toBe(['body' => $response])
-                ->getMessage()->toBe(
-                    'Expected "paymentCode" to be of type "string" for the payping gateway, "null" given.'
-                ),
-        );
-});
-
-it('throws exception when the reversal API returns a non-JSON response', function (): void {
-    fakeHttp(
-        firstResponse: Helper::successfulVerificationResponse(),
-        secondResponse: $response = 'Service is not available',
-    );
-
-    expect(fn (): PaypingDriver => Helper::callGatewayFor(ApiMethod::Reverse))
-        ->toThrow(
-            fn (InvalidGatewayDataException $exception) => expect($exception)
-                ->context()->toBe(['body' => $response])
-                ->getMessage()->toBe(
-                    'Expected "paymentRefId" to be of type "int" for the payping gateway, "null" given.'
-                ),
-        );
-});
-
-it('does not check the payment reference ID on failed payment reversal', function (): void {
-    fakeHttp(
-        firstResponse: Helper::successfulVerificationResponse(),
-        secondResponse: $response = Helper::failedResponse(),
-        secondStatus: 400,
-    );
-
-    $payment = Helper::callGatewayFor(ApiMethod::Reverse);
-
-    expect($payment)
-        ->successful()->toBeFalse()
-        ->getRawResponse()->toBe($response);
-});

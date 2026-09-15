@@ -322,6 +322,52 @@ it('returns gateway redirect data on successful payment creation', function (): 
         ->headers->toBe([]);
 });
 
+it('throws exception when the creation URL ID is invalid', function (mixed $value, string $given): void {
+    $response = Helper::successfulCreationResponse();
+    Arr::set($response, 'data.urlId', $value);
+
+    fakeHttp(
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: $response,
+    );
+
+    expect(fn (): PepDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "data.urlId" to be of type "string" for the pep gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'blank value' => ['', ''],
+    'non-castable value' => [[], '[]'],
+]);
+
+it('throws exception when the creation payment URL is invalid', function (mixed $value, string $given): void {
+    $response = Helper::successfulCreationResponse();
+    Arr::set($response, 'data.url', $value);
+
+    fakeHttp(
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: $response,
+    );
+
+    expect(fn (): PepDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "data.url" to be of type "string" for the pep gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'blank value' => ['', ''],
+    'non-castable value' => [[], '[]'],
+]);
+
 it('throws an exception for payment creation when configured to use sandbox', function (): void {
     fakeHttp();
 
@@ -488,23 +534,6 @@ it('returns successful response on successful payment verification', function ()
         ->getRawResponse()->toBe($response);
 });
 
-it('returns failed response on successful payment verification with invalid amount', function (): void {
-    $response = Helper::successfulVerificationResponse();
-    Arr::set($response, 'data.amount', 2_000);
-
-    fakeHttp(
-        firstResponse: Helper::successfulGetTokenResponse(),
-        secondResponse: $response,
-    );
-
-    $payment = Helper::callGatewayFor(ApiMethod::Verify);
-
-    expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9300')->toContain('مبلغ پرداخت شده نامعتبر است')
-        ->getRawResponse()->toBe($response);
-});
-
 it('returns successful response on payment verification when the stored and verified amounts have different types', function (mixed $verifiedAmount, mixed $storedAmount): void {
     $response = Helper::successfulVerificationResponse();
     Arr::set($response, 'data.amount', $verifiedAmount);
@@ -526,6 +555,23 @@ it('returns successful response on payment verification when the stored and veri
     'verified amount as string' => ['1000', 1_000],
     'stored amount as string' => [1_000, '1000'],
 ]);
+
+it('returns failed response on successful payment verification with invalid amount', function (): void {
+    $response = Helper::successfulVerificationResponse();
+    Arr::set($response, 'data.amount', 2_000);
+
+    fakeHttp(
+        firstResponse: Helper::successfulGetTokenResponse(),
+        secondResponse: $response,
+    );
+
+    $payment = Helper::callGatewayFor(ApiMethod::Verify);
+
+    expect($payment)
+        ->successful()->toBeFalse()
+        ->error()->toContain('9300')->toContain('مبلغ پرداخت شده نامعتبر است')
+        ->getRawResponse()->toBe($response);
+});
 
 it('throws exception when the verified amount is not numeric', function (mixed $value, string $given): void {
     $response = Helper::successfulVerificationResponse();
@@ -777,50 +823,4 @@ it('throws exception when the API returns a non-JSON response', function (ApiMet
     'creation' => ApiMethod::Create,
     'verification' => ApiMethod::Verify,
     'reversal' => ApiMethod::Reverse,
-]);
-
-it('throws exception when the creation URL ID is invalid', function (mixed $value, string $given): void {
-    $response = Helper::successfulCreationResponse();
-    Arr::set($response, 'data.urlId', $value);
-
-    fakeHttp(
-        firstResponse: Helper::successfulGetTokenResponse(),
-        secondResponse: $response,
-    );
-
-    expect(fn (): PepDriver => Helper::callGatewayFor(ApiMethod::Create))
-        ->toThrow(
-            fn (InvalidGatewayDataException $exception) => expect($exception)
-                ->context()->toBe(['body' => $response])
-                ->getMessage()->toBe(
-                    sprintf('Expected "data.urlId" to be of type "string" for the pep gateway, "%s" given.', $given)
-                ),
-        );
-})->with([
-    'missing value' => [null, 'null'],
-    'blank value' => ['', ''],
-    'non-castable value' => [[], '[]'],
-]);
-
-it('throws exception when the creation payment URL is invalid', function (mixed $value, string $given): void {
-    $response = Helper::successfulCreationResponse();
-    Arr::set($response, 'data.url', $value);
-
-    fakeHttp(
-        firstResponse: Helper::successfulGetTokenResponse(),
-        secondResponse: $response,
-    );
-
-    expect(fn (): PepDriver => Helper::callGatewayFor(ApiMethod::Create))
-        ->toThrow(
-            fn (InvalidGatewayDataException $exception) => expect($exception)
-                ->context()->toBe(['body' => $response])
-                ->getMessage()->toBe(
-                    sprintf('Expected "data.url" to be of type "string" for the pep gateway, "%s" given.', $given)
-                ),
-        );
-})->with([
-    'missing value' => [null, 'null'],
-    'blank value' => ['', ''],
-    'non-castable value' => [[], '[]'],
 ]);

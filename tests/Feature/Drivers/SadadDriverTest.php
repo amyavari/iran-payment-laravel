@@ -151,6 +151,26 @@ it('returns gateway redirect data on successful payment creation', function (): 
         ->headers->toBe([]);
 });
 
+it('throws exception when the creation token is invalid', function (mixed $value, string $given): void {
+    $response = Helper::successfulCreationResponse();
+    Arr::set($response, 'Token', $value);
+
+    fakeHttp($response);
+
+    expect(fn (): SadadDriver => Helper::callGatewayFor(ApiMethod::Create))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $response])
+                ->getMessage()->toBe(
+                    sprintf('Expected "Token" to be of type "string" for the sadad gateway, "%s" given.', $given)
+                ),
+        );
+})->with([
+    'missing value' => [null, 'null'],
+    'blank value' => ['', ''],
+    'non-castable value' => [[], '[]'],
+]);
+
 it('throws an exception for payment creation when configured to use sandbox', function (): void {
     fakeHttp();
 
@@ -238,6 +258,24 @@ it('does not verify payment when callback status is not successful', function ()
     Http::assertNothingSent();
 });
 
+it('throws exception when the callback status code is invalid', function (): void {
+    fakeHttp();
+
+    $callbackPayload = Helper::failedCallback();
+    Arr::set($callbackPayload, 'ResCode', 'abc');
+
+    expect(fn (): SadadDriver => Helper::driver()->fromCallback($callbackPayload))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $callbackPayload])
+                ->getMessage()->toBe(
+                    'Expected "ResCode" to be of type "int" for the sadad gateway, "abc" given.'
+                ),
+        );
+
+    Http::assertNothingSent();
+});
+
 it('verifies payment when callback is successful and matches stored payload', function (): void {
     fakeHttp(Helper::successfulVerificationResponse());
 
@@ -280,20 +318,6 @@ it('returns successful response on subsequence successful payment verification',
         ->getRawResponse()->toBe($response);
 });
 
-it('returns failed response on successful payment verification with invalid amount', function (): void {
-    $response = Helper::successfulVerificationResponse();
-    Arr::set($response, 'Amount', 2_000);
-
-    fakeHttp($response);
-
-    $payment = Helper::callGatewayFor(ApiMethod::Verify);
-
-    expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9300')->toContain('مبلغ پرداخت شده نامعتبر است')
-        ->getRawResponse()->toBe($response);
-});
-
 it('returns successful response on payment verification when the stored and verified amounts have different types', function (mixed $verifiedAmount, mixed $storedAmount): void {
     $response = Helper::successfulVerificationResponse();
     Arr::set($response, 'Amount', $verifiedAmount);
@@ -312,6 +336,20 @@ it('returns successful response on payment verification when the stored and veri
     'verified amount as string' => ['1000', 1_000],
     'stored amount as string' => [1_000, '1000'],
 ]);
+
+it('returns failed response on successful payment verification with invalid amount', function (): void {
+    $response = Helper::successfulVerificationResponse();
+    Arr::set($response, 'Amount', 2_000);
+
+    fakeHttp($response);
+
+    $payment = Helper::callGatewayFor(ApiMethod::Verify);
+
+    expect($payment)
+        ->successful()->toBeFalse()
+        ->error()->toContain('9300')->toContain('مبلغ پرداخت شده نامعتبر است')
+        ->getRawResponse()->toBe($response);
+});
 
 it('throws exception when the verified amount is not numeric', function (mixed $value, string $given): void {
     $response = Helper::successfulVerificationResponse();
@@ -411,24 +449,6 @@ it('returns failed response on the payment reversal with no callback data', func
     Http::assertSentCount(1); // Only verification is sent.
 });
 
-it('throws exception when the callback status code is invalid', function (): void {
-    fakeHttp();
-
-    $callbackPayload = Helper::failedCallback();
-    Arr::set($callbackPayload, 'ResCode', 'abc');
-
-    expect(fn (): SadadDriver => Helper::driver()->fromCallback($callbackPayload))
-        ->toThrow(
-            fn (InvalidGatewayDataException $exception) => expect($exception)
-                ->context()->toBe(['body' => $callbackPayload])
-                ->getMessage()->toBe(
-                    'Expected "ResCode" to be of type "int" for the sadad gateway, "abc" given.'
-                ),
-        );
-
-    Http::assertNothingSent();
-});
-
 it('throws exception when the API status code is invalid', function (ApiMethod $call, mixed $value, string $given): void {
     $response = match ($call) {
         ApiMethod::Create => Helper::successfulCreationResponse(),
@@ -470,24 +490,4 @@ it('throws exception when the API returns a non-JSON response', function (ApiMet
 })->with([
     'creation' => ApiMethod::Create,
     'verification' => ApiMethod::Verify,
-]);
-
-it('throws exception when the creation token is invalid', function (mixed $value, string $given): void {
-    $response = Helper::successfulCreationResponse();
-    Arr::set($response, 'Token', $value);
-
-    fakeHttp($response);
-
-    expect(fn (): SadadDriver => Helper::callGatewayFor(ApiMethod::Create))
-        ->toThrow(
-            fn (InvalidGatewayDataException $exception) => expect($exception)
-                ->context()->toBe(['body' => $response])
-                ->getMessage()->toBe(
-                    sprintf('Expected "Token" to be of type "string" for the sadad gateway, "%s" given.', $given)
-                ),
-        );
-})->with([
-    'missing value' => [null, 'null'],
-    'blank value' => ['', ''],
-    'non-castable value' => [[], '[]'],
 ]);
