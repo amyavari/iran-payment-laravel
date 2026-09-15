@@ -294,7 +294,7 @@ final class TestDriver extends Driver
      */
     private function throwExceptionIfFailed(): void
     {
-        if (! $this->isSuccessful) {
+        if (! $this->isSuccessful()) {
             throw new LogicException('TestDriver: This method should not be called.');
         }
     }
