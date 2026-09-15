@@ -155,8 +155,7 @@ it('sets failed response on failed getting token on payment creation', function 
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('1')->toContain('ناموفق')
+        ->toBeFailedPayment('1', 'ناموفق')
         ->getRawResponse()->toBe($response);
 
     Http::assertSentCount(1); // Only getToken
@@ -262,8 +261,7 @@ it('returns successful response on successful payment creation', function (): vo
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -276,8 +274,7 @@ it('returns failed response on failed payment creation', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('1')->toContain('ناموفق')
+        ->toBeFailedPayment('1', 'ناموفق')
         ->getRawResponse()->toBe($response);
 });
 
@@ -429,8 +426,7 @@ it('does not verify payment when callback status is not successful', function ()
     Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('1')->toContain('ناموفق') // The error code is set by fake failed callback.
+        ->toBeFailedPayment('1', 'ناموفق') // The error code is set by fake failed callback.
         ->getRawResponse()->toBe($callbackPayload);
 
     Http::assertNothingSent();
@@ -445,7 +441,7 @@ it('does not verify payment when callback status is unknown', function (): void 
     Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse();
+        ->toBeFailedPayment('1', 'ناموفق');
 });
 
 it('sets failed response on failed getting token on payment verification', function (): void {
@@ -454,8 +450,7 @@ it('sets failed response on failed getting token on payment verification', funct
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('1')->toContain('ناموفق')
+        ->toBeFailedPayment('1', 'ناموفق')
         ->getRawResponse()->toBe($response);
 
     Http::assertSentCount(1); // Only getToken
@@ -508,8 +503,7 @@ it('returns successful response on successful payment verification', function ()
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -528,8 +522,7 @@ it('returns successful response on payment verification when the stored and veri
     $payment = Helper::paymentReadyFor(ApiMethod::Verify)->verify($payload);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull();
+        ->toBeSuccessfulPayment();
 })->with([
     'verified amount as string' => ['verifiedAmount' => '1000', 'storedAmount' => 1_000],
     'stored amount as string' => ['verifiedAmount' => 1_000, 'storedAmount' => '1000'],
@@ -547,8 +540,7 @@ it('returns failed response on successful payment verification with invalid amou
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9300')->toContain('مبلغ پرداخت شده نامعتبر است')
+        ->toBeFailedPayment('9300', 'مبلغ پرداخت شده نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -580,8 +572,7 @@ it('returns failed response on failed payment verification', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('1')->toContain('ناموفق')
+        ->toBeFailedPayment('1', 'ناموفق')
         ->getRawResponse()->toBe($response);
 });
 
@@ -639,8 +630,7 @@ it('sets failed response on failed getting token on payment reversal', function 
     Helper::callGatewayFor(ApiMethod::Reverse, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('1')->toContain('ناموفق')
+        ->toBeFailedPayment('1', 'ناموفق')
         ->getRawResponse()->toBe($response);
 
     Http::assertSentCount(3); // getToken, verification and getToken
@@ -692,8 +682,7 @@ it('returns successful response on successful payment reversal', function (): vo
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -706,8 +695,7 @@ it('returns failed response on failed payment reversal', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('1')->toContain('ناموفق')
+        ->toBeFailedPayment('1', 'ناموفق')
         ->getRawResponse()->toBe($response);
 });
 

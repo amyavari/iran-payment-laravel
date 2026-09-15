@@ -78,8 +78,7 @@ it('returns successful response on successful payment creation', function (): vo
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -89,8 +88,7 @@ it('returns failed response on failed payment creation', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('11')->toContain('شماره کارت نامعتبر است')
+        ->toBeFailedPayment('11', 'شماره کارت نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -276,8 +274,7 @@ it('does not verify payment when callback status is not successful', function ()
     Soap::assertNothingSent();
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('11')->toContain('شماره کارت نامعتبر است') // The error code is set by fake failed callback.
+        ->toBeFailedPayment('11', 'شماره کارت نامعتبر است') // The error code is set by fake failed callback.
         ->getRawResponse()->toBe($callbackPayload);
 });
 
@@ -344,8 +341,7 @@ it('returns successful response on successful payment verification', function ()
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -355,8 +351,7 @@ it('returns failed response on failed payment verification', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('11')->toContain('شماره کارت نامعتبر است')
+        ->toBeFailedPayment('11', 'شماره کارت نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -399,8 +394,7 @@ it('returns successful response on successful payment reversal', function (): vo
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -413,8 +407,7 @@ it('returns failed response on failed payment reversal', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('11')->toContain('شماره کارت نامعتبر است')
+        ->toBeFailedPayment('11', 'شماره کارت نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -447,8 +440,7 @@ it('returns failed verification with no callback data', function (): void {
     Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9100')->toContain('درگاه از وریفای بدون callback پشتیبانی نمی کند')
+        ->toBeFailedPayment('9100', 'درگاه از وریفای بدون callback پشتیبانی نمی کند')
         ->getRawResponse()->toBe('No API is called.');
 
     Soap::assertNothingSent();
@@ -463,8 +455,7 @@ it('returns successful reversal with no callback data', function (): void {
     Helper::callGatewayFor(ApiMethod::Reverse, $payment);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe('No API is called.');
 
     Soap::assertNothingSent();

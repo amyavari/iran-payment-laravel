@@ -70,8 +70,7 @@ it('returns successful response on successful payment creation', function (): vo
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -81,8 +80,7 @@ it('returns failed response on failed payment creation', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('-2')->toContain('پرداخت رد شده توسط کاربر یا بانک')
+        ->toBeFailedPayment('-2', 'پرداخت رد شده توسط کاربر یا بانک')
         ->getRawResponse()->toBe($response);
 });
 
@@ -251,8 +249,7 @@ it('returns successful response on successful payment verification', function ()
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -262,8 +259,7 @@ it('returns failed response on failed payment verification', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('-2')->toContain('پرداخت رد شده توسط کاربر یا بانک')
+        ->toBeFailedPayment('-2', 'پرداخت رد شده توسط کاربر یا بانک')
         ->getRawResponse()->toBe($response);
 });
 
@@ -331,8 +327,7 @@ it('returns successful response on successful payment reversal', function (): vo
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -345,8 +340,7 @@ it('returns failed response on failed payment reversal', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('-2')->toContain('پرداخت رد شده توسط کاربر یا بانک')
+        ->toBeFailedPayment('-2', 'پرداخت رد شده توسط کاربر یا بانک')
         ->getRawResponse()->toBe($response);
 });
 

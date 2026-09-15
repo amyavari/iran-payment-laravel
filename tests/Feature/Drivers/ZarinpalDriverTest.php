@@ -68,8 +68,7 @@ it('returns successful response on successful payment creation', function (): vo
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -79,8 +78,7 @@ it('returns failed response on failed payment creation', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('-10')->toContain('ای پی یا مرچنت كد پذیرنده صحیح نیست')
+        ->toBeFailedPayment('-10', 'ای پی یا مرچنت كد پذیرنده صحیح نیست')
         ->getRawResponse()->toBe($response);
 });
 
@@ -217,8 +215,7 @@ it('does not verify payment when callback status is not successful', function ()
     Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('-51')->toContain('پرداخت ناموفق') // The error code is set by fake failed callback.
+        ->toBeFailedPayment('-51', 'پرداخت ناموفق') // The error code is set by fake failed callback.
         ->getRawResponse()->toBe($callbackPayload);
 
     Http::assertNothingSent();
@@ -233,7 +230,7 @@ it('does not verify payment when callback status is unknown', function (): void 
     Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse();
+        ->toBeFailedPayment('-51', 'پرداخت ناموفق');
 });
 
 it('verifies payment when callback is successful and matches stored payload', function (): void {
@@ -272,8 +269,7 @@ it('returns successful response on successful payment verification', function ()
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -286,8 +282,7 @@ it('returns successful response on subsequence successful payment verification',
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -297,8 +292,7 @@ it('returns failed response on failed payment verification', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('-10')->toContain('ای پی یا مرچنت كد پذیرنده صحیح نیست')
+        ->toBeFailedPayment('-10', 'ای پی یا مرچنت كد پذیرنده صحیح نیست')
         ->getRawResponse()->toBe($response);
 });
 
@@ -366,8 +360,7 @@ it('returns successful response on successful payment reversal', function (): vo
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -380,8 +373,7 @@ it('returns failed response on failed payment reversal', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('-10')->toContain('ای پی یا مرچنت كد پذیرنده صحیح نیست')
+        ->toBeFailedPayment('-10', 'ای پی یا مرچنت كد پذیرنده صحیح نیست')
         ->getRawResponse()->toBe($response);
 });
 
@@ -466,9 +458,7 @@ it('returns the internal error code when the API error code is invalid', functio
     $payment = Helper::callGatewayFor($call);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9400')
-        ->error()->toContain(sprintf('Expected "errors.code" to be of type "int" for the zarinpal gateway, "%s" given.', $given));
+        ->toBeFailedPayment('9400', sprintf('Expected "errors.code" to be of type "int" for the zarinpal gateway, "%s" given.', $given));
 })->with('gateway_api_methods')
     ->with('invalid_numeric_field_values');
 
@@ -480,7 +470,5 @@ it('returns the internal error code when the API returns a non-JSON response', f
     $payment = Helper::callGatewayFor($call);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9400')
-        ->error()->toContain('Expected "errors.code" to be of type "int" for the zarinpal gateway, "null" given.');
+        ->toBeFailedPayment('9400', 'Expected "errors.code" to be of type "int" for the zarinpal gateway, "null" given.');
 })->with('gateway_api_methods');

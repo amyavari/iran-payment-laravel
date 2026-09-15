@@ -86,8 +86,7 @@ it('fakes a successful create API response using default data', function (): voi
     $payment = testGateway()->create(10);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe('Creation raw response')
         ->getTransactionId()->toBe('123456789012345')
         ->getGatewayPayload()->toBe(['payload' => 'test value'])
@@ -113,8 +112,7 @@ it('fakes a successful create API response using user-defined redirect data', fu
     $payment = testGateway()->create(10);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRedirectData()->toBe($customRedirectData);
 });
 
@@ -196,8 +194,7 @@ it('fakes a successful verify API response', function (): void {
     $payment = testGateway(runVerification: true);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe('Verification raw response')
         ->getCardNumber()->toBe('1234-****-****-1234')
         ->getRefNumber()->toBe('123456789');
@@ -238,8 +235,7 @@ it('fakes a successful reverse API response', function (): void {
     $payment = testGateway(runVerification: true)->reverse();
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe('Reversal raw response');
 });
 

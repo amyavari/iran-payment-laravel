@@ -66,8 +66,7 @@ it('returns successful response on successful payment creation', function (): vo
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -77,8 +76,7 @@ it('returns failed response on failed payment creation', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('102')->toContain('merchant یافت نشد')
+        ->toBeFailedPayment('102', 'merchant یافت نشد')
         ->getRawResponse()->toBe($response);
 });
 
@@ -214,8 +212,7 @@ it('does not verify payment when callback status is not successful', function ()
     Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('3')->toContain('لغوشده توسط کاربر') // The error code is set by fake failed callback.
+        ->toBeFailedPayment('3', 'لغوشده توسط کاربر') // The error code is set by fake failed callback.
         ->getRawResponse()->toBe($callbackPayload);
 
     Http::assertNothingSent();
@@ -230,7 +227,7 @@ it('does not verify payment when callback status is unknown', function (): void 
     Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse();
+        ->toBeFailedPayment('2', 'پرداخت شده - تاییدنشده');
 });
 
 it('returns the internal error code when the callback status is invalid', function (): void {
@@ -244,9 +241,7 @@ it('returns the internal error code when the callback status is invalid', functi
     Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9400')
-        ->error()->toContain('Expected "status" to be of type "int" for the zibal gateway, "abc" given.');
+        ->toBeFailedPayment('9400', 'Expected "status" to be of type "int" for the zibal gateway, "abc" given.');
 
     Http::assertNothingSent();
 });
@@ -274,8 +269,7 @@ it('returns successful response on successful payment verification', function ()
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -291,8 +285,7 @@ it('returns successful response on payment verification when the stored and veri
     $payment = Helper::paymentReadyFor(ApiMethod::Verify)->verify($payload);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull();
+        ->toBeSuccessfulPayment();
 })->with([
     'verified amount as string' => ['verifiedAmount' => '1000', 'storedAmount' => 1_000],
     'stored amount as string' => ['verifiedAmount' => 1_000, 'storedAmount' => '1000'],
@@ -307,8 +300,7 @@ it('returns failed response on successful payment verification with invalid amou
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9300')->toContain('مبلغ پرداخت شده نامعتبر است')
+        ->toBeFailedPayment('9300', 'مبلغ پرداخت شده نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -334,8 +326,7 @@ it('returns failed response on payment verification when API call result is not 
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('102')->toContain('merchant یافت نشد')
+        ->toBeFailedPayment('102', 'merchant یافت نشد')
         ->getRawResponse()->toBe($response);
 });
 
@@ -348,8 +339,7 @@ it('returns failed response on payment verification when verification status is 
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('3')->toContain('لغوشده توسط کاربر')
+        ->toBeFailedPayment('3', 'لغوشده توسط کاربر')
         ->getRawResponse()->toBe($response);
 });
 
@@ -410,8 +400,7 @@ it('returns failed response on the payment reversal', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9200')->toContain('درگاه از بازگشت وجه پشتیبانی نمی کند')
+        ->toBeFailedPayment('9200', 'درگاه از بازگشت وجه پشتیبانی نمی کند')
         ->getRawResponse()->toBe('No API is called. IPG does not support reversal.');
 
     Http::assertSentCount(1); // Only verification is sent.
@@ -444,8 +433,7 @@ it('returns failed response on the payment reversal with no callback data', func
     Helper::callGatewayFor(ApiMethod::Reverse, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9200')->toContain('درگاه از بازگشت وجه پشتیبانی نمی کند')
+        ->toBeFailedPayment('9200', 'درگاه از بازگشت وجه پشتیبانی نمی کند')
         ->getRawResponse()->toBe('No API is called. IPG does not support reversal.');
 
     Http::assertSentCount(1); // Only verification is sent.
