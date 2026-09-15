@@ -62,14 +62,7 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 
     expect($request->data())
         ->customer_phone->toBe('09123456789');
-})->with([
-    'With country code' => 989123456789,
-    'Without country code, with first zero' => '09123456789',
-    'Without country code, and first zero' => 9123456789,
-    'With country code, and first plus' => '+989123456789',
-    'With country code and first zero' => 9809123456789,
-    'With country code, first zero and first plus' => '+9809123456789',
-]);
+})->with('gateway_phone_number_formats');
 
 it('returns successful response on successful payment creation', function (): void {
     fakeHttp($response = Helper::successfulCreationResponse());
@@ -77,8 +70,7 @@ it('returns successful response on successful payment creation', function (): vo
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -88,8 +80,7 @@ it('returns failed response on failed payment creation', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('-2')->toContain('پرداخت رد شده توسط کاربر یا بانک')
+        ->toBeFailedPayment('-2', 'پرداخت رد شده توسط کاربر یا بانک')
         ->getRawResponse()->toBe($response);
 });
 
@@ -154,11 +145,7 @@ it('throws exception when the creation transaction ID is invalid', function (mix
                     sprintf('Expected "trans_id" to be of type "string" for the nextpay gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'blank value' => ['', ''],
-    'non-castable value' => [[], '[]'],
-]);
+})->with('invalid_string_field_values');
 
 it('throws an exception for payment creation when configured to use sandbox', function (): void {
     fakeHttp();
@@ -188,7 +175,7 @@ it('throws exception when callback lacks required keys', function (string $key):
             sprintf('To create nextpay gateway instance from callback, "trans_id" are required. "%s" is missing.', $key)
         );
 })->with([
-    'trans_id',
+    'trans_id' => ['key' => 'trans_id'],
 ]);
 
 it('throws exception when a required callback key is blank', function (string $key, mixed $value): void {
@@ -201,10 +188,10 @@ it('throws exception when a required callback key is blank', function (string $k
             sprintf('To create nextpay gateway instance from callback, "trans_id" are required. "%s" is empty.', $key)
         );
 })->with([
-    'trans_id',
+    'trans_id' => ['key' => 'trans_id'],
 ])->with([
-    'null' => null,
-    'empty string' => '',
+    'null' => ['value' => null],
+    'empty string' => ['value' => ''],
 ]);
 
 it('throws exception when stored payload and callback data do not match', function (string $payloadKey, string $callbackKey): void {
@@ -223,7 +210,7 @@ it('throws exception when stored payload and callback data do not match', functi
 
     Http::assertNothingSent();
 })->with([
-    ['transaction_id', 'trans_id'],
+    'trans_id' => ['payloadKey' => 'transaction_id', 'callbackKey' => 'trans_id'],
 ]);
 
 it('verifies payment when callback matches stored payload', function (): void {
@@ -262,8 +249,7 @@ it('returns successful response on successful payment verification', function ()
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -273,8 +259,7 @@ it('returns failed response on failed payment verification', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('-2')->toContain('پرداخت رد شده توسط کاربر یا بانک')
+        ->toBeFailedPayment('-2', 'پرداخت رد شده توسط کاربر یا بانک')
         ->getRawResponse()->toBe($response);
 });
 
@@ -342,8 +327,7 @@ it('returns successful response on successful payment reversal', function (): vo
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -356,8 +340,7 @@ it('returns failed response on failed payment reversal', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('-2')->toContain('پرداخت رد شده توسط کاربر یا بانک')
+        ->toBeFailedPayment('-2', 'پرداخت رد شده توسط کاربر یا بانک')
         ->getRawResponse()->toBe($response);
 });
 
@@ -407,11 +390,7 @@ it('reverses normally with no callback data', function (): void {
 });
 
 it('throws exception when the API status code is invalid', function (ApiMethod $call, mixed $value, string $given): void {
-    $response = match ($call) {
-        ApiMethod::Create => Helper::successfulCreationResponse(),
-        ApiMethod::Verify => Helper::successfulVerificationResponse(),
-        ApiMethod::Reverse => Helper::successfulReversalResponse(),
-    };
+    $response = Helper::successfulResponseFor($call);
     Arr::set($response, 'code', $value);
 
     $call === ApiMethod::Reverse
@@ -426,14 +405,8 @@ it('throws exception when the API status code is invalid', function (ApiMethod $
                     sprintf('Expected "code" to be of type "int" for the nextpay gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-    'reversal' => ApiMethod::Reverse,
-])->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('gateway_api_methods')
+    ->with('invalid_numeric_field_values');
 
 it('throws exception when the API returns a non-JSON response', function (ApiMethod $call): void {
     $response = 'Service is not available';
@@ -450,8 +423,4 @@ it('throws exception when the API returns a non-JSON response', function (ApiMet
                     'Expected "code" to be of type "int" for the nextpay gateway, "null" given.'
                 ),
         );
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-    'reversal' => ApiMethod::Reverse,
-]);
+})->with('gateway_api_methods');

@@ -70,14 +70,7 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 
     expect($request->data())
         ->phone->toBe('09123456789');
-})->with([
-    'With country code' => 989123456789,
-    'Without country code, with first zero' => '09123456789',
-    'Without country code, and first zero' => 9123456789,
-    'With country code, and first plus' => '+989123456789',
-    'With country code and first zero' => 9809123456789,
-    'With country code, first zero and first plus' => '+9809123456789',
-]);
+})->with('gateway_phone_number_formats');
 
 it('returns successful response on successful payment creation', function (): void {
     fakeHttp($response = Helper::successfulCreationResponse(), 201);
@@ -85,8 +78,7 @@ it('returns successful response on successful payment creation', function (): vo
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -96,8 +88,7 @@ it('returns failed response on failed payment creation', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('32')->toContain('شماره سفارش `order_id` نباید خالی باشد')
+        ->toBeFailedPayment('32', 'شماره سفارش `order_id` نباید خالی باشد')
         ->getRawResponse()->toBe($response);
 });
 
@@ -141,11 +132,7 @@ it('throws exception when the creation ID is invalid', function (mixed $value, s
                     sprintf('Expected "id" to be of type "string" for the idpay gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'blank value' => ['', ''],
-    'non-castable value' => [[], '[]'],
-]);
+})->with('invalid_string_field_values');
 
 it('throws exception when the creation payment link is invalid', function (mixed $value, string $given): void {
     $response = Helper::successfulCreationResponse();
@@ -161,11 +148,7 @@ it('throws exception when the creation payment link is invalid', function (mixed
                     sprintf('Expected "link" to be of type "string" for the idpay gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'blank value' => ['', ''],
-    'non-castable value' => [[], '[]'],
-]);
+})->with('invalid_string_field_values');
 
 it('communicates with sandbox environment for payment creation when configured', function (): void {
     fakeHttp(Helper::successfulCreationResponse(), 201);
@@ -197,8 +180,8 @@ it('throws exception when callback lacks required keys', function (string $key):
             sprintf('To create idpay gateway instance from callback, "status, order_id" are required. "%s" is missing.', $key)
         );
 })->with([
-    'status',
-    'order_id',
+    'status' => ['key' => 'status'],
+    'order_id' => ['key' => 'order_id'],
 ]);
 
 it('throws exception when a required callback key is blank', function (string $key, mixed $value): void {
@@ -211,11 +194,11 @@ it('throws exception when a required callback key is blank', function (string $k
             sprintf('To create idpay gateway instance from callback, "status, order_id" are required. "%s" is empty.', $key)
         );
 })->with([
-    'status',
-    'order_id',
+    'status' => ['key' => 'status'],
+    'order_id' => ['key' => 'order_id'],
 ])->with([
-    'null' => null,
-    'empty string' => '',
+    'null' => ['value' => null],
+    'empty string' => ['value' => ''],
 ]);
 
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
@@ -234,7 +217,7 @@ it('throws exception when stored payload and successful callback data do not mat
 
     Http::assertNothingSent();
 })->with([
-    ['order_id', 'order_id'],
+    'order_id' => ['payloadKey' => 'order_id', 'callbackKey' => 'order_id'],
 ]);
 
 it('does not verify payment when callback status is not successful', function (): void {
@@ -247,8 +230,7 @@ it('does not verify payment when callback status is not successful', function ()
     Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('1')->toContain('پرداخت انجام نشده است') // The error code is set by fake failed callback.
+        ->toBeFailedPayment('1', 'پرداخت انجام نشده است') // The error code is set by fake failed callback.
         ->getRawResponse()->toBe($callbackPayload);
 
     Http::assertNothingSent();
@@ -299,8 +281,7 @@ it('returns successful response on successful payment verification', function ()
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -314,12 +295,11 @@ it('returns successful response on subsequence successful payment verification',
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 })->with([
-    '101',
-    '200',
+    '101' => ['status' => '101'],
+    '200' => ['status' => '200'],
 ]);
 
 it('returns successful response on payment verification when the stored and verified amounts have different types', function (mixed $verifiedAmount, mixed $storedAmount): void {
@@ -334,11 +314,10 @@ it('returns successful response on payment verification when the stored and veri
     $payment = Helper::paymentReadyFor(ApiMethod::Verify)->verify($payload);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull();
+        ->toBeSuccessfulPayment();
 })->with([
-    'verified amount as string' => ['1000', 1_000],
-    'stored amount as string' => [1_000, '1000'],
+    'verified amount as string' => ['verifiedAmount' => '1000', 'storedAmount' => 1_000],
+    'stored amount as string' => ['verifiedAmount' => 1_000, 'storedAmount' => '1000'],
 ]);
 
 it('returns failed response on successful payment verification with invalid amount', function (): void {
@@ -350,8 +329,7 @@ it('returns failed response on successful payment verification with invalid amou
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9300')->toContain('مبلغ پرداخت شده نامعتبر است')
+        ->toBeFailedPayment('9300', 'مبلغ پرداخت شده نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -369,10 +347,7 @@ it('throws exception when the verified amount is not numeric', function (mixed $
                     sprintf('Expected "amount" to be of type "int" for the idpay gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('invalid_numeric_field_values');
 
 it('returns failed response on payment verification when HTTP status is not successful', function (): void {
     fakeHttp($response = Helper::failedResponse(), 406);
@@ -380,8 +355,7 @@ it('returns failed response on payment verification when HTTP status is not succ
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('32')->toContain('شماره سفارش `order_id` نباید خالی باشد')
+        ->toBeFailedPayment('32', 'شماره سفارش `order_id` نباید خالی باشد')
         ->getRawResponse()->toBe($response);
 });
 
@@ -394,8 +368,7 @@ it('returns failed response on payment verification when verification status is 
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('1')->toContain('پرداخت انجام نشده است')
+        ->toBeFailedPayment('1', 'پرداخت انجام نشده است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -413,10 +386,7 @@ it('throws exception when the verification status is invalid', function (mixed $
                     sprintf('Expected "status" to be of type "int" for the idpay gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('invalid_numeric_field_values');
 
 it('communicates with sandbox environment for payment verification when configured', function (): void {
     fakeHttp(Helper::successfulVerificationResponse(), 200);
@@ -459,8 +429,7 @@ it('returns failed response on the payment reversal', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9200')->toContain('درگاه از بازگشت وجه پشتیبانی نمی کند')
+        ->toBeFailedPayment('9200', 'درگاه از بازگشت وجه پشتیبانی نمی کند')
         ->getRawResponse()->toBe('No API is called. IPG does not support reversal.');
 
     Http::assertSentCount(1); // Only verification is sent.
@@ -493,8 +462,7 @@ it('returns failed response on the payment reversal with no callback data', func
     Helper::callGatewayFor(ApiMethod::Reverse, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9200')->toContain('درگاه از بازگشت وجه پشتیبانی نمی کند')
+        ->toBeFailedPayment('9200', 'درگاه از بازگشت وجه پشتیبانی نمی کند')
         ->getRawResponse()->toBe('No API is called. IPG does not support reversal.');
 
     Http::assertSentCount(1); // Only verification is sent.
@@ -509,17 +477,10 @@ it('returns the internal error code when the API error code is invalid', functio
     $payment = Helper::callGatewayFor($call);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9400')
-        ->error()->toContain(sprintf('Expected "error_code" to be of type "int" for the idpay gateway, "%s" given.', $given))
+        ->toBeFailedPayment('9400', sprintf('Expected "error_code" to be of type "int" for the idpay gateway, "%s" given.', $given))
         ->getRawResponse()->toBe($response);
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-])->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('gateway_creation_and_verification_methods')
+    ->with('invalid_numeric_field_values');
 
 it('returns the gateway error code with a fallback message when the API error message is invalid', function (ApiMethod $call): void {
     $response = Helper::failedResponse();
@@ -530,13 +491,8 @@ it('returns the gateway error code with a fallback message when the API error me
     $payment = Helper::callGatewayFor($call);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('32') // From fake failed response
-        ->error()->toContain('Expected "error_message" to be of type "string" for the idpay gateway, "null" given.');
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-]);
+        ->toBeFailedPayment('32', 'Expected "error_message" to be of type "string" for the idpay gateway, "null" given.');
+})->with('gateway_creation_and_verification_methods');
 
 it('returns the internal error code when the API returns a non-JSON response', function (ApiMethod $call): void {
     fakeHttp('Service is not available', 406);
@@ -544,11 +500,6 @@ it('returns the internal error code when the API returns a non-JSON response', f
     $payment = Helper::callGatewayFor($call);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9400')
-        ->error()->toContain('Expected "error_code" to be of type "int" for the idpay gateway, "null" given.')
+        ->toBeFailedPayment('9400', 'Expected "error_code" to be of type "int" for the idpay gateway, "null" given.')
         ->getRawResponse()->toBe('Service is not available');
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-]);
+})->with('gateway_creation_and_verification_methods');
