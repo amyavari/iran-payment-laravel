@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - **Zibal** `getGatewayPayload()` returns `trackId` as a string. Stored payloads with an integer `trackId` still verify.
 - **IDPay** verification is successful only for the status codes `100`, `101` and `200`.
 - **Pep**, **Zarinpal** and **Zibal** treat any callback status other than the success value as a failed payment.
+- `getRefNumber()` and `getCardNumber()` return an empty string when the gateway sends no value, instead of throwing a `TypeError`.
 
 ### Fixed
 
@@ -38,6 +39,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - **IDPay**, **Sep**, **Pep**, **Sadad** and **Zibal** failed the verification of a paid payment when the stored or the verified amount was a numeric string.
 - **Nextpay** `verify()` threw a `TypeError` when the stored `amount` was a numeric string.
 - A non-JSON gateway response threw a `TypeError`. The body is now kept as text in `getRawResponse()` or in the exception context.
+- Auto-store did not save `ref_number` and `card_number` after verification.
 
 ## [2.0.1] - 2026-08-22
 
