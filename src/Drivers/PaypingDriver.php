@@ -52,12 +52,17 @@ final class PaypingDriver extends Driver
     /**
      * Transaction ID
      */
-    private ?string $transactionId = null;
+    private string $transactionId;
 
     /**
      * Amount of the payment in Rial.
      */
     private int $amount;
+
+    /**
+     * URL of the payment page returned by the gateway.
+     */
+    private string $paymentUrl;
 
     /**
      * Determine whether the last API call reported the payment as already verified.
@@ -95,7 +100,8 @@ final class PaypingDriver extends Driver
         $this->execute('pay', $data);
 
         if ($this->apiIsSuccessful) {
-            $this->transactionId = Arr::get($this->rawResponse, 'paymentCode');
+            $this->setTransactionId();
+            $this->setPaymentUrl();
         }
     }
 
@@ -112,7 +118,8 @@ final class PaypingDriver extends Driver
      */
     protected function getDriverStatusMessage(): string
     {
-        return InternalErrorCode::getMessage($this->apiStatusCode)
+        return $this->getInvalidErrorCodeMessage()
+            ?? InternalErrorCode::getMessage($this->apiStatusCode)
             ?? $this->getGatewayMessage();
     }
 
@@ -156,12 +163,16 @@ final class PaypingDriver extends Driver
         $this->ensureCallbackDataMatchesPayload($storedPayload, $keyMapper);
 
         $data = [
-            'paymentRefId' => $this->callbackPayload->dot()->get('data.paymentRefId'),
+            'paymentRefId' => (int) $this->callbackPayload->dot()->get('data.paymentRefId'),
             'paymentCode' => $this->callbackPayload->dot()->get('data.paymentCode'),
-            'amount' => Arr::get($storedPayload, 'amount'),
+            'amount' => (int) Arr::get($storedPayload, 'amount'),
         ];
 
         $this->execute('pay/verify', $data);
+
+        if ($this->apiIsSuccessful) {
+            $this->validateVerifiedAmount($storedPayload);
+        }
     }
 
     /**
@@ -176,11 +187,17 @@ final class PaypingDriver extends Driver
         }
 
         $data = [
-            'paymentRefId' => $this->callbackPayload->dot()->get('data.paymentRefId'),
+            'paymentRefId' => (int) $this->callbackPayload->dot()->get('data.paymentRefId'),
             'paymentCode' => $this->callbackPayload->dot()->get('data.paymentCode'),
         ];
 
         $this->execute('pay/reverse', $data);
+
+        if ($this->apiIsSuccessful) {
+            // The reversal reply carries no status field, so this read is the only proof
+            // that the gateway answered with a real reversal receipt.
+            $this->asInt($this->rawResponse, 'paymentRefId');
+        }
     }
 
     /**
@@ -225,9 +242,7 @@ final class PaypingDriver extends Driver
      */
     protected function getDriverRedirectData(): PaymentRedirectDto
     {
-        $url = Arr::get($this->rawResponse, 'url');
-
-        return new PaymentRedirectDto($url, 'GET', payload: []);
+        return new PaymentRedirectDto($this->paymentUrl, 'GET', payload: []);
     }
 
     /**
@@ -289,14 +304,17 @@ final class PaypingDriver extends Driver
      */
     private function parseResponse(Response $response): void
     {
-        $this->rawResponse = $response->json();
+        $this->rawResponse = $this->decodeResponse($response);
 
-        $this->apiStatusCode = (int) Arr::get($this->rawResponse, 'metaData.code');
+        $isHttpSuccessful = $response->status() === 200;
+
+        $this->apiStatusCode = ! $isHttpSuccessful
+            ? $this->asErrorCode($this->rawResponse, 'metaData.code')
+            : 0; // Just to fill the place!
 
         $this->alreadyVerified = $this->isAlreadyVerified($response);
 
-        $this->apiIsSuccessful = $response->status() === 200
-                              || $this->alreadyVerified;
+        $this->apiIsSuccessful = $isHttpSuccessful || $this->alreadyVerified;
     }
 
     /**
@@ -306,6 +324,38 @@ final class PaypingDriver extends Driver
     {
         return $response->status() === 409
             && $this->apiStatusCode === 110;
+    }
+
+    /**
+     * Parse the creation API response and set the transaction ID.
+     */
+    private function setTransactionId(): void
+    {
+        $this->transactionId = $this->asString($this->rawResponse, 'paymentCode');
+    }
+
+    /**
+     * Set the URL of the payment page.
+     */
+    private function setPaymentUrl(): void
+    {
+        $this->paymentUrl = $this->asString($this->rawResponse, 'url');
+    }
+
+    /**
+     * Validate if the paid amount matches the creation amount.
+     *
+     * @param  array<string,mixed>  $storedPayload
+     */
+    private function validateVerifiedAmount(array $storedPayload): void
+    {
+        $key = $this->alreadyVerified ? 'metaData.message.Amount' : 'amount';
+
+        $this->apiIsSuccessful = (int) Arr::get($storedPayload, 'amount') === $this->asInt($this->rawResponse, $key);
+
+        if (! $this->apiIsSuccessful) {
+            $this->apiStatusCode = InternalErrorCode::InvalidAmount->value;
+        }
     }
 
     /**
@@ -358,7 +408,7 @@ final class PaypingDriver extends Driver
      */
     private function isFailedPaymentBasedOnCallback(): bool
     {
-        return $this->callbackPayload->get('status') !== 1;
+        return $this->asInt($this->callbackPayload->all(), 'status') !== 1;
     }
 
     /**
@@ -368,8 +418,9 @@ final class PaypingDriver extends Driver
     {
         $this->apiIsSuccessful = false;
 
-        $this->apiStatusCode = $this->callbackPayload->get('errorCode');
         $this->rawResponse = $this->callbackPayload->all();
+
+        $this->apiStatusCode = $this->asErrorCode($this->rawResponse, 'errorCode');
     }
 
     /**

@@ -96,13 +96,13 @@ final class SepHelper extends AbstractHelper
         return [
             'MID' => '1234',
             'State' => 'OK',
-            'Status' => 2,
-            'RRN' => 123456789012,
+            'Status' => '2',
+            'RRN' => '123456789012',
             'RefNum' => 'Aht+dgVAEUDZ++54+qyrGzncrgA1kySE+NbxBUcNfbJafVj3f5',
             'ResNum' => '123456789012345',
             'TerminalId' => '1234',
-            'TraceNo' => 123456,
-            'Amount' => 1_000,
+            'TraceNo' => '123456',
+            'Amount' => '1000',
             'SecurePan' => '654321******4321',
             'HashedCardNumber' => '1234ABsab',
         ];
@@ -116,7 +116,7 @@ final class SepHelper extends AbstractHelper
         return [
             'MID' => '1234',
             'State' => 'CanceledByUser',
-            'Status' => 1,
+            'Status' => '1',
             'ResNum' => '123456789012345',
         ];
     }

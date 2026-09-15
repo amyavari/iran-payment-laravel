@@ -135,14 +135,14 @@ final class PaypingHelper extends AbstractHelper
     public static function successfulCallback(): array
     {
         return [
-            'status' => 1,
-            'errorCode' => null,
+            'status' => '1',
+            'errorCode' => '',
             'data' => [
                 'paymentCode' => 'd2e353189823079e1e4181772cff5292',
                 'clientRefId' => '',
-                'paymentRefId' => 123456,
-                'amount' => 1000,
-                'gatewayAmount' => 1020,
+                'paymentRefId' => '123456',
+                'amount' => '1000',
+                'gatewayAmount' => '1020',
                 'cardNumber' => '123456******4321',
                 'cardHashPan' => '13464dasgfasdvad',
 
@@ -156,13 +156,13 @@ final class PaypingHelper extends AbstractHelper
     public static function failedCallback(): array
     {
         return [
-            'status' => 0,
-            'errorCode' => 102,
+            'status' => '0',
+            'errorCode' => '102',
             'data' => [
                 'paymentCode' => 'd2e353189823079e1e4181772cff5292',
                 'clientRefId' => '',
-                'amount' => 1000,
-                'gatewayAmount' => 1020,
+                'amount' => '1000',
+                'gatewayAmount' => '1020',
             ],
         ];
     }

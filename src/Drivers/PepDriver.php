@@ -49,14 +49,14 @@ final class PepDriver extends Driver
     /**
      * Raw response from the last API call.
      *
-     * @var array<string,mixed>
+     * @var array<string,mixed>|string
      */
-    private array $rawResponse;
+    private string|array $rawResponse;
 
     /**
      * Transaction ID
      */
-    private ?string $transactionId = null;
+    private string $transactionId;
 
     /**
      * Amount of the payment in Rial.
@@ -67,6 +67,11 @@ final class PepDriver extends Driver
      * Payment unique URL ID returned by the gateway, required for verification and reversal
      */
     private string $urlId;
+
+    /**
+     * URL of the payment page returned by the gateway.
+     */
+    private string $paymentUrl;
 
     public function __construct(
         private readonly string $baseUrl,
@@ -108,6 +113,7 @@ final class PepDriver extends Driver
 
         if ($this->successful()) {
             $this->setUrlId();
+            $this->setPaymentUrl();
         }
     }
 
@@ -139,7 +145,7 @@ final class PepDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    protected function getDriverRawResponse(): array
+    protected function getDriverRawResponse(): string|array
     {
         return $this->rawResponse;
     }
@@ -235,9 +241,7 @@ final class PepDriver extends Driver
      */
     protected function getDriverRedirectData(): PaymentRedirectDto
     {
-        $url = Arr::get($this->rawResponse, 'data.url');
-
-        return new PaymentRedirectDto($url, 'GET', payload: []);
+        return new PaymentRedirectDto($this->paymentUrl, 'GET', payload: []);
     }
 
     /**
@@ -297,12 +301,13 @@ final class PepDriver extends Driver
             return;
         }
 
-        $this->rawResponse = Http::baseUrl($this->toHttps($this->baseUrl))
+        $response = Http::baseUrl($this->toHttps($this->baseUrl))
             ->withToken($token)
             ->withHeader('Referer', URL::current())
             ->post($url, $data)
-            ->throwIfServerError()
-            ->json();
+            ->throwIfServerError();
+
+        $this->rawResponse = $this->decodeResponse($response);
 
         $this->setApiStatusCode();
     }
@@ -341,7 +346,7 @@ final class PepDriver extends Driver
      */
     private function setApiStatusCode(): void
     {
-        $this->apiStatusCode = (int) Arr::get($this->rawResponse, 'resultCode');
+        $this->apiStatusCode = $this->asInt($this->rawResponse, 'resultCode');
     }
 
     /**
@@ -349,7 +354,15 @@ final class PepDriver extends Driver
      */
     private function setUrlId(): void
     {
-        $this->urlId = Arr::get($this->rawResponse, 'data.urlId');
+        $this->urlId = $this->asString($this->rawResponse, 'data.urlId');
+    }
+
+    /**
+     * Set the URL of the payment page.
+     */
+    private function setPaymentUrl(): void
+    {
+        $this->paymentUrl = $this->asString($this->rawResponse, 'data.url');
     }
 
     /**
@@ -567,7 +580,7 @@ final class PepDriver extends Driver
      */
     private function isFailedPaymentBasedOnCallback(): bool
     {
-        return $this->callbackPayload->get('status') === 'failed';
+        return $this->callbackPayload->get('status') !== 'success';
     }
 
     /**
@@ -586,7 +599,7 @@ final class PepDriver extends Driver
      */
     private function validateVerifiedAmount(array $storedPayload): void
     {
-        $isAmountValid = Arr::get($storedPayload, 'amount') === Arr::get($this->rawResponse, 'data.amount');
+        $isAmountValid = (int) Arr::get($storedPayload, 'amount') === $this->asInt($this->rawResponse, 'data.amount');
 
         if (! $isAmountValid) {
             $this->apiStatusCode = InternalErrorCode::InvalidAmount->value;

@@ -38,7 +38,7 @@ final class ZibalDriver extends Driver
     /**
      * Transaction ID
      */
-    private ?int $transactionId = null;
+    private string $transactionId;
 
     /**
      * Amount of the payment in Rial.
@@ -92,7 +92,8 @@ final class ZibalDriver extends Driver
      */
     protected function getDriverStatusMessage(): string
     {
-        return InternalErrorCode::getMessage($this->apiStatusCode)
+        return $this->getInvalidErrorCodeMessage()
+            ?? InternalErrorCode::getMessage($this->apiStatusCode)
             ?? $this->getGatewayMessage();
     }
 
@@ -130,7 +131,7 @@ final class ZibalDriver extends Driver
         $this->ensureCallbackDataMatchesPayload($storedPayload, $keyMapper);
 
         $data = collect([
-            'trackId' => $this->transactionId,
+            'trackId' => (int) $this->transactionId,
         ]);
 
         $this->execute('v1/verify', $data);
@@ -164,7 +165,7 @@ final class ZibalDriver extends Driver
      */
     protected function prepareFromCallback(): void
     {
-        $this->transactionId = (int) $this->callbackPayload->get('trackId');
+        $this->transactionId = (string) $this->callbackPayload->get('trackId');
     }
 
     /**
@@ -172,7 +173,7 @@ final class ZibalDriver extends Driver
      */
     protected function prepareWithoutCallback(string $transactionId): void
     {
-        $this->transactionId = (int) $transactionId;
+        $this->transactionId = $transactionId;
 
         $this->callbackPayload = collect([
             'success' => '1',
@@ -186,7 +187,7 @@ final class ZibalDriver extends Driver
      */
     protected function getDriverTransactionId(): string
     {
-        return (string) $this->transactionId;
+        return $this->transactionId;
     }
 
     /**
@@ -288,10 +289,11 @@ final class ZibalDriver extends Driver
      */
     private function execute(string $url, Collection $data): void
     {
-        $this->rawResponse = Http::baseUrl(self::GATEWAY_BASE_URL)
+        $response = Http::baseUrl(self::GATEWAY_BASE_URL)
             ->post($url, $this->withCredentials($data))
-            ->throwIfServerError()
-            ->json();
+            ->throwIfServerError();
+
+        $this->rawResponse = $this->decodeResponse($response);
 
         $this->setApiStatusCode();
     }
@@ -301,7 +303,7 @@ final class ZibalDriver extends Driver
      */
     private function setApiStatusCode(): void
     {
-        $this->apiStatusCode = (int) Arr::get($this->rawResponse, 'result');
+        $this->apiStatusCode = $this->asInt($this->rawResponse, 'result');
     }
 
     /**
@@ -309,7 +311,8 @@ final class ZibalDriver extends Driver
      */
     private function setTransactionId(): void
     {
-        $this->transactionId = Arr::get($this->rawResponse, 'trackId');
+        // The gateway's track ID is numeric, so it is validated as an integer,
+        $this->transactionId = (string) $this->asInt($this->rawResponse, 'trackId');
     }
 
     /**
@@ -330,7 +333,7 @@ final class ZibalDriver extends Driver
      */
     private function isFailedPaymentBasedOnCallback(): bool
     {
-        return $this->callbackPayload->get('success') === '0';
+        return $this->callbackPayload->get('success') !== '1';
     }
 
     /**
@@ -338,7 +341,7 @@ final class ZibalDriver extends Driver
      */
     private function setPaymentStatusBasedOnCallback(): void
     {
-        $this->apiStatusCode = (int) $this->callbackPayload->get('status');
+        $this->apiStatusCode = $this->asErrorCode($this->callbackPayload->all(), 'status');
         $this->rawResponse = $this->callbackPayload->all();
     }
 
@@ -347,7 +350,7 @@ final class ZibalDriver extends Driver
      */
     private function setVerificationStatus(): void
     {
-        $this->apiStatusCode = (int) Arr::get($this->rawResponse, 'status');
+        $this->apiStatusCode = $this->asInt($this->rawResponse, 'status');
     }
 
     /**
@@ -357,7 +360,7 @@ final class ZibalDriver extends Driver
      */
     private function validateVerifiedAmount(array $storedPayload): void
     {
-        $isAmountValid = Arr::get($storedPayload, 'amount') === Arr::get($this->rawResponse, 'amount');
+        $isAmountValid = (int) Arr::get($storedPayload, 'amount') === $this->asInt($this->rawResponse, 'amount');
 
         if (! $isAmountValid) {
             $this->apiStatusCode = InternalErrorCode::InvalidAmount->value;

@@ -129,10 +129,10 @@ final class PepHelper extends AbstractHelper
     public static function successfulCallback(): array
     {
         return [
-            'invoiceId' => 123456789012345,
+            'invoiceId' => '123456789012345',
             'status' => 'success',
-            'referenceNumber' => 142536124562,
-            'trackId' => 123456,
+            'referenceNumber' => '142536124562',
+            'trackId' => '123456',
         ];
     }
 

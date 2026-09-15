@@ -17,6 +17,7 @@ final class NextpayHelper extends AbstractHelper
     {
         Config::set('iran-payment.gateways.nextpay.callback_url', 'http://callback.test');
         Config::set('iran-payment.gateways.nextpay.api_key', 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
+        Config::set('iran-payment.currency', 'Toman'); // Nextpay only supports Toman, so the amounts in assertions stay the same
     }
 
     /**
@@ -88,7 +89,7 @@ final class NextpayHelper extends AbstractHelper
         return [
             'trans_id' => 'f7c07568-c6d1-4bee-87b1-4a9e5ed2e4c1',
             'order_id' => '1234567890',
-            'amount' => 1_000,
+            'amount' => '1000',
         ];
     }
 

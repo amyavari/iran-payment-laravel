@@ -23,11 +23,13 @@ final class BehpardakhtHelper extends AbstractHelper
     }
 
     /**
-     * {@inheritdoc}
+     * Fake the SOAP responses
      */
-    public static function fakeSoap(string $response = ''): void
+    public static function fakeSoap(string $firstResponse = '', ?string $secondResponse = null): void
     {
-        Soap::fake($response);
+        $responses = is_null($secondResponse) ? [$firstResponse] : [$firstResponse, $secondResponse];
+
+        Soap::fake(...$responses);
     }
 
     /**
@@ -77,11 +79,11 @@ final class BehpardakhtHelper extends AbstractHelper
     {
         return [
             'RefId' => 'AF82041a2Bf6989c7fF9',
-            'ResCode' => 0,
-            'SaleOrderId' => 123456789012345,
-            'SaleReferenceId' => 227926981246,
-            'CardHolderInfo' => '1234ABsab',
+            'ResCode' => '0',
+            'SaleOrderId' => '123456789012345',
+            'SaleReferenceId' => '227926981246',
             'CardHolderPan' => '1234-*-*-1234',
+            'CreditCardSaleResponseDetail' => '00',
             'FinalAmount' => '1000',
         ];
     }
@@ -93,8 +95,8 @@ final class BehpardakhtHelper extends AbstractHelper
     {
         return [
             'RefId' => 'AF82041a2Bf6989c7fF9',
-            'ResCode' => 11,
-            'SaleOrderId' => 123456789012345,
+            'ResCode' => '11',
+            'SaleOrderId' => '123456789012345',
         ];
     }
 

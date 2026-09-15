@@ -51,17 +51,22 @@ final class IdpayDriver extends Driver
     /**
      * Transaction ID
      */
-    private ?string $transactionId = null;
+    private string $transactionId;
 
     /**
      * Amount of the payment in Rial.
      */
-    private string $amount;
+    private int $amount;
 
     /**
      * Payment unique ID returned by the gateway, required for verification
      */
     private string $id;
+
+    /**
+     * URL of the payment page returned by the gateway.
+     */
+    private string $paymentUrl;
 
     public function __construct(
         private readonly string $callbackUrl,
@@ -82,7 +87,7 @@ final class IdpayDriver extends Driver
      */
     protected function createPayment(string $callbackUrl, int $amount, ?string $description = null, string|int|null $phone = null): void
     {
-        $this->amount = (string) $amount;
+        $this->amount = $amount;
 
         $data = collect([
             'order_id' => $this->generateOrderId(),
@@ -96,6 +101,7 @@ final class IdpayDriver extends Driver
 
         if ($this->apiIsSuccessful) {
             $this->setId();
+            $this->setPaymentUrl();
         }
     }
 
@@ -112,7 +118,7 @@ final class IdpayDriver extends Driver
      */
     protected function getDriverStatusMessage(): string
     {
-        return $this->apiStatusMessage;
+        return $this->getInvalidErrorCodeMessage() ?? $this->apiStatusMessage;
     }
 
     /**
@@ -229,9 +235,7 @@ final class IdpayDriver extends Driver
      */
     protected function getDriverRedirectData(): PaymentRedirectDto
     {
-        $url = Arr::get($this->rawResponse, 'link');
-
-        return new PaymentRedirectDto($url, 'GET', payload: []);
+        return new PaymentRedirectDto($this->paymentUrl, 'GET', payload: []);
     }
 
     /**
@@ -296,11 +300,11 @@ final class IdpayDriver extends Driver
     {
         $this->apiIsSuccessful = $response->successful();
 
-        $this->rawResponse = $response->json();
+        $this->rawResponse = $this->decodeResponse($response);
 
         if (! $this->apiIsSuccessful) {
-            $this->apiStatusCode = Arr::get($this->rawResponse, 'error_code');
-            $this->apiStatusMessage = Arr::get($this->rawResponse, 'error_message');
+            $this->apiStatusCode = $this->asErrorCode($this->rawResponse, 'error_code');
+            $this->apiStatusMessage = $this->asErrorMessage($this->rawResponse, 'error_message');
         }
     }
 
@@ -309,7 +313,15 @@ final class IdpayDriver extends Driver
      */
     private function setId(): void
     {
-        $this->id = Arr::get($this->rawResponse, 'id');
+        $this->id = $this->asString($this->rawResponse, 'id');
+    }
+
+    /**
+     * Set the URL of the payment page.
+     */
+    private function setPaymentUrl(): void
+    {
+        $this->paymentUrl = $this->asString($this->rawResponse, 'link');
     }
 
     /**
@@ -327,7 +339,7 @@ final class IdpayDriver extends Driver
     {
         $this->apiIsSuccessful = false;
 
-        $this->apiStatusCode = (int) $this->callbackPayload->get('status');
+        $this->apiStatusCode = $this->asInt($this->callbackPayload->all(), 'status');
         $this->apiStatusMessage = $this->getCallbackStatusMessage();
 
         $this->rawResponse = $this->callbackPayload->all();
@@ -358,10 +370,10 @@ final class IdpayDriver extends Driver
      */
     private function setVerificationStatus(): void
     {
-        $this->apiStatusCode = (int) Arr::get($this->rawResponse, 'status');
+        $this->apiStatusCode = $this->asInt($this->rawResponse, 'status');
         $this->apiStatusMessage = $this->getCallbackStatusMessage();
 
-        $this->apiIsSuccessful = $this->apiStatusCode >= 100;
+        $this->apiIsSuccessful = in_array($this->apiStatusCode, [100, 101, 200], true);
     }
 
     /**
@@ -371,7 +383,7 @@ final class IdpayDriver extends Driver
      */
     private function validateVerifiedAmount(array $storedPayload): void
     {
-        $this->apiIsSuccessful = Arr::get($storedPayload, 'amount') === Arr::get($this->rawResponse, 'amount');
+        $this->apiIsSuccessful = (int) Arr::get($storedPayload, 'amount') === $this->asInt($this->rawResponse, 'amount');
 
         if (! $this->apiIsSuccessful) {
             $this->apiStatusCode = InternalErrorCode::InvalidAmount->value;

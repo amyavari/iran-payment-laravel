@@ -19,6 +19,8 @@ enum InternalErrorCode: int
 
     case InvalidAmount = 9300;
 
+    case InvalidErrorCode = 9400;
+
     /**
      * Get the message for the given error code.
      */
@@ -37,6 +39,7 @@ enum InternalErrorCode: int
             self::WithoutCallbackReverse => 'تراکنش به صورت خودکار برگشت داده می شود.',
             self::ReverseNotSupported => 'درگاه از بازگشت وجه پشتیبانی نمی کند',
             self::InvalidAmount => 'مبلغ پرداخت شده نامعتبر است',
+            self::InvalidErrorCode => 'The gateway returned invalid data.',
         };
     }
 }

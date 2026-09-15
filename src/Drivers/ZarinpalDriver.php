@@ -43,12 +43,12 @@ final class ZarinpalDriver extends Driver
     /**
      * Transaction ID
      */
-    private ?string $transactionId = null;
+    private string $transactionId;
 
     /**
      * Amount of the payment in Rial.
      */
-    private string $amount;
+    private int $amount;
 
     public function __construct(
         private readonly string $callbackUrl,
@@ -68,7 +68,7 @@ final class ZarinpalDriver extends Driver
      */
     protected function createPayment(string $callbackUrl, int $amount, ?string $description = null, string|int|null $phone = null): void
     {
-        $this->amount = (string) $amount;
+        $this->amount = $amount;
 
         $data = collect([
             'merchant_id' => $this->merchantId,
@@ -103,45 +103,8 @@ final class ZarinpalDriver extends Driver
      */
     protected function getDriverStatusMessage(): string
     {
-        return match ($this->apiStatusCode) {
-            -9 => 'خطای اعتبار سنجی',
-            -10 => 'ای پی یا مرچنت كد پذیرنده صحیح نیست',
-            -11 => 'مرچنت کد فعال نیست، پذیرنده مشکل خود را به امور مشتریان زرین‌پال ارجاع دهد',
-            -12 => 'تلاش بیش از دفعات مجاز در یک بازه زمانی کوتاه به امور مشتریان زرین پال اطلاع دهید',
-            -13 => 'خطای مربوط به محدودیت تراکنش برای رفع این مورد نسبت به تکمیل مدارک خود با مراجعه به پشتیبانی اقدام نمایید',
-            -14 => 'کال‌بک URL با دامنه ثبت شده درگاه مغایرت دارد',
-            -15 => 'درگاه پرداخت به حالت تعلیق در آمده است، پذیرنده مشکل خود را به امور مشتریان زرین‌پال ارجاع دهد',
-            -16 => 'سطح تایید پذیرنده پایین تر از سطح نقره ای است',
-            -17 => 'محدودیت پذیرنده در سطح آبی',
-            -18 => 'امکان استف کد درگاه اختصاصی خود بر روی سایت یا جای دیگری را ندارید',
-            -19 => 'امکان ایجاد تراکنش برای این ترمینال امکان پذیر نیست',
-            -30 => 'پذیرنده اجازه دسترسی به سرویس تسویه اشتراکی شناور را ندارد',
-            -31 => 'حساب بانکی تسویه را به پنل اضافه کنید مقادیر وارد شده برای تسهیم درست نیست پذیرنده جهت استفاده از خدمات سرویس تسویه اشتراکی شناور، باید حساب بانکی معتبری به پنل کاربری خود اضافه نماید',
-            -32 => 'مبلغ وارد شده از مبلغ کل تراکنش بیشتر است',
-            -33 => 'درصدهای وارد شده صحیح نیست',
-            -34 => 'مبلغ وارد شده از مبلغ کل تراکنش بیشتر است',
-            -35 => 'تعداد افراد دریافت کننده تسهیم بیش از حد مجاز است',
-            -36 => 'حداقل مبلغ جهت تسهیم باید 10000 ریال باشد',
-            -37 => 'یک یا چند شماره شبای وارد شده برای تسهیم از سمت بانک غیر فعال است',
-            -38 => 'خطا٬عدم تعریف صحیح شبا٬لطفا دقایقی دیگر تلاش کنید',
-            -39 => 'خطایی رخ داده است به امور مشتریان زرین پال اطلاع دهید',
-            -40 => 'Invalid extra params, expire_in is not valid',
-            -41 => 'حداکثر مبلغ پرداختی 100 میلیون تومان است',
-            -50 => 'مبلغ پرداخت شده با مقدار مبلغ ارسالی در متد وریفای متفاوت است',
-            -51 => 'پرداخت ناموفق',
-            -52 => 'خطای غیر منتظره‌ای رخ داده است پذیرنده مشکل خود را به امور مشتریان زرین‌پال ارجاع دهد',
-            -53 => 'پرداخت متعلق به این مرچنت کد نیست',
-            -54 => 'اتوریتی نامعتبر است',
-            -55 => 'تراکنش مورد نظر یافت نشد',
-            -60 => 'امکان ریورس کردن تراکنش با بانک وجود ندارد',
-            -61 => 'تراکنش موفق نیست یا قبلا ریورس شده است',
-            -62 => 'آی پی درگاه ست نشده است',
-            -63 => 'حداکثر زمان (۳۰ دقیقه) برای ریورس کردن این تراکنش منقضی شده است',
-            100 => 'عملیات موفق',
-            101 => 'تراکنش وریفای شده است',
-
-            default => 'کد پاسخ نامشخص',
-        };
+        return $this->getInvalidErrorCodeMessage()
+            ?? $this->getGatewayMessage();
     }
 
     /**
@@ -180,7 +143,7 @@ final class ZarinpalDriver extends Driver
         $data = [
             'merchant_id' => $this->merchantId,
             'authority' => $this->transactionId,
-            'amount' => Arr::get($storedPayload, 'amount'),
+            'amount' => (int) Arr::get($storedPayload, 'amount'),
         ];
 
         $this->execute('verify', $data);
@@ -280,9 +243,10 @@ final class ZarinpalDriver extends Driver
     {
         $url = $this->getGatewayUrl($method);
 
-        $this->rawResponse = Http::post($url, $data)
-            ->throwIfServerError()
-            ->json();
+        $response = Http::post($url, $data)
+            ->throwIfServerError();
+
+        $this->rawResponse = $this->decodeResponse($response);
 
         $this->setApiStatusCode();
     }
@@ -316,10 +280,9 @@ final class ZarinpalDriver extends Driver
      */
     private function setApiStatusCode(): void
     {
-        $successCode = Arr::get($this->rawResponse, 'data.code');
-        $errorCode = Arr::get($this->rawResponse, 'errors.code');
-
-        $this->apiStatusCode = $successCode ?? $errorCode;
+        $this->apiStatusCode = Arr::get($this->rawResponse, 'data.code') !== null
+            ? $this->asInt($this->rawResponse, 'data.code')
+            : $this->asErrorCode($this->rawResponse, 'errors.code');
     }
 
     /**
@@ -327,7 +290,53 @@ final class ZarinpalDriver extends Driver
      */
     private function setTransactionId(): void
     {
-        $this->transactionId = Arr::get($this->rawResponse, 'data.authority');
+        $this->transactionId = $this->asString($this->rawResponse, 'data.authority');
+    }
+
+    /**
+     * Get the error message returned by the gateway.
+     */
+    private function getGatewayMessage(): string
+    {
+        return match ($this->apiStatusCode) {
+            -9 => 'خطای اعتبار سنجی',
+            -10 => 'ای پی یا مرچنت كد پذیرنده صحیح نیست',
+            -11 => 'مرچنت کد فعال نیست، پذیرنده مشکل خود را به امور مشتریان زرین‌پال ارجاع دهد',
+            -12 => 'تلاش بیش از دفعات مجاز در یک بازه زمانی کوتاه به امور مشتریان زرین پال اطلاع دهید',
+            -13 => 'خطای مربوط به محدودیت تراکنش برای رفع این مورد نسبت به تکمیل مدارک خود با مراجعه به پشتیبانی اقدام نمایید',
+            -14 => 'کال‌بک URL با دامنه ثبت شده درگاه مغایرت دارد',
+            -15 => 'درگاه پرداخت به حالت تعلیق در آمده است، پذیرنده مشکل خود را به امور مشتریان زرین‌پال ارجاع دهد',
+            -16 => 'سطح تایید پذیرنده پایین تر از سطح نقره ای است',
+            -17 => 'محدودیت پذیرنده در سطح آبی',
+            -18 => 'امکان استف کد درگاه اختصاصی خود بر روی سایت یا جای دیگری را ندارید',
+            -19 => 'امکان ایجاد تراکنش برای این ترمینال امکان پذیر نیست',
+            -30 => 'پذیرنده اجازه دسترسی به سرویس تسویه اشتراکی شناور را ندارد',
+            -31 => 'حساب بانکی تسویه را به پنل اضافه کنید مقادیر وارد شده برای تسهیم درست نیست پذیرنده جهت استفاده از خدمات سرویس تسویه اشتراکی شناور، باید حساب بانکی معتبری به پنل کاربری خود اضافه نماید',
+            -32 => 'مبلغ وارد شده از مبلغ کل تراکنش بیشتر است',
+            -33 => 'درصدهای وارد شده صحیح نیست',
+            -34 => 'مبلغ وارد شده از مبلغ کل تراکنش بیشتر است',
+            -35 => 'تعداد افراد دریافت کننده تسهیم بیش از حد مجاز است',
+            -36 => 'حداقل مبلغ جهت تسهیم باید 10000 ریال باشد',
+            -37 => 'یک یا چند شماره شبای وارد شده برای تسهیم از سمت بانک غیر فعال است',
+            -38 => 'خطا٬عدم تعریف صحیح شبا٬لطفا دقایقی دیگر تلاش کنید',
+            -39 => 'خطایی رخ داده است به امور مشتریان زرین پال اطلاع دهید',
+            -40 => 'Invalid extra params, expire_in is not valid',
+            -41 => 'حداکثر مبلغ پرداختی 100 میلیون تومان است',
+            -50 => 'مبلغ پرداخت شده با مقدار مبلغ ارسالی در متد وریفای متفاوت است',
+            -51 => 'پرداخت ناموفق',
+            -52 => 'خطای غیر منتظره‌ای رخ داده است پذیرنده مشکل خود را به امور مشتریان زرین‌پال ارجاع دهد',
+            -53 => 'پرداخت متعلق به این مرچنت کد نیست',
+            -54 => 'اتوریتی نامعتبر است',
+            -55 => 'تراکنش مورد نظر یافت نشد',
+            -60 => 'امکان ریورس کردن تراکنش با بانک وجود ندارد',
+            -61 => 'تراکنش موفق نیست یا قبلا ریورس شده است',
+            -62 => 'آی پی درگاه ست نشده است',
+            -63 => 'حداکثر زمان (۳۰ دقیقه) برای ریورس کردن این تراکنش منقضی شده است',
+            100 => 'عملیات موفق',
+            101 => 'تراکنش وریفای شده است',
+
+            default => 'کد پاسخ نامشخص',
+        };
     }
 
     /**
@@ -335,7 +344,7 @@ final class ZarinpalDriver extends Driver
      */
     private function isFailedPaymentBasedOnCallback(): bool
     {
-        return $this->callbackPayload->get('Status') === 'NOK';
+        return $this->callbackPayload->get('Status') !== 'OK';
     }
 
     /**

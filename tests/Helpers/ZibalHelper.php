@@ -106,7 +106,7 @@ final class ZibalHelper extends AbstractHelper
     public static function gatewayPayload(): array
     {
         return [
-            'trackId' => 15966442233311,
+            'trackId' => '15966442233311',
             'amount' => 1_000,
         ];
     }
