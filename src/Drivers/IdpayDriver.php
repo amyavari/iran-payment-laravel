@@ -243,7 +243,7 @@ final class IdpayDriver extends Driver
      */
     protected function getDriverRefNumber(): string
     {
-        return Arr::get($this->rawResponse, 'payment.track_id');
+        return (string) Arr::get($this->rawResponse, 'payment.track_id');
     }
 
     /**
@@ -251,7 +251,7 @@ final class IdpayDriver extends Driver
      */
     protected function getDriverCardNumber(): string
     {
-        return Arr::get($this->rawResponse, 'payment.card_no');
+        return (string) Arr::get($this->rawResponse, 'payment.card_no');
     }
 
     /**

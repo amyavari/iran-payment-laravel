@@ -224,7 +224,7 @@ final class ZibalDriver extends Driver
      */
     protected function getDriverCardNumber(): string
     {
-        return Arr::get($this->rawResponse, 'cardNumber');
+        return (string) Arr::get($this->rawResponse, 'cardNumber');
     }
 
     /**

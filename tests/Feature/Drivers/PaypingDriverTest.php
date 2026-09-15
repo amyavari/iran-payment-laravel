@@ -371,9 +371,7 @@ it('returns successful response on subsequence successful payment verification',
     expect($payment)
         ->successful()->toBeTrue()
         ->error()->toBeNull()
-        ->getRawResponse()->toBe($response)
-        ->getRefNumber()->toBe('10012') // From fake already-verified response
-        ->getCardNumber()->toBe('123456******1234'); // From fake already-verified response
+        ->getRawResponse()->toBe($response);
 });
 
 it('returns successful response on payment verification when the stored and verified amounts have different types', function (mixed $verifiedAmount, mixed $storedAmount): void {
@@ -491,6 +489,41 @@ it('returns card number and reference ID from successful verification', function
     expect($payment)
         ->getRefNumber()->toBe('10012') // From fake verification response
         ->getCardNumber()->toBe('123456******1234'); // From fake verification response
+});
+
+it('returns empty string as card number and reference ID when not provided in the verification response', function (): void {
+    $response = Arr::except(Helper::successfulVerificationResponse(), ['paymentRefId', 'cardNumber']);
+
+    fakeHttp($response, 200);
+
+    $payment = Helper::callGatewayFor(ApiMethod::Verify);
+
+    expect($payment)
+        ->getRefNumber()->toBe('')
+        ->getCardNumber()->toBe('');
+});
+
+it('returns card number and reference ID from the already-verified response', function (): void {
+    // In the subsequence successful verifications it returns `409` with different response body
+    fakeHttp($response = Helper::alreadyVerifiedResponse(), 409);
+
+    $payment = Helper::callGatewayFor(ApiMethod::Verify);
+
+    expect($payment)
+        ->getRefNumber()->toBe('10012') // From fake already-verified response
+        ->getCardNumber()->toBe('123456******1234'); // From fake already-verified response
+});
+
+it('returns empty string as card number and reference ID when not provided in the already-verified response', function (): void {
+    $response = Arr::except(Helper::alreadyVerifiedResponse(), ['metaData.message.PaymentRefId', 'metaData.message.CardNumber']);
+
+    fakeHttp($response, 409);
+
+    $payment = Helper::callGatewayFor(ApiMethod::Verify);
+
+    expect($payment)
+        ->getRefNumber()->toBe('')
+        ->getCardNumber()->toBe('');
 });
 
 it('reverses the payment', function (): void {

@@ -402,6 +402,20 @@ it('returns card number and reference ID from successful verification', function
         ->getCardNumber()->toBe('123456******1234'); // From fake callback
 });
 
+it('returns empty string as card number and reference ID when not provided in the callback and verification response', function (): void {
+    fakeHttp(Arr::except(Helper::successfulVerificationResponse(), 'RetrivalRefNo'));
+
+    $callbackPayload = Arr::except(Helper::successfulCallback(), 'PrimaryAccNo');
+
+    $payment = Helper::driver()->fromCallback($callbackPayload);
+
+    Helper::callGatewayFor(ApiMethod::Verify, $payment);
+
+    expect($payment)
+        ->getRefNumber()->toBe('')
+        ->getCardNumber()->toBe('');
+});
+
 it('returns failed response on the payment reversal', function (): void {
     fakeHttp(Helper::successfulVerificationResponse());
 

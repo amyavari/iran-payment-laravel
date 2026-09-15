@@ -244,7 +244,7 @@ final class SadadDriver extends Driver
      */
     protected function getDriverCardNumber(): string
     {
-        return $this->callbackPayload->get('PrimaryAccNo');
+        return (string) $this->callbackPayload->get('PrimaryAccNo');
     }
 
     /**
