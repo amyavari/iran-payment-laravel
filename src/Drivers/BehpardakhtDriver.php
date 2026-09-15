@@ -89,75 +89,58 @@ final class BehpardakhtDriver extends Driver
     /**
      * {@inheritdoc}
      */
-    protected function getDriverRedirectData(): PaymentRedirectDto
+    protected function driverCallbackUrl(): string
     {
-        $payload = collect([
-            'RefId' => $this->refId,
-        ])
-            ->merge($this->metadata)
-            ->mapWithKeys(fn (string $value, string $key): array => [Str::studly($key) => $value])
-            ->all();
-
-        $headers = [
-            'Content-Type' => 'application/x-www-form-urlencoded',
-            'Referer' => URL::current(),
-        ];
-
-        return new PaymentRedirectDto($this->getPaymentRedirectUrl(), 'POST', $payload, $headers);
+        return $this->callbackUrl;
     }
 
     /**
      * {@inheritdoc}
      */
-    protected function getDriverRefNumber(): string
+    protected function createPayment(string $callbackUrl, int $amount, ?string $description = null, string|int|null $phone = null): void
     {
-        return (string) $this->callbackPayload->get('SaleReferenceId');
-    }
+        $this->amount = $amount;
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function getDriverCardNumber(): string
-    {
-        return (string) $this->callbackPayload->get('CardHolderPan');
-    }
+        $this->setPaymentMetadata($description, (string) $phone);
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function getDriverTransactionId(): string
-    {
-        return $this->transactionId;
-    }
+        $now = now()->tz('Asia/Tehran');
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function getDriverPayload(): array
-    {
-        return [
-            'orderId' => $this->transactionId,
+        $data = collect([
+            'terminalId' => (int) $this->terminalId,
+            'userName' => $this->username,
+            'userPassword' => $this->password,
+            'orderId' => $this->generateOrderId(),
             'amount' => $this->amount,
-            'refId' => $this->refId,
-        ];
+            'localDate' => $now->format('Ymd'),
+            'localTime' => $now->format('His'),
+            'additionalData' => $description ?? '',
+            'callBackUrl' => $callbackUrl,
+            'payerId' => 0,
+        ])
+            ->merge($this->metadata);
+
+        $this->execute('bpPayRequest', $data->all());
+
+        if ($this->isSuccessful()) {
+            $this->setRefId();
+        }
+    }
+
+    /**
+     *  {@inheritdoc}
+     */
+    protected function getDriverStatusCode(): string
+    {
+        return (string) $this->apiStatusCode;
     }
 
     /**
      * {@inheritdoc}
      */
-    protected function prepareWithoutCallback(string $transactionId): void
+    protected function getDriverStatusMessage(): string
     {
-        $this->transactionId = $transactionId;
-
-        $this->enableWithoutCallback();
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function prepareFromCallback(): void
-    {
-        $this->transactionId = (string) $this->callbackPayload->get('SaleOrderId');
+        return InternalErrorCode::getMessage($this->apiStatusCode)
+            ?? $this->getGatewayMessage();
     }
 
     /**
@@ -223,60 +206,77 @@ final class BehpardakhtDriver extends Driver
     }
 
     /**
-     *  {@inheritdoc}
+     * {@inheritdoc}
      */
-    protected function getDriverStatusCode(): string
+    protected function prepareFromCallback(): void
     {
-        return (string) $this->apiStatusCode;
+        $this->transactionId = (string) $this->callbackPayload->get('SaleOrderId');
     }
 
     /**
      * {@inheritdoc}
      */
-    protected function getDriverStatusMessage(): string
+    protected function prepareWithoutCallback(string $transactionId): void
     {
-        return InternalErrorCode::getMessage($this->apiStatusCode)
-            ?? $this->getGatewayMessage();
+        $this->transactionId = $transactionId;
+
+        $this->enableWithoutCallback();
     }
 
     /**
      * {@inheritdoc}
      */
-    protected function createPayment(string $callbackUrl, int $amount, ?string $description = null, string|int|null $phone = null): void
+    protected function getDriverTransactionId(): string
     {
-        $this->amount = $amount;
+        return $this->transactionId;
+    }
 
-        $this->setPaymentMetadata($description, (string) $phone);
-
-        $now = now()->tz('Asia/Tehran');
-
-        $data = collect([
-            'terminalId' => (int) $this->terminalId,
-            'userName' => $this->username,
-            'userPassword' => $this->password,
-            'orderId' => $this->generateOrderId(),
+    /**
+     * {@inheritdoc}
+     */
+    protected function getDriverPayload(): array
+    {
+        return [
+            'orderId' => $this->transactionId,
             'amount' => $this->amount,
-            'localDate' => $now->format('Ymd'),
-            'localTime' => $now->format('His'),
-            'additionalData' => $description ?? '',
-            'callBackUrl' => $callbackUrl,
-            'payerId' => 0,
-        ])
-            ->merge($this->metadata);
-
-        $this->execute('bpPayRequest', $data->all());
-
-        if ($this->isSuccessful()) {
-            $this->setRefId();
-        }
+            'refId' => $this->refId,
+        ];
     }
 
     /**
      * {@inheritdoc}
      */
-    protected function driverCallbackUrl(): string
+    protected function getDriverRedirectData(): PaymentRedirectDto
     {
-        return $this->callbackUrl;
+        $payload = collect([
+            'RefId' => $this->refId,
+        ])
+            ->merge($this->metadata)
+            ->mapWithKeys(fn (string $value, string $key): array => [Str::studly($key) => $value])
+            ->all();
+
+        $headers = [
+            'Content-Type' => 'application/x-www-form-urlencoded',
+            'Referer' => URL::current(),
+        ];
+
+        return new PaymentRedirectDto($this->getPaymentRedirectUrl(), 'POST', $payload, $headers);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function getDriverRefNumber(): string
+    {
+        return (string) $this->callbackPayload->get('SaleReferenceId');
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function getDriverCardNumber(): string
+    {
+        return (string) $this->callbackPayload->get('CardHolderPan');
     }
 
     /**
