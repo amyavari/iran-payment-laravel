@@ -9,6 +9,7 @@ use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\ResponseSequence;
 use Illuminate\Support\Facades\Http;
+use Pest\Expectation;
 use PHPUnit\Framework\Assert;
 
 /*
@@ -37,7 +38,19 @@ pest()->extend(TestCase::class)
 |
 */
 
-expect()->extend('toBeOne', fn () => $this->toBe(1));
+expect()->extend(
+    'toBeSuccessfulPayment',
+    fn () => expect($this->value)
+        ->successful()->toBeTrue()
+        ->error()->toBeNull()
+);
+
+expect()->extend(
+    'toBeFailedPayment',
+    fn (string $errorCode, string $errorMessage) => expect($this->value)
+        ->successful()->toBeFalse()
+        ->error()->toContain($errorCode)->toContain($errorMessage)
+);
 
 /*
 |--------------------------------------------------------------------------

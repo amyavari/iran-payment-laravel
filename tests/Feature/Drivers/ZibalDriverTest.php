@@ -58,14 +58,7 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 
     expect($request->data())
         ->mobile->toBe('09123456789');
-})->with([
-    'With country code' => 989123456789,
-    'Without country code, with first zero' => '09123456789',
-    'Without country code, and first zero' => 9123456789,
-    'With country code, and first plus' => '+989123456789',
-    'With country code and first zero' => 9809123456789,
-    'With country code, first zero and first plus' => '+9809123456789',
-]);
+})->with('gateway_phone_number_formats');
 
 it('returns successful response on successful payment creation', function (): void {
     fakeHttp($response = Helper::successfulCreationResponse());
@@ -73,8 +66,7 @@ it('returns successful response on successful payment creation', function (): vo
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -84,8 +76,7 @@ it('returns failed response on failed payment creation', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('102')->toContain('merchant یافت نشد')
+        ->toBeFailedPayment('102', 'merchant یافت نشد')
         ->getRawResponse()->toBe($response);
 });
 
@@ -137,10 +128,7 @@ it('throws exception when the creation track ID is not numeric', function (mixed
                     sprintf('Expected "trackId" to be of type "int" for the zibal gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('invalid_numeric_field_values');
 
 it('communicates with sandbox environment for payment creation when configured', function (): void {
     fakeHttp(Helper::successfulCreationResponse());
@@ -172,9 +160,9 @@ it('throws exception when callback lacks required keys', function (string $key):
             sprintf('To create zibal gateway instance from callback, "success, status, trackId" are required. "%s" is missing.', $key)
         );
 })->with([
-    'success',
-    'status',
-    'trackId',
+    'success' => ['key' => 'success'],
+    'status' => ['key' => 'status'],
+    'trackId' => ['key' => 'trackId'],
 ]);
 
 it('throws exception when a required callback key is blank', function (string $key, mixed $value): void {
@@ -187,12 +175,12 @@ it('throws exception when a required callback key is blank', function (string $k
             sprintf('To create zibal gateway instance from callback, "success, status, trackId" are required. "%s" is empty.', $key)
         );
 })->with([
-    'success',
-    'status',
-    'trackId',
+    'success' => ['key' => 'success'],
+    'status' => ['key' => 'status'],
+    'trackId' => ['key' => 'trackId'],
 ])->with([
-    'null' => null,
-    'empty string' => '',
+    'null' => ['value' => null],
+    'empty string' => ['value' => ''],
 ]);
 
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
@@ -211,7 +199,7 @@ it('throws exception when stored payload and successful callback data do not mat
 
     Http::assertNothingSent();
 })->with([
-    ['trackId', 'trackId'],
+    'trackId' => ['payloadKey' => 'trackId', 'callbackKey' => 'trackId'],
 ]);
 
 it('does not verify payment when callback status is not successful', function (): void {
@@ -224,8 +212,7 @@ it('does not verify payment when callback status is not successful', function ()
     Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('3')->toContain('لغوشده توسط کاربر') // The error code is set by fake failed callback.
+        ->toBeFailedPayment('3', 'لغوشده توسط کاربر') // The error code is set by fake failed callback.
         ->getRawResponse()->toBe($callbackPayload);
 
     Http::assertNothingSent();
@@ -240,7 +227,7 @@ it('does not verify payment when callback status is unknown', function (): void 
     Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse();
+        ->toBeFailedPayment('2', 'پرداخت شده - تاییدنشده');
 });
 
 it('returns the internal error code when the callback status is invalid', function (): void {
@@ -254,9 +241,7 @@ it('returns the internal error code when the callback status is invalid', functi
     Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9400')
-        ->error()->toContain('Expected "status" to be of type "int" for the zibal gateway, "abc" given.');
+        ->toBeFailedPayment('9400', 'Expected "status" to be of type "int" for the zibal gateway, "abc" given.');
 
     Http::assertNothingSent();
 });
@@ -284,8 +269,7 @@ it('returns successful response on successful payment verification', function ()
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -301,11 +285,10 @@ it('returns successful response on payment verification when the stored and veri
     $payment = Helper::paymentReadyFor(ApiMethod::Verify)->verify($payload);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull();
+        ->toBeSuccessfulPayment();
 })->with([
-    'verified amount as string' => ['1000', 1_000],
-    'stored amount as string' => [1_000, '1000'],
+    'verified amount as string' => ['verifiedAmount' => '1000', 'storedAmount' => 1_000],
+    'stored amount as string' => ['verifiedAmount' => 1_000, 'storedAmount' => '1000'],
 ]);
 
 it('returns failed response on successful payment verification with invalid amount', function (): void {
@@ -317,8 +300,7 @@ it('returns failed response on successful payment verification with invalid amou
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9300')->toContain('مبلغ پرداخت شده نامعتبر است')
+        ->toBeFailedPayment('9300', 'مبلغ پرداخت شده نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -336,10 +318,7 @@ it('throws exception when the verified amount is not numeric', function (mixed $
                     sprintf('Expected "amount" to be of type "int" for the zibal gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('invalid_numeric_field_values');
 
 it('returns failed response on payment verification when API call result is not successful', function (): void {
     fakeHttp($response = Helper::failedResponse());
@@ -347,8 +326,7 @@ it('returns failed response on payment verification when API call result is not 
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('102')->toContain('merchant یافت نشد')
+        ->toBeFailedPayment('102', 'merchant یافت نشد')
         ->getRawResponse()->toBe($response);
 });
 
@@ -361,8 +339,7 @@ it('returns failed response on payment verification when verification status is 
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('3')->toContain('لغوشده توسط کاربر')
+        ->toBeFailedPayment('3', 'لغوشده توسط کاربر')
         ->getRawResponse()->toBe($response);
 });
 
@@ -380,10 +357,7 @@ it('throws exception when the verification status is invalid', function (mixed $
                     sprintf('Expected "status" to be of type "int" for the zibal gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('invalid_numeric_field_values');
 
 it('communicates with sandbox environment for payment verification when configured', function (): void {
     fakeHttp(Helper::successfulVerificationResponse());
@@ -426,8 +400,7 @@ it('returns failed response on the payment reversal', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9200')->toContain('درگاه از بازگشت وجه پشتیبانی نمی کند')
+        ->toBeFailedPayment('9200', 'درگاه از بازگشت وجه پشتیبانی نمی کند')
         ->getRawResponse()->toBe('No API is called. IPG does not support reversal.');
 
     Http::assertSentCount(1); // Only verification is sent.
@@ -460,18 +433,14 @@ it('returns failed response on the payment reversal with no callback data', func
     Helper::callGatewayFor(ApiMethod::Reverse, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9200')->toContain('درگاه از بازگشت وجه پشتیبانی نمی کند')
+        ->toBeFailedPayment('9200', 'درگاه از بازگشت وجه پشتیبانی نمی کند')
         ->getRawResponse()->toBe('No API is called. IPG does not support reversal.');
 
     Http::assertSentCount(1); // Only verification is sent.
 });
 
 it('throws exception when the API result code is invalid', function (ApiMethod $call, mixed $value, string $given): void {
-    $response = match ($call) {
-        ApiMethod::Create => Helper::successfulCreationResponse(),
-        ApiMethod::Verify => Helper::successfulVerificationResponse(),
-    };
+    $response = Helper::successfulResponseFor($call);
     Arr::set($response, 'result', $value);
 
     fakeHttp($response);
@@ -484,13 +453,8 @@ it('throws exception when the API result code is invalid', function (ApiMethod $
                     sprintf('Expected "result" to be of type "int" for the zibal gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-])->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('gateway_creation_and_verification_methods')
+    ->with('invalid_numeric_field_values');
 
 it('throws exception when the API returns a non-JSON response', function (ApiMethod $call): void {
     $response = 'Service is not available';
@@ -505,7 +469,4 @@ it('throws exception when the API returns a non-JSON response', function (ApiMet
                     'Expected "result" to be of type "int" for the zibal gateway, "null" given.'
                 ),
         );
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-]);
+})->with('gateway_creation_and_verification_methods');

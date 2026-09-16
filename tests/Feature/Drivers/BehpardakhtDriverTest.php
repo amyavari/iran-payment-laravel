@@ -70,14 +70,7 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 
     expect(Soap::getArguments(0))
         ->mobileNo->toBe('989123456789');
-})->with([
-    'With country code' => 989123456789,
-    'Without country code, with first zero' => '09123456789',
-    'Without country code, and first zero' => 9123456789,
-    'With country code, and first plus' => '+989123456789',
-    'With country code and first zero' => 9809123456789,
-    'With country code, first zero and first plus' => '+9809123456789',
-]);
+})->with('gateway_phone_number_formats');
 
 it('returns successful response on successful payment creation', function (): void {
     Helper::fakeSoap($response = Helper::successfulCreationResponse());
@@ -85,8 +78,7 @@ it('returns successful response on successful payment creation', function (): vo
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -96,8 +88,7 @@ it('returns failed response on failed payment creation', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('11')->toContain('شماره کارت نامعتبر است')
+        ->toBeFailedPayment('11', 'شماره کارت نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -168,8 +159,8 @@ it('throws exception when the creation reference ID is invalid', function (strin
                 ),
         );
 })->with([
-    'missing value' => ['0', 'null'],
-    'blank value' => ['0,', ''],
+    'missing value' => ['response' => '0', 'given' => 'null'],
+    'blank value' => ['response' => '0,', 'given' => ''],
 ]);
 
 it('communicates with sandbox environment for payment creation when configured', function (): void {
@@ -203,9 +194,9 @@ it('throws exception when callback lacks required keys', function (string $key):
             sprintf('To create behpardakht gateway instance from callback, "RefId, ResCode, SaleOrderId" are required. "%s" is missing.', $key)
         );
 })->with([
-    'RefId',
-    'ResCode',
-    'SaleOrderId',
+    'RefId' => ['key' => 'RefId'],
+    'ResCode' => ['key' => 'ResCode'],
+    'SaleOrderId' => ['key' => 'SaleOrderId'],
 ]);
 
 it('throws exception when a required callback key is blank', function (string $key, mixed $value): void {
@@ -219,12 +210,12 @@ it('throws exception when a required callback key is blank', function (string $k
             sprintf('To create behpardakht gateway instance from callback, "RefId, ResCode, SaleOrderId" are required. "%s" is empty.', $key)
         );
 })->with([
-    'RefId',
-    'ResCode',
-    'SaleOrderId',
+    'RefId' => ['key' => 'RefId'],
+    'ResCode' => ['key' => 'ResCode'],
+    'SaleOrderId' => ['key' => 'SaleOrderId'],
 ])->with([
-    'null' => null,
-    'empty string' => '',
+    'null' => ['value' => null],
+    'empty string' => ['value' => ''],
 ]);
 
 it('returns card number and reference ID from successful callback', function (): void {
@@ -266,9 +257,9 @@ it('throws exception when stored payload and successful callback data do not mat
 
     Soap::assertNothingSent();
 })->with([
-    ['orderId', 'SaleOrderId'],
-    ['amount', 'FinalAmount'],
-    ['refId', 'RefId'],
+    'SaleOrderId' => ['payloadKey' => 'orderId', 'callbackKey' => 'SaleOrderId'],
+    'FinalAmount' => ['payloadKey' => 'amount', 'callbackKey' => 'FinalAmount'],
+    'RefId' => ['payloadKey' => 'refId', 'callbackKey' => 'RefId'],
 ]);
 
 it('does not verify payment when callback status is not successful', function (): void {
@@ -283,8 +274,7 @@ it('does not verify payment when callback status is not successful', function ()
     Soap::assertNothingSent();
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('11')->toContain('شماره کارت نامعتبر است') // The error code is set by fake failed callback.
+        ->toBeFailedPayment('11', 'شماره کارت نامعتبر است') // The error code is set by fake failed callback.
         ->getRawResponse()->toBe($callbackPayload);
 });
 
@@ -316,7 +306,7 @@ it('throws exception when the callback sale reference ID is not numeric', functi
 
     $payment = Helper::driver()->fromCallback($callbackPayload);
 
-    expect(fn (): BehpardakhtDriver => $payment->verify(Helper::gatewayPayload()))
+    expect(fn (): BehpardakhtDriver => Helper::callGatewayFor(ApiMethod::Verify, $payment))
         ->toThrow(
             fn (InvalidGatewayDataException $exception) => expect($exception)
                 ->context()->toBe(['body' => $callbackPayload])
@@ -326,10 +316,7 @@ it('throws exception when the callback sale reference ID is not numeric', functi
         );
 
     Soap::assertNothingSent();
-})->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('invalid_numeric_field_values');
 
 it('verifies payment when callback is successful and matches stored payload', function (): void {
     Helper::fakeSoap(Helper::successfulVerificationResponse());
@@ -354,8 +341,7 @@ it('returns successful response on successful payment verification', function ()
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -365,8 +351,7 @@ it('returns failed response on failed payment verification', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('11')->toContain('شماره کارت نامعتبر است')
+        ->toBeFailedPayment('11', 'شماره کارت نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -409,8 +394,7 @@ it('returns successful response on successful payment reversal', function (): vo
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -423,8 +407,7 @@ it('returns failed response on failed payment reversal', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('11')->toContain('شماره کارت نامعتبر است')
+        ->toBeFailedPayment('11', 'شماره کارت نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -457,8 +440,7 @@ it('returns failed verification with no callback data', function (): void {
     Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9100')->toContain('درگاه از وریفای بدون callback پشتیبانی نمی کند')
+        ->toBeFailedPayment('9100', 'درگاه از وریفای بدون callback پشتیبانی نمی کند')
         ->getRawResponse()->toBe('No API is called.');
 
     Soap::assertNothingSent();
@@ -473,8 +455,7 @@ it('returns successful reversal with no callback data', function (): void {
     Helper::callGatewayFor(ApiMethod::Reverse, $payment);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe('No API is called.');
 
     Soap::assertNothingSent();
@@ -493,11 +474,8 @@ it('throws exception when the API status code is invalid', function (ApiMethod $
                     sprintf('Expected "ResCode" to be of type "int" for the behpardakht gateway, "%s" given.', $response)
                 ),
         );
-})->with([
-    'creation' => ApiMethod::Create,
-    'verification' => ApiMethod::Verify,
-    'reversal' => ApiMethod::Reverse,
-])->with([
-    'missing value' => '',
-    'non-numeric value' => 'abc',
-]);
+})->with('gateway_api_methods')
+    ->with([
+        'missing value' => ['response' => ''],
+        'non-numeric value' => ['response' => 'abc'],
+    ]);

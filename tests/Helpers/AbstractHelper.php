@@ -110,4 +110,22 @@ abstract class AbstractHelper
             default => static::driver(),
         };
     }
+
+    /**
+     * Get the successful fixture response for the given API call.
+     *
+     * @return array<string, mixed>|string
+     */
+    final public static function successfulResponseFor(ApiMethod $call): array|string
+    {
+        return match ($call) {
+            ApiMethod::Create => static::successfulCreationResponse(),
+            ApiMethod::Verify => static::successfulVerificationResponse(),
+            ApiMethod::Reverse => static::successfulReversalResponse(),
+
+            default => throw new LogicException(
+                sprintf('The method "%s" is not a valid API call.', $call->value)
+            ),
+        };
+    }
 }

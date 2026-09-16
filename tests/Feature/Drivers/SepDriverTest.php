@@ -70,14 +70,7 @@ it('converts phone number to gateway format if needed', function (string|int $ph
 
     expect($request->data())
         ->CellNumber->toBe('9123456789');
-})->with([
-    'With country code' => 989123456789,
-    'Without country code, with first zero' => '09123456789',
-    'Without country code, and first zero' => 9123456789,
-    'With country code, and first plus' => '+989123456789',
-    'With country code and first zero' => 9809123456789,
-    'With country code, first zero and first plus' => '+9809123456789',
-]);
+})->with('gateway_phone_number_formats');
 
 it('returns successful response on successful payment creation', function (): void {
     fakeHttp($response = Helper::successfulCreationResponse());
@@ -85,8 +78,7 @@ it('returns successful response on successful payment creation', function (): vo
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -96,8 +88,7 @@ it('returns failed response on failed payment creation', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('11')->toContain('شماره کارت نامعتبر است')
+        ->toBeFailedPayment('11', 'شماره کارت نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -142,10 +133,7 @@ it('throws exception when the creation API status is invalid', function (mixed $
                     sprintf('Expected "status" to be of type "int" for the sep gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('invalid_numeric_field_values');
 
 it('throws exception when the creation API returns a non-JSON response', function (): void {
     $response = 'Service is not available';
@@ -176,11 +164,7 @@ it('throws exception when the creation token is invalid', function (mixed $value
                     sprintf('Expected "token" to be of type "string" for the sep gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'blank value' => ['', ''],
-    'non-castable value' => [[], '[]'],
-]);
+})->with('invalid_string_field_values');
 
 it('returns the internal error code when the creation API error code is invalid', function (mixed $value, string $given): void {
     $response = Helper::failedResponse('create');
@@ -191,13 +175,8 @@ it('returns the internal error code when the creation API error code is invalid'
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9400')
-        ->error()->toContain(sprintf('Expected "errorCode" to be of type "int" for the sep gateway, "%s" given.', $given));
-})->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+        ->toBeFailedPayment('9400', sprintf('Expected "errorCode" to be of type "int" for the sep gateway, "%s" given.', $given));
+})->with('invalid_numeric_field_values');
 
 it('returns the gateway error code with a fallback message when the creation API error description is invalid', function (): void {
     $response = Helper::failedResponse('create');
@@ -208,9 +187,7 @@ it('returns the gateway error code with a fallback message when the creation API
     $payment = Helper::callGatewayFor(ApiMethod::Create);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('11') // From fake failed response
-        ->error()->toContain('Expected "errorDesc" to be of type "string" for the sep gateway, "null" given.');
+        ->toBeFailedPayment('11', 'Expected "errorDesc" to be of type "string" for the sep gateway, "null" given.');
 });
 
 it('throws an exception for payment creation when configured to use sandbox', function (): void {
@@ -242,9 +219,9 @@ it('throws exception when callback lacks required keys', function (string $key):
             sprintf('To create sep gateway instance from callback, "State, Status, ResNum" are required. "%s" is missing.', $key)
         );
 })->with([
-    'State',
-    'Status',
-    'ResNum',
+    'State' => ['key' => 'State'],
+    'Status' => ['key' => 'Status'],
+    'ResNum' => ['key' => 'ResNum'],
 ]);
 
 it('throws exception when a required callback key is blank', function (string $key, mixed $value): void {
@@ -258,23 +235,21 @@ it('throws exception when a required callback key is blank', function (string $k
             sprintf('To create sep gateway instance from callback, "State, Status, ResNum" are required. "%s" is empty.', $key)
         );
 })->with([
-    'State',
-    'Status',
-    'ResNum',
+    'State' => ['key' => 'State'],
+    'Status' => ['key' => 'Status'],
+    'ResNum' => ['key' => 'ResNum'],
 ])->with([
-    'null' => null,
-    'empty string' => '',
+    'null' => ['value' => null],
+    'empty string' => ['value' => ''],
 ]);
 
 it('throws exception when stored payload and successful callback data do not match', function (string $payloadKey, string $callbackKey): void {
     fakeHttp();
 
-    $callbackPayload = Helper::successfulCallback();
-
     $payload = Helper::gatewayPayload();
     Arr::set($payload, $payloadKey, '123'); // Change payload value for the given key so it no longer matches
 
-    $payment = Helper::driver()->fromCallback($callbackPayload);
+    $payment = Helper::driver()->fromCallback(Helper::successfulCallback());
 
     expect(fn (): SepDriver => $payment->verify($payload))
         ->toThrow(
@@ -284,8 +259,8 @@ it('throws exception when stored payload and successful callback data do not mat
 
     Http::assertNothingSent();
 })->with([
-    ['resNum', 'ResNum'],
-    ['amount', 'Amount'],
+    'ResNum' => ['payloadKey' => 'resNum', 'callbackKey' => 'ResNum'],
+    'Amount' => ['payloadKey' => 'amount', 'callbackKey' => 'Amount'],
 ]);
 
 it('does not verify payment when callback status is not successful', function (): void {
@@ -298,8 +273,7 @@ it('does not verify payment when callback status is not successful', function ()
     Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('1')->toContain('کاربر انصراف داده است') // The error code is set by fake failed callback.
+        ->toBeFailedPayment('1', 'کاربر انصراف داده است') // The error code is set by fake failed callback.
         ->getRawResponse()->toBe($callbackPayload);
 
     Http::assertNothingSent();
@@ -314,7 +288,7 @@ it('does not verify payment when callback status is unknown', function (): void 
     Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse();
+        ->toBeFailedPayment('2', 'کد پاسخ نامشخص');
 });
 
 it('returns the internal error code when the callback status is invalid', function (): void {
@@ -328,9 +302,7 @@ it('returns the internal error code when the callback status is invalid', functi
     Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9400')
-        ->error()->toContain('Expected "Status" to be of type "int" for the sep gateway, "abc" given.');
+        ->toBeFailedPayment('9400', 'Expected "Status" to be of type "int" for the sep gateway, "abc" given.');
 
     Http::assertNothingSent();
 });
@@ -358,8 +330,7 @@ it('returns successful response on successful payment verification', function ()
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -375,11 +346,10 @@ it('returns successful response on payment verification when the stored and veri
     $payment = Helper::paymentReadyFor(ApiMethod::Verify)->verify($payload);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull();
+        ->toBeSuccessfulPayment();
 })->with([
-    'verified amount as string' => ['1000', 1_000],
-    'stored amount as string' => [1_000, '1000'],
+    'verified amount as string' => ['verifiedAmount' => '1000', 'storedAmount' => 1_000],
+    'stored amount as string' => ['verifiedAmount' => 1_000, 'storedAmount' => '1000'],
 ]);
 
 it('returns failed response on successful payment verification with invalid amount', function (): void {
@@ -391,8 +361,7 @@ it('returns failed response on successful payment verification with invalid amou
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9300')->toContain('مبلغ پرداخت شده نامعتبر است')
+        ->toBeFailedPayment('9300', 'مبلغ پرداخت شده نامعتبر است')
         ->getRawResponse()->toBe($response);
 });
 
@@ -410,10 +379,7 @@ it('throws exception when the verified amount is not numeric', function (mixed $
                     sprintf('Expected "TransactionDetail.OrginalAmount" to be of type "int" for the sep gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+})->with('invalid_numeric_field_values');
 
 it('returns failed response on failed payment verification', function (): void {
     fakeHttp($response = Helper::failedResponse('verify'));
@@ -421,8 +387,7 @@ it('returns failed response on failed payment verification', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Verify);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('2')->toContain('تراکنش یافت نشد')
+        ->toBeFailedPayment('2', 'تراکنش یافت نشد')
         ->getRawResponse()->toBe($response);
 });
 
@@ -488,8 +453,7 @@ it('returns successful response on successful payment reversal', function (): vo
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe($response);
 });
 
@@ -502,8 +466,7 @@ it('returns failed response on failed payment reversal', function (): void {
     $payment = Helper::callGatewayFor(ApiMethod::Reverse);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('-2')->toContain('تراکنش یافت نشد')
+        ->toBeFailedPayment('-2', 'تراکنش یافت نشد')
         ->getRawResponse()->toBe($response);
 });
 
@@ -536,8 +499,7 @@ it('returns failed verification with no callback data', function (): void {
     Helper::callGatewayFor(ApiMethod::Verify, $payment);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9100')->toContain('درگاه از وریفای بدون callback پشتیبانی نمی کند.')
+        ->toBeFailedPayment('9100', 'درگاه از وریفای بدون callback پشتیبانی نمی کند.')
         ->getRawResponse()->toBe('No API is called.');
 
     Http::assertNothingSent();
@@ -552,18 +514,14 @@ it('returns successful reversal with no callback data', function (): void {
     Helper::callGatewayFor(ApiMethod::Reverse, $payment);
 
     expect($payment)
-        ->successful()->toBeTrue()
-        ->error()->toBeNull()
+        ->toBeSuccessfulPayment()
         ->getRawResponse()->toBe('No API is called.');
 
     Http::assertNothingSent();
 });
 
 it('throws exception when the follow-up API success flag is invalid', function (ApiMethod $call, mixed $value, string $given): void {
-    $response = match ($call) {
-        ApiMethod::Verify => Helper::successfulVerificationResponse(),
-        ApiMethod::Reverse => Helper::successfulReversalResponse(),
-    };
+    $response = Helper::successfulResponseFor($call);
     Arr::set($response, 'Success', $value);
 
     $call === ApiMethod::Reverse
@@ -578,13 +536,11 @@ it('throws exception when the follow-up API success flag is invalid', function (
                     sprintf('Expected "Success" to be of type "bool" for the sep gateway, "%s" given.', $given)
                 ),
         );
-})->with([
-    'verification' => ApiMethod::Verify,
-    'reversal' => ApiMethod::Reverse,
-])->with([
-    'missing value' => [null, 'null'],
-    'non-boolean value' => ['true', 'true'],
-]);
+})->with('gateway_verification_and_reversal_methods')
+    ->with([
+        'missing value' => ['value' => null, 'given' => 'null'],
+        'non-boolean value' => ['value' => 'true', 'given' => 'true'],
+    ]);
 
 it('throws exception when the follow-up API returns a non-JSON response', function (ApiMethod $call): void {
     $response = 'Service is not available';
@@ -601,10 +557,7 @@ it('throws exception when the follow-up API returns a non-JSON response', functi
                     'Expected "Success" to be of type "bool" for the sep gateway, "null" given.'
                 ),
         );
-})->with([
-    'verification' => ApiMethod::Verify,
-    'reversal' => ApiMethod::Reverse,
-]);
+})->with('gateway_verification_and_reversal_methods');
 
 it('returns the internal error code when the follow-up API result code is invalid', function (ApiMethod $call, mixed $value, string $given): void {
     $response = Helper::failedResponse($call->value);
@@ -617,16 +570,9 @@ it('returns the internal error code when the follow-up API result code is invali
     $payment = Helper::callGatewayFor($call);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('9400')
-        ->error()->toContain(sprintf('Expected "ResultCode" to be of type "int" for the sep gateway, "%s" given.', $given));
-})->with([
-    'verification' => ApiMethod::Verify,
-    'reversal' => ApiMethod::Reverse,
-])->with([
-    'missing value' => [null, 'null'],
-    'non-numeric value' => ['abc', 'abc'],
-]);
+        ->toBeFailedPayment('9400', sprintf('Expected "ResultCode" to be of type "int" for the sep gateway, "%s" given.', $given));
+})->with('gateway_verification_and_reversal_methods')
+    ->with('invalid_numeric_field_values');
 
 it('returns the gateway error code with a fallback message when the follow-up API result description is invalid', function (ApiMethod $call): void {
     $response = Helper::failedResponse($call->value);
@@ -639,10 +585,5 @@ it('returns the gateway error code with a fallback message when the follow-up AP
     $payment = Helper::callGatewayFor($call);
 
     expect($payment)
-        ->successful()->toBeFalse()
-        ->error()->toContain('-2') // From fake failed response
-        ->error()->toContain('Expected "ResultDescription" to be of type "string" for the sep gateway, "null" given.');
-})->with([
-    'verification' => ApiMethod::Verify,
-    'reversal' => ApiMethod::Reverse,
-]);
+        ->toBeFailedPayment('-2', 'Expected "ResultDescription" to be of type "string" for the sep gateway, "null" given.');
+})->with('gateway_verification_and_reversal_methods');
