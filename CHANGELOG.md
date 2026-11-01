@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Removed
+
+- Support for Laravel `11` due to security advisories.
+
+### Changed
+
+- Increased minimum Laravel version support due to security advisories.
+
 ## [2.1.0] - 2026-09-16
 
 ### Changed
@@ -95,6 +105,7 @@ Supported Gateways:
 - Zarinpal
 - IDPay
 
+[Unreleased]: https://github.com/amyavari/iran-payment-laravel/compare/v2.1.0...HEAD
 [2.1.0]: https://github.com/amyavari/iran-payment-laravel/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/amyavari/iran-payment-laravel/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/amyavari/iran-payment-laravel/compare/v1.1.0...v2.0.0
