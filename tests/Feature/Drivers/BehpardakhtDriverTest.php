@@ -479,3 +479,22 @@ it('throws exception when the API status code is invalid', function (ApiMethod $
         'missing value' => ['response' => ''],
         'non-numeric value' => ['response' => 'abc'],
     ]);
+
+it('throws exception when the SOAP reply has no return value', function (ApiMethod $call, mixed $reply, string $given): void {
+    $call === ApiMethod::Reverse
+        ? Soap::fake((object) ['return' => Helper::successfulVerificationResponse()], $reply)
+        : Soap::fake($reply);
+
+    expect(fn (): BehpardakhtDriver => Helper::callGatewayFor($call))
+        ->toThrow(
+            fn (InvalidGatewayDataException $exception) => expect($exception)
+                ->context()->toBe(['body' => $given])
+                ->getMessage()->toBe(
+                    sprintf('Expected "return" to be of type "string" for the behpardakht gateway, "%s" given.', $given)
+                ),
+        );
+})->with('gateway_api_methods')
+    ->with([
+        'object without return' => ['reply' => (object) [], 'given' => '{}'],
+        'not an object' => ['reply' => '0', 'given' => '0'],
+    ]);

@@ -10,6 +10,7 @@ use AliYavari\IranPayment\Contracts\UniqueNumberGenerator;
 use AliYavari\IranPayment\Dtos\PaymentRedirectDto;
 use AliYavari\IranPayment\Enums\ApiMethod;
 use AliYavari\IranPayment\Enums\InternalErrorCode;
+use AliYavari\IranPayment\Exceptions\InvalidGatewayDataException;
 use AliYavari\IranPayment\Facades\Soap;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\URL;
@@ -315,9 +316,27 @@ final class BehpardakhtDriver extends Driver
      */
     private function execute(string $method, array $data): void
     {
-        $this->rawResponse = Soap::to($this->getGatewayWsdlUrl())->call($method, $data);
+        $response = Soap::to($this->getGatewayWsdlUrl())->call($method, $data);
+
+        $this->rawResponse = $this->getReturnedValue($response);
 
         $this->setApiStatusCode();
+    }
+
+    /**
+     * Get the `return` value of the SOAP reply, or throw an exception if the reply has none.
+     *
+     * @throws InvalidGatewayDataException
+     */
+    private function getReturnedValue(mixed $response): string
+    {
+        if (! is_object($response) || ! property_exists($response, 'return')) {
+            $body = is_string($response) ? $response : (string) json_encode($response);
+
+            throw InvalidGatewayDataException::make($this->getGateway(), 'return', 'string', $body, $body);
+        }
+
+        return (string) $response->return;
     }
 
     /**
