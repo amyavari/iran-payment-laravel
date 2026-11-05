@@ -84,6 +84,21 @@ it('returns failed response on failed payment creation', function (): void {
         ->getRawResponse()->toBe($response);
 });
 
+it('returns failed response on payment creation with a success code of another API', function (int $code): void {
+    $response = Helper::successfulCreationResponse();
+    Arr::set($response, 'code', $code);
+
+    fakeHttp($response);
+
+    $payment = Helper::callGatewayFor(ApiMethod::Create);
+
+    expect($payment)
+        ->failed()->toBeTrue();
+})->with([
+    'paid (verification)' => ['code' => 0],
+    'refunded (reversal)' => ['code' => -90],
+]);
+
 it('returns trans_id in the gateway response as transaction ID', function (): void {
     fakeHttp(Helper::successfulCreationResponse());
 
@@ -263,6 +278,21 @@ it('returns failed response on failed payment verification', function (): void {
         ->getRawResponse()->toBe($response);
 });
 
+it('returns failed response on payment verification with a success code of another API', function (int $code): void {
+    $response = Helper::successfulVerificationResponse();
+    Arr::set($response, 'code', $code);
+
+    fakeHttp($response);
+
+    $payment = Helper::callGatewayFor(ApiMethod::Verify);
+
+    expect($payment)
+        ->failed()->toBeTrue();
+})->with([
+    'waiting for payment (creation)' => ['code' => -1],
+    'refunded (reversal)' => ['code' => -90],
+]);
+
 it('throws an exception for payment verification when configured to use sandbox', function (): void {
     fakeHttp();
 
@@ -343,6 +373,24 @@ it('returns failed response on failed payment reversal', function (): void {
         ->toBeFailedPayment('-2', 'پرداخت رد شده توسط کاربر یا بانک')
         ->getRawResponse()->toBe($response);
 });
+
+it('returns failed response on payment reversal with a success code of another API', function (int $code): void {
+    $response = Helper::successfulReversalResponse();
+    Arr::set($response, 'code', $code);
+
+    fakeHttp(
+        firstResponse: Helper::successfulVerificationResponse(),
+        secondResponse: $response
+    );
+
+    $payment = Helper::callGatewayFor(ApiMethod::Reverse);
+
+    expect($payment)
+        ->failed()->toBeTrue();
+})->with([
+    'waiting for payment (creation)' => ['code' => -1],
+    'paid (verification)' => ['code' => 0],
+]);
 
 it('throws an exception for payment reversal when configured to use sandbox', function (): void {
     fakeHttp(Helper::successfulVerificationResponse());
