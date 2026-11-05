@@ -142,12 +142,6 @@ final class IdpayDriver extends Driver
      */
     protected function verifyPayment(array $storedPayload): void
     {
-        if ($this->isFailedPaymentBasedOnCallback()) {
-            $this->setPaymentStatusBasedOnCallback();
-
-            return;
-        }
-
         $keyMapper = [
             'order_id' => 'order_id',
         ];
@@ -263,6 +257,27 @@ final class IdpayDriver extends Driver
     }
 
     /**
+     * {@inheritdoc}
+     */
+    protected function isFailedCallback(): bool
+    {
+        return ((string) $this->callbackPayload->get('status')) !== '100';
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function setFailedCallbackStatus(): void
+    {
+        $this->apiIsSuccessful = false;
+
+        $this->apiStatusCode = $this->asInt($this->callbackPayload->all(), 'status');
+        $this->apiStatusMessage = $this->getCallbackStatusMessage();
+
+        $this->rawResponse = $this->callbackPayload->all();
+    }
+
+    /**
      * Generate unique order ID
      */
     private function generateOrderId(): string
@@ -322,27 +337,6 @@ final class IdpayDriver extends Driver
     private function setPaymentUrl(): void
     {
         $this->paymentUrl = $this->asString($this->rawResponse, 'link');
-    }
-
-    /**
-     * Determine whether the payment failed based on the callback.
-     */
-    private function isFailedPaymentBasedOnCallback(): bool
-    {
-        return ((string) $this->callbackPayload->get('status')) !== '100';
-    }
-
-    /**
-     * Set payment status by callback.
-     */
-    private function setPaymentStatusBasedOnCallback(): void
-    {
-        $this->apiIsSuccessful = false;
-
-        $this->apiStatusCode = $this->asInt($this->callbackPayload->all(), 'status');
-        $this->apiStatusMessage = $this->getCallbackStatusMessage();
-
-        $this->rawResponse = $this->callbackPayload->all();
     }
 
     private function getCallbackStatusMessage(): string

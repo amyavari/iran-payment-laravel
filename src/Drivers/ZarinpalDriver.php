@@ -128,12 +128,6 @@ final class ZarinpalDriver extends Driver
      */
     protected function verifyPayment(array $storedPayload): void
     {
-        if ($this->isFailedPaymentBasedOnCallback()) {
-            $this->setFailedPaymentBasedOnCallback();
-
-            return;
-        }
-
         $keyMapper = [
             'Authority' => 'authority',
         ];
@@ -232,6 +226,23 @@ final class ZarinpalDriver extends Driver
     protected function getRequiredCallbackKeys(): array
     {
         return ['Authority', 'Status'];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function isFailedCallback(): bool
+    {
+        return $this->callbackPayload->get('Status') !== 'OK';
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function setFailedCallbackStatus(): void
+    {
+        $this->apiStatusCode = -51;
+        $this->rawResponse = $this->callbackPayload->all();
     }
 
     /**
@@ -337,22 +348,5 @@ final class ZarinpalDriver extends Driver
 
             default => 'کد پاسخ نامشخص',
         };
-    }
-
-    /**
-     * Determine whether the payment failed based on the callback.
-     */
-    private function isFailedPaymentBasedOnCallback(): bool
-    {
-        return $this->callbackPayload->get('Status') !== 'OK';
-    }
-
-    /**
-     * Set payment status by callback.
-     */
-    private function setFailedPaymentBasedOnCallback(): void
-    {
-        $this->apiStatusCode = -51;
-        $this->rawResponse = $this->callbackPayload->all();
     }
 }

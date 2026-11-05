@@ -26,6 +26,7 @@ use Illuminate\Support\Str;
  * - asSuccessful()         Forces the given API call to be successful.
  * - asFailed()             Forces the given API call to fail with a default error code and message.
  * - throwing()             Makes the next API call throw the given exception.
+ * - withFailedCallback()   Makes the driver report the callback as failed.
  * - calledMethods()        Returns the list of child class methods that were called.
  * - receivedParameters()   Returns parameters received by the last invoked child method.
  * - apiCalled()            Calls a dummy API to mark the API as called, so its status can be asserted.
@@ -473,6 +474,61 @@ it('just throws the invalid callback data exception if it was not stored interna
         ->toThrow(InvalidCallbackDataException::class, 'Gateway exception error message');
 });
 
+it('does not call the verify API when the callback is failed', function (): void {
+    $driver = testDriver()->withFailedCallback()->performVerification();
+
+    expect($driver)
+        ->calledMethods()->not->toContain('verify');
+});
+
+it('returns failed response when the callback is failed', function (): void {
+    // TestDriver reports success, like a forged callback with a success status code.
+    $driver = testDriver()->asSuccessful()->withFailedCallback()->performVerification();
+
+    expect($driver)
+        ->failed()->toBeTrue();
+});
+
+it('stores a failed payment when the callback is failed', function (): void {
+    setTestNow('2025-12-10 18:30:10');
+    testDriver()->storeTestPayment();
+
+    $driver = testDriver()->withFailedCallback()->callCallback();
+
+    setTestNow('2025-12-10 18:30:20');
+    $driver->verify();
+
+    $this->assertDatabaseHas(Payment::class, [
+        'transaction_id' => $driver->getTransactionId(),
+        'status' => PaymentStatus::Failed,
+        'error' => $driver->error(),
+        'ref_number' => null,
+        'card_number' => null,
+        'verified_at' => '2025-12-10 18:30:20',
+        'reversed_at' => null,
+        'raw_responses' => json_encode([
+            'create_20251210183010' => 'create raw response', // Set by TestDriver
+            'verify_20251210183020' => 'failedCallback raw response', // Set by TestDriver
+        ]),
+    ]);
+});
+
+it('does not reverse when the callback is failed and auto-reverse is enabled', function (): void {
+    $driver = testDriver()->asFailed()->withFailedCallback(); // A failed verification would trigger auto-reverse
+
+    $driver->autoReverse()->performVerification();
+
+    expect($driver)
+        ->calledMethods()->not->toContain('reverse');
+});
+
+it('verifies the payment in no-callback mode even when the driver reports a failed callback', function (): void {
+    $driver = testDriver()->withFailedCallback()->noCallback('123')->verify([]);
+
+    expect($driver)
+        ->calledMethods()->toContain('verify');
+});
+
 it('returns the payment model after verification when it was stored internally', function (): void {
     testDriver()->storeTestPayment();
 
@@ -630,6 +686,29 @@ it('reverses the payment again if it was already reversed', function (): void {
         ->calledMethods()->toBe(['verify', 'reverse', 'reverse']);
 });
 
+it('does not reverse the payment after a failed callback', function (): void {
+    $driver = testDriver()->withFailedCallback()->performVerification();
+
+    $driver->reverse();
+
+    expect($driver)
+        ->calledMethods()->not->toContain('reverse');
+});
+
+it('does not update the stored payment when reverse is called after a failed callback', function (): void {
+    testDriver()->storeTestPayment();
+
+    $driver = testDriver()->withFailedCallback()->callCallback();
+    $driver->verify();
+
+    $driver->reverse();
+
+    $this->assertDatabaseHas(Payment::class, [
+        'transaction_id' => $driver->getTransactionId(),
+        'reversed_at' => null,
+    ]);
+});
+
 it('throws an exception when get card number is called after the reverse API call', function (): void {
     $driver = testDriver()->asSuccessful('verify')->performVerification();
 
@@ -682,7 +761,7 @@ it('does not reverse when the payment is successful', function (): void {
     $driver->autoReverse()->performVerification();
 
     expect($driver)
-        ->calledMethods()->toBe(['verify']);
+        ->calledMethods()->not->toContain('reverse');
 });
 
 it('does not reverse when auto-reverse is disabled', function (): void {
@@ -691,7 +770,7 @@ it('does not reverse when auto-reverse is disabled', function (): void {
     $driver->autoReverse(autoReverse: false)->performVerification();
 
     expect($driver)
-        ->calledMethods()->toBe(['verify']);
+        ->calledMethods()->not->toContain('reverse');
 });
 
 it('keeps the verification state after auto-reverse is performed', function (): void {

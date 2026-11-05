@@ -174,12 +174,6 @@ final class BehpardakhtDriver extends Driver
             return;
         }
 
-        if ($this->isFailedPaymentBasedOnCallback()) {
-            $this->setPaymentStatusBasedOnCallback();
-
-            return;
-        }
-
         $keyMapper = [
             'RefId' => 'refId',
             'SaleOrderId' => 'orderId',
@@ -285,6 +279,23 @@ final class BehpardakhtDriver extends Driver
     protected function getRequiredCallbackKeys(): array
     {
         return ['RefId', 'ResCode', 'SaleOrderId'];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function isFailedCallback(): bool
+    {
+        return ((string) $this->callbackPayload->get('ResCode')) !== '0';
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function setFailedCallbackStatus(): void
+    {
+        $this->rawResponse = $this->callbackPayload->all();
+        $this->apiStatusCode = $this->asInt($this->rawResponse, 'ResCode');
     }
 
     /**
@@ -445,23 +456,6 @@ final class BehpardakhtDriver extends Driver
         $this->apiStatusCode = $this->withoutCallbackStatusCode($method);
         $this->rawResponse = $this->withoutCallbackRawResponse();
 
-    }
-
-    /**
-     * Determine whether the payment failed based on the callback.
-     */
-    private function isFailedPaymentBasedOnCallback(): bool
-    {
-        return ((string) $this->callbackPayload->get('ResCode')) !== '0';
-    }
-
-    /**
-     * Set payment status by callback.
-     */
-    private function setPaymentStatusBasedOnCallback(): void
-    {
-        $this->rawResponse = $this->callbackPayload->all();
-        $this->apiStatusCode = $this->asInt($this->rawResponse, 'ResCode');
     }
 
     /**

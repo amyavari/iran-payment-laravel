@@ -12,6 +12,7 @@ use AliYavari\IranPayment\Exceptions\CannotConvertToTomanException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use LogicException;
 
 /**
  * @internal
@@ -295,6 +296,22 @@ final class NextpayDriver extends Driver
     protected function getRequiredCallbackKeys(): array
     {
         return ['trans_id'];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function isFailedCallback(): bool
+    {
+        return false; // The callback has no payment status.
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function setFailedCallbackStatus(): void
+    {
+        throw new LogicException('The Nextpay callback is never failed, so it has no failed status.');
     }
 
     /**

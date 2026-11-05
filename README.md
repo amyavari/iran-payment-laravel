@@ -342,6 +342,7 @@ $payment
   These classes are located in `AliYavari\IranPayment\Requests\<Gateway>Request`. See [Form Request classes](#form-request-classes)
 - If auto-reverse is enabled, the [Checking API Call Status](#checking-api-call-status) applies to **verification**.
 - `verify()` and `reverse()` throw an `InvalidGatewayDataException` when the gateway response or the callback has a missing or invalid value that decides the result. The stored payment record is not updated, and the raw gateway body is in the exception context.
+- After a failed callback (for example, the user cancelled the payment), `verify()` returns a failed payment without calling the gateway, and `reverse()` does nothing.
 
 #### Successful Payment Details
 

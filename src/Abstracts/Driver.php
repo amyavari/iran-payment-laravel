@@ -92,9 +92,9 @@ abstract class Driver implements Payment
     private string|array $verificationRawResponse;
 
     /**
-     * Determine whether a callback method has been called..
+     * The callback method called by the consumer (`fromCallback` or `noCallback`).
      */
-    private bool $callbackCalled = false;
+    private ?ApiMethod $callbackMethod = null;
 
     /**
      * Get the driver's callback URL from configuration
@@ -188,6 +188,19 @@ abstract class Driver implements Payment
     abstract protected function getRequiredCallbackKeys(): array;
 
     /**
+     * Determine whether the gateway callback reports a failed payment.
+     *
+     * It must have no side effects and give the same answer on every call.
+     */
+    abstract protected function isFailedCallback(): bool;
+
+    /**
+     * Set the driver's status code, message and raw response from the failed callback data,
+     * so `error()` and `getRawResponse()` show why the payment failed.
+     */
+    abstract protected function setFailedCallbackStatus(): void;
+
+    /**
      * {@inheritdoc}
      */
     final public function create(int $amount, ?string $description = null, string|int|null $phone = null): static
@@ -221,6 +234,10 @@ abstract class Driver implements Payment
     final public function successful(): bool
     {
         $this->ensureApiIsCalled();
+
+        if ($this->hasFailedCallback()) {
+            return false;
+        }
 
         return $this->verificationSuccessfulStatus
             ?? $this->isSuccessful();
@@ -310,7 +327,7 @@ abstract class Driver implements Payment
     {
         $this->ensureCreationOrCallbackIsCalledFor(__FUNCTION__);
 
-        if ($this->callbackCalled) {
+        if (! is_null($this->callbackMethod)) {
             return $this->getDriverTransactionId();
         }
 
@@ -322,7 +339,7 @@ abstract class Driver implements Payment
      */
     final public function fromCallback(array $callbackPayload): static
     {
-        $this->markCallbackAsCalled();
+        $this->markCallbackAsCalled(ApiMethod::FromCallback);
 
         $this->callbackPayload = collect($callbackPayload);
 
@@ -338,7 +355,7 @@ abstract class Driver implements Payment
      */
     final public function noCallback(string $transactionId): static
     {
-        $this->markCallbackAsCalled();
+        $this->markCallbackAsCalled(ApiMethod::NoCallback);
 
         $this->prepareWithoutCallback($transactionId);
 
@@ -357,6 +374,14 @@ abstract class Driver implements Payment
         $gatewayPayload ??= $this->getStoredPayload();
 
         $this->ensurePaymentIsNotVerified();
+
+        if ($this->hasFailedCallback()) {
+            $this->setFailedCallbackStatus();
+
+            $this->updatePaymentAfterVerification();
+
+            return $this;
+        }
 
         try {
             $this->verifyPayment($gatewayPayload);
@@ -405,6 +430,10 @@ abstract class Driver implements Payment
     final public function reverse(): static
     {
         $this->ensureVerificationIsCalledFor(__FUNCTION__);
+
+        if ($this->hasFailedCallback()) {
+            return $this;
+        }
 
         $this->setCalledApiMethod(ApiMethod::Reverse);
 
@@ -563,11 +592,22 @@ abstract class Driver implements Payment
     }
 
     /**
-     * Mark the callback as called.
+     * Mark the given callback method as called.
      */
-    private function markCallbackAsCalled(): void
+    private function markCallbackAsCalled(ApiMethod $method): void
     {
-        $this->callbackCalled = true;
+        $this->callbackMethod = $method;
+    }
+
+    /**
+     * Determine whether the gateway sent a callback that reports a failed payment.
+     *
+     * Only `fromCallback()` has gateway callback data to check.
+     */
+    private function hasFailedCallback(): bool
+    {
+        return $this->callbackMethod === ApiMethod::FromCallback
+            && $this->isFailedCallback();
     }
 
     /**
@@ -631,7 +671,7 @@ abstract class Driver implements Payment
      */
     private function ensureCreationOrCallbackIsCalledFor(string $method): void
     {
-        if (! $this->isCalledApiMethod(ApiMethod::Create) && ! $this->callbackCalled) {
+        if (! $this->isCalledApiMethod(ApiMethod::Create) && is_null($this->callbackMethod)) {
             throw InvalidCallOrderException::mustBeCalledAfter($method, [ApiMethod::Create, ApiMethod::FromCallback, ApiMethod::NoCallback]);
         }
     }
@@ -643,7 +683,7 @@ abstract class Driver implements Payment
      */
     private function ensureCallbackIsCalledFor(string $method): void
     {
-        if (! $this->callbackCalled) {
+        if (is_null($this->callbackMethod)) {
             throw InvalidCallOrderException::mustBeCalledAfter($method, [ApiMethod::FromCallback, ApiMethod::NoCallback]);
         }
     }
