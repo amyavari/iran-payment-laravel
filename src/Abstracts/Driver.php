@@ -431,6 +431,10 @@ abstract class Driver implements Payment
     {
         $this->ensureVerificationIsCalledFor(__FUNCTION__);
 
+        if ($this->hasFailedCallback()) {
+            return $this;
+        }
+
         $this->setCalledApiMethod(ApiMethod::Reverse);
 
         $this->reversePayment();

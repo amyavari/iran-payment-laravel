@@ -686,6 +686,29 @@ it('reverses the payment again if it was already reversed', function (): void {
         ->calledMethods()->toBe(['verify', 'reverse', 'reverse']);
 });
 
+it('does not reverse the payment after a failed callback', function (): void {
+    $driver = testDriver()->withFailedCallback()->performVerification();
+
+    $driver->reverse();
+
+    expect($driver)
+        ->calledMethods()->not->toContain('reverse');
+});
+
+it('does not update the stored payment when reverse is called after a failed callback', function (): void {
+    testDriver()->storeTestPayment();
+
+    $driver = testDriver()->withFailedCallback()->callCallback();
+    $driver->verify();
+
+    $driver->reverse();
+
+    $this->assertDatabaseHas(Payment::class, [
+        'transaction_id' => $driver->getTransactionId(),
+        'reversed_at' => null,
+    ]);
+});
+
 it('throws an exception when get card number is called after the reverse API call', function (): void {
     $driver = testDriver()->asSuccessful('verify')->performVerification();
 
