@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - **Pep** and **Behpardakht**: `reverse()` crashed after a failed callback.
 - **Nextpay**: each API call accepts only its own success code. Before, verification counted an unpaid (`-1`) or refunded (`-90`) payment as successful.
 - **IDPay**: a paid payment was marked as failed and never verified, because the driver expected the callback status `100` instead of the real `10`.
+- **Behpardakht**: every real gateway call crashed with a `TypeError`, because the driver did not read the `return` value of the SOAP reply.
 
 ## [2.1.0] - 2026-09-16
 

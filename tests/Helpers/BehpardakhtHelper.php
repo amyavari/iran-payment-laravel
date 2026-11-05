@@ -23,13 +23,17 @@ final class BehpardakhtHelper extends AbstractHelper
     }
 
     /**
-     * Fake the SOAP responses
+     * Fake the SOAP responses, wrapped like the real document/literal reply (`stdClass` with `return`).
      */
     public static function fakeSoap(string $firstResponse = '', ?string $secondResponse = null): void
     {
         $responses = is_null($secondResponse) ? [$firstResponse] : [$firstResponse, $secondResponse];
 
-        Soap::fake(...$responses);
+        $replies = collect($responses)
+            ->map(fn (string $response): object => (object) ['return' => $response])
+            ->all();
+
+        Soap::fake(...$replies);
     }
 
     /**
