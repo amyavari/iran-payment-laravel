@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Increased minimum Laravel version support due to security advisories.
+- After a failed callback, `verify()` calls no gateway API, and `reverse()` and auto-reverse do nothing.
+
+### Fixed
+
+- **Zibal**, **Sadad** and **Behpardakht**: a failed callback that carried a success code was marked as paid.
+- **Pep** and **Behpardakht**: `reverse()` crashed after a failed callback.
 
 ## [2.1.0] - 2026-09-16
 
