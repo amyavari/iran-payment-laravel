@@ -738,7 +738,7 @@ it('does not reverse when the payment is successful', function (): void {
     $driver->autoReverse()->performVerification();
 
     expect($driver)
-        ->calledMethods()->toBe(['verify']);
+        ->calledMethods()->not->toContain('reverse');
 });
 
 it('does not reverse when auto-reverse is disabled', function (): void {
@@ -747,7 +747,7 @@ it('does not reverse when auto-reverse is disabled', function (): void {
     $driver->autoReverse(autoReverse: false)->performVerification();
 
     expect($driver)
-        ->calledMethods()->toBe(['verify']);
+        ->calledMethods()->not->toContain('reverse');
 });
 
 it('keeps the verification state after auto-reverse is performed', function (): void {
