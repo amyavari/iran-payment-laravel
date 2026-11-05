@@ -261,7 +261,7 @@ final class IdpayDriver extends Driver
      */
     protected function isFailedCallback(): bool
     {
-        return ((string) $this->callbackPayload->get('status')) !== '100';
+        return ((string) $this->callbackPayload->get('status')) !== '10';
     }
 
     /**
