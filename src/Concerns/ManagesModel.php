@@ -128,8 +128,11 @@ trait ManagesModel
      */
     private function updatePaymentAfterReversal(): void
     {
-        $this->updatePaymentIfExists(ApiMethod::Reverse, [
-            'reversed_at' => now(),
-        ]);
+        // A failed reversal is only logged in the raw responses, and won't change `reversed_at`.
+        $data = $this->isSuccessful()
+            ? ['reversed_at' => now()]
+            : [];
+
+        $this->updatePaymentIfExists(ApiMethod::Reverse, $data);
     }
 }

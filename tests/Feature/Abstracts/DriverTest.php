@@ -624,7 +624,7 @@ it('reverses the payment and updates it in the database if it was stored interna
     testDriver()->storeTestPayment();
 
     // Different statuses to ensure no unintended changes occur.
-    $driver = testDriver()->asSuccessful('verify')->asFailed('reverse');
+    $driver = testDriver()->asFailed('verify')->asSuccessful('reverse');
 
     setTestNow('2025-12-10 18:30:20');
     $driver->callCallback()->verify();
@@ -634,10 +634,10 @@ it('reverses the payment and updates it in the database if it was stored interna
 
     $this->assertDatabaseHas(Payment::class, [
         'transaction_id' => $driver->getTransactionId(),
-        'status' => PaymentStatus::Successful,
-        'error' => null,
-        'ref_number' => '123456', // Set by TestDriver
-        'card_number' => '1234-***-4567', // Set by TestDriver
+        'status' => PaymentStatus::Failed,
+        'error' => 'کد 12- خطایی رخ داد.', // asFailed() sets this error code and message
+        'ref_number' => null,
+        'card_number' => null,
         'reversed_at' => '2025-12-10 18:30:30',
         'raw_responses' => json_encode([
             'create_20251210183010' => 'create raw response', // Set by TestDriver
@@ -650,7 +650,30 @@ it('reverses the payment and updates it in the database if it was stored interna
         ->calledMethods()->toBe(['verify', 'reverse']);
 });
 
-it('updates the payment in the database after calling the reverse API', function (): void {
+it('stores the failed reversal response without setting reversed_at', function (): void {
+    setTestNow('2025-12-10 18:30:10');
+    testDriver()->storeTestPayment();
+
+    $driver = testDriver()->asFailed('reverse');
+
+    setTestNow('2025-12-10 18:30:20');
+    $driver->callCallback()->verify();
+
+    setTestNow('2025-12-10 18:30:30');
+    $driver->reverse();
+
+    $this->assertDatabaseHas(Payment::class, [
+        'transaction_id' => $driver->getTransactionId(),
+        'reversed_at' => null,
+        'raw_responses' => json_encode([
+            'create_20251210183010' => 'create raw response', // Set by TestDriver
+            'verify_20251210183020' => 'verify raw response', // Set by TestDriver
+            'reverse_20251210183030' => 'reverse raw response', // Set by TestDriver
+        ]),
+    ]);
+});
+
+it('does not update the payment when the reverse API call throws', function (): void {
     $driver = testDriver()->storeTestPayment()->performVerification();
 
     $driver->throwing(new Exception()); // Stop execution at the API call
