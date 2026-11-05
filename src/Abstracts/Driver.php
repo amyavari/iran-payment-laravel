@@ -514,7 +514,7 @@ abstract class Driver implements Payment
     }
 
     /**
-     * Executes the callback when the API call is successful.
+     * Executes the callback when the API call fails.
      *
      * @return mixed|null
      */

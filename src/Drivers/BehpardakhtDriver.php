@@ -36,7 +36,7 @@ final class BehpardakhtDriver extends Driver
     private const string PAYMENT_REDIRECT_URL = 'https://bpm.shaparak.ir/pgwchannel/startpay.mellat';
 
     /**
-     * URL of the payment page where the user should be redirected.
+     * Sandbox WSDL URL of the payment gateway.
      */
     private const string SANDBOX_GATEWAY_WSDL_URL = 'https://pgw.dev.bpmellat.ir/pgwchannel/services/pgw?wsdl';
 
