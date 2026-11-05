@@ -25,14 +25,6 @@ Clone your fork, then install the dev dependencies:
 composer install
 ```
 
-## Lint
-
-Lint your code:
-
-```bash
-composer lint
-```
-
 ## Tests
 
 Run all tests:
@@ -41,14 +33,12 @@ Run all tests:
 composer test
 ```
 
-Check types:
+This runs the checks below, in this order. You can also run each one on its own:
 
 ```bash
-composer test:types
-```
-
-Unit tests:
-
-```bash
-composer test:unit
+composer test:lint           # Code style (Laravel Pint)
+composer test:refactor       # Refactors (Rector)
+composer test:types          # Types (PHPStan)
+composer test:type-coverage  # Type coverage (Pest)
+composer test:unit           # Unit tests (Pest)
 ```

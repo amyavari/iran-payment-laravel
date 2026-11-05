@@ -61,11 +61,11 @@
     "scripts-descriptions": {
         "lint": "Run Laravel Pint to automatically fix code style issues.",
         "refactor": "Run Rector to automatically refactor code.",
-        "test:coverage": "Run unit tests with code coverage report.",
         "test:lint": "Run Laravel Pint to check code style without fixing issues.",
         "test:refactor": "Run Rector to check refactor needs without fixing issues.",
         "test:types": "Run static analysis to check for type errors in the codebase.",
-        "test:unit": "Run unit tests using Pest."
+        "test:type-coverage": "Run Pest type coverage to check for missing type declarations.",
+        "test:unit": "Run unit tests with code coverage report using Pest."
     },
     "extra": {
         "laravel": {
