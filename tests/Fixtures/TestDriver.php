@@ -33,6 +33,8 @@ final class TestDriver extends Driver
 
     private bool $callbackCalled = false;
 
+    private bool $failedCallback = false;
+
     /**
      * Test-only helper method
      *
@@ -80,6 +82,18 @@ final class TestDriver extends Driver
     public function throwing(Exception $exception): self
     {
         $this->exception = $exception;
+
+        return $this;
+    }
+
+    /**
+     * Test-only helper method
+     *
+     * Makes `isFailedCallback()` return `true`, to test how the base driver handles a failed callback.
+     */
+    public function withFailedCallback(): self
+    {
+        $this->failedCallback = true;
 
         return $this;
     }
@@ -215,6 +229,16 @@ final class TestDriver extends Driver
     protected function prepareFromCallback(): void
     {
         $this->markCallbackAsCalled();
+    }
+
+    protected function isFailedCallback(): bool
+    {
+        return $this->failedCallback;
+    }
+
+    protected function setFailedCallbackStatus(): void
+    {
+        $this->storeMethodCall('failedCallback', []);
     }
 
     protected function getDriverRawResponse(): string

@@ -142,12 +142,6 @@ final class SadadDriver extends Driver
      */
     protected function verifyPayment(array $storedPayload): void
     {
-        if ($this->isFailedPaymentBasedOnCallback()) {
-            $this->setPaymentStatusBasedOnCallback();
-
-            return;
-        }
-
         $keyMapper = [
             'OrderId' => 'orderId',
         ];
@@ -253,6 +247,23 @@ final class SadadDriver extends Driver
     protected function getRequiredCallbackKeys(): array
     {
         return ['OrderId', 'ResCode'];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function isFailedCallback(): bool
+    {
+        return $this->asInt($this->callbackPayload->all(), 'ResCode') !== 0;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function setFailedCallbackStatus(): void
+    {
+        $this->rawResponse = $this->callbackPayload->all();
+        $this->apiStatusCode = $this->asInt($this->rawResponse, 'ResCode');
     }
 
     /**
@@ -372,23 +383,6 @@ final class SadadDriver extends Driver
 
             default => 'کد پاسخ نامشخص',
         };
-    }
-
-    /**
-     * Determine whether the payment failed based on the callback.
-     */
-    private function isFailedPaymentBasedOnCallback(): bool
-    {
-        return $this->asInt($this->callbackPayload->all(), 'ResCode') !== 0;
-    }
-
-    /**
-     * Set payment status by callback.
-     */
-    private function setPaymentStatusBasedOnCallback(): void
-    {
-        $this->rawResponse = $this->callbackPayload->all();
-        $this->apiStatusCode = $this->asInt($this->rawResponse, 'ResCode');
     }
 
     /**

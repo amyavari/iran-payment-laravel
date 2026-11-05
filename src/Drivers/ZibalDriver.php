@@ -118,12 +118,6 @@ final class ZibalDriver extends Driver
      */
     protected function verifyPayment(array $storedPayload): void
     {
-        if ($this->isFailedPaymentBasedOnCallback()) {
-            $this->setPaymentStatusBasedOnCallback();
-
-            return;
-        }
-
         $keyMapper = [
             'trackId' => 'trackId',
         ];
@@ -236,6 +230,23 @@ final class ZibalDriver extends Driver
     }
 
     /**
+     * {@inheritdoc}
+     */
+    protected function isFailedCallback(): bool
+    {
+        return $this->callbackPayload->get('success') !== '1';
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function setFailedCallbackStatus(): void
+    {
+        $this->apiStatusCode = $this->asErrorCode($this->callbackPayload->all(), 'status');
+        $this->rawResponse = $this->callbackPayload->all();
+    }
+
+    /**
      * Get the error message returned by the gateway.
      */
     private function getGatewayMessage(): string
@@ -326,23 +337,6 @@ final class ZibalDriver extends Driver
         return $data->merge([
             'merchant' => $this->useSandbox() ? 'zibal' : $this->merchant,
         ]);
-    }
-
-    /**
-     * Determine whether the payment failed based on the callback.
-     */
-    private function isFailedPaymentBasedOnCallback(): bool
-    {
-        return $this->callbackPayload->get('success') !== '1';
-    }
-
-    /**
-     * Set payment status by callback.
-     */
-    private function setPaymentStatusBasedOnCallback(): void
-    {
-        $this->apiStatusCode = $this->asErrorCode($this->callbackPayload->all(), 'status');
-        $this->rawResponse = $this->callbackPayload->all();
     }
 
     /**

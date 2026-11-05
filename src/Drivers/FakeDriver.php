@@ -378,6 +378,22 @@ final class FakeDriver extends Driver
     /**
      * {@inheritdoc}
      */
+    protected function isFailedCallback(): bool
+    {
+        return false; // The fake follows only the behavior defined by the test.
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function setFailedCallbackStatus(): void
+    {
+        throw new LogicException('The fake callback is never failed, so it has no failed status.');
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     #[Override]
     protected function getNullableCallbackKeys(): array
     {

@@ -150,12 +150,6 @@ final class PaypingDriver extends Driver
             return;
         }
 
-        if ($this->isFailedPaymentBasedOnCallback()) {
-            $this->setPaymentStatusBasedOnCallback();
-
-            return;
-        }
-
         $keyMapper = [
             'data.paymentCode' => 'payment_code',
         ];
@@ -271,6 +265,26 @@ final class PaypingDriver extends Driver
     protected function getRequiredCallbackKeys(): array
     {
         return ['status', 'errorCode', 'data.paymentCode'];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function isFailedCallback(): bool
+    {
+        return $this->asInt($this->callbackPayload->all(), 'status') !== 1;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function setFailedCallbackStatus(): void
+    {
+        $this->apiIsSuccessful = false;
+
+        $this->rawResponse = $this->callbackPayload->all();
+
+        $this->apiStatusCode = $this->asErrorCode($this->rawResponse, 'errorCode');
     }
 
     /**
@@ -401,26 +415,6 @@ final class PaypingDriver extends Driver
 
             default => 'کد پاسخ نامشخص',
         };
-    }
-
-    /**
-     * Determine whether the payment failed based on the callback.
-     */
-    private function isFailedPaymentBasedOnCallback(): bool
-    {
-        return $this->asInt($this->callbackPayload->all(), 'status') !== 1;
-    }
-
-    /**
-     * Set payment status by callback.
-     */
-    private function setPaymentStatusBasedOnCallback(): void
-    {
-        $this->apiIsSuccessful = false;
-
-        $this->rawResponse = $this->callbackPayload->all();
-
-        $this->apiStatusCode = $this->asErrorCode($this->rawResponse, 'errorCode');
     }
 
     /**

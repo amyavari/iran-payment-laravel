@@ -160,12 +160,6 @@ final class SepDriver extends Driver
             return;
         }
 
-        if ($this->isFailedPaymentBasedOnCallback()) {
-            $this->setFailedPaymentBasedOnCallback();
-
-            return;
-        }
-
         $keyMapper = [
             'ResNum' => 'resNum',
             'Amount' => 'amount',
@@ -272,6 +266,25 @@ final class SepDriver extends Driver
     }
 
     /**
+     * {@inheritdoc}
+     */
+    protected function isFailedCallback(): bool
+    {
+        return $this->callbackPayload->get('State') !== 'OK';
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function setFailedCallbackStatus(): void
+    {
+        $this->apiIsSuccessful = false;
+        $this->apiStatusCode = $this->asErrorCode($this->callbackPayload->all(), 'Status');
+        $this->apiStatusMessage = $this->getCallbackMessage($this->callbackPayload->get('State'));
+        $this->rawResponse = $this->callbackPayload->all();
+    }
+
+    /**
      * Generate unique Res Number
      */
     private function generateResNum(): string
@@ -304,25 +317,6 @@ final class SepDriver extends Driver
     private function setToken(): void
     {
         $this->token = $this->asString($this->rawResponse, 'token');
-    }
-
-    /**
-     * Determine whether the payment failed based on the callback.
-     */
-    private function isFailedPaymentBasedOnCallback(): bool
-    {
-        return $this->callbackPayload->get('State') !== 'OK';
-    }
-
-    /**
-     * Set payment status by callback.
-     */
-    private function setFailedPaymentBasedOnCallback(): void
-    {
-        $this->apiIsSuccessful = false;
-        $this->apiStatusCode = $this->asErrorCode($this->callbackPayload->all(), 'Status');
-        $this->apiStatusMessage = $this->getCallbackMessage($this->callbackPayload->get('State'));
-        $this->rawResponse = $this->callbackPayload->all();
     }
 
     /**

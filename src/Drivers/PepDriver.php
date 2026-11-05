@@ -155,12 +155,6 @@ final class PepDriver extends Driver
      */
     protected function verifyPayment(array $storedPayload): void
     {
-        if ($this->isFailedPaymentBasedOnCallback()) {
-            $this->setFailedPaymentBasedOnCallback();
-
-            return;
-        }
-
         $keyMapper = [
             'invoiceId' => 'invoice',
         ];
@@ -266,6 +260,23 @@ final class PepDriver extends Driver
     protected function getRequiredCallbackKeys(): array
     {
         return ['status', 'invoiceId'];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function isFailedCallback(): bool
+    {
+        return $this->callbackPayload->get('status') !== 'success';
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function setFailedCallbackStatus(): void
+    {
+        $this->apiStatusCode = 1;
+        $this->rawResponse = $this->callbackPayload->all();
     }
 
     /**
@@ -573,23 +584,6 @@ final class PepDriver extends Driver
             13430 => 'احراز هویت موفق نبود - بعدا دوباره تلاش کنید',
             default => 'کد پاسخ نامشخص',
         };
-    }
-
-    /**
-     * Determine whether the payment failed based on the callback.
-     */
-    private function isFailedPaymentBasedOnCallback(): bool
-    {
-        return $this->callbackPayload->get('status') !== 'success';
-    }
-
-    /**
-     * Set payment status by callback.
-     */
-    private function setFailedPaymentBasedOnCallback(): void
-    {
-        $this->apiStatusCode = 1;
-        $this->rawResponse = $this->callbackPayload->all();
     }
 
     /**
