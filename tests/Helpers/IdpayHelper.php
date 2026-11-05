@@ -90,7 +90,7 @@ final class IdpayHelper extends AbstractHelper
     public static function successfulCallback(): array
     {
         return [
-            'status' => '100',
+            'status' => '10', // Waiting for verification
             'track_id' => '123456',
             'id' => 'd2e353189823079e1e4181772cff5292',
             'order_id' => '123456789012345',

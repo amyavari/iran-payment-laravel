@@ -34,6 +34,11 @@ final class NextpayDriver extends Driver
     private int $apiStatusCode;
 
     /**
+     * Determine whether the last API call was successful.
+     */
+    private bool $apiIsSuccessful;
+
+    /**
      * Raw response from the last API call.
      *
      * @var array<string,mixed>|string
@@ -92,7 +97,9 @@ final class NextpayDriver extends Driver
 
         $this->execute('token', $data);
 
-        if ($this->isSuccessful()) {
+        $this->apiIsSuccessful = $this->apiStatusCode === -1;
+
+        if ($this->apiIsSuccessful) {
             $this->setTransactionId();
         }
     }
@@ -178,7 +185,7 @@ final class NextpayDriver extends Driver
      */
     protected function isSuccessful(): bool
     {
-        return in_array($this->apiStatusCode, [-1, 0, -90], true);
+        return $this->apiIsSuccessful;
     }
 
     /**
@@ -208,6 +215,8 @@ final class NextpayDriver extends Driver
         ]);
 
         $this->execute('verify', $data);
+
+        $this->apiIsSuccessful = $this->apiStatusCode === 0;
     }
 
     /**
@@ -222,6 +231,8 @@ final class NextpayDriver extends Driver
         ]);
 
         $this->execute('verify', $data);
+
+        $this->apiIsSuccessful = $this->apiStatusCode === -90;
     }
 
     /**
